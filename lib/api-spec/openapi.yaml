@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: grade
+    description: Account grading operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /grade/explain:
+    post:
+      operationId: explainGrade
+      tags: [grade]
+      summary: Generate AI explanation for a graded account
+      description: Uses AI to generate a written analysis based on the computed deterministic scores
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GradeExplainInput"
+      responses:
+        "200":
+          description: AI-generated explanation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeExplanation"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +66,87 @@ components:
           type: string
       required:
         - status
-
+    GradeExplainInput:
+      type: object
+      required:
+        - username
+        - level
+        - overallScore
+        - overallGrade
+        - gearScore
+        - powerScore
+        - progressScore
+        - wealthScore
+        - sword
+        - swordLevel
+        - shield
+        - shieldLevel
+        - powerRaw
+        - goldRaw
+        - levelTier
+        - standing
+      properties:
+        username:
+          type: string
+        level:
+          type: integer
+        overallScore:
+          type: number
+        overallGrade:
+          type: string
+        gearScore:
+          type: number
+        powerScore:
+          type: number
+        progressScore:
+          type: number
+        wealthScore:
+          type: number
+        sword:
+          type: string
+        swordLevel:
+          type: integer
+        shield:
+          type: string
+        shieldLevel:
+          type: integer
+        powerRaw:
+          type: string
+        goldRaw:
+          type: string
+        levelTier:
+          type: string
+        standing:
+          type: string
+        pvpKills:
+          type: ["integer", "null"]
+    GradeExplanation:
+      type: object
+      required:
+        - strengths
+        - weaknesses
+        - recommendation
+        - summary
+        - reasoning
+      properties:
+        strengths:
+          type: array
+          items:
+            type: string
+        weaknesses:
+          type: array
+          items:
+            type: string
+        recommendation:
+          type: string
+        summary:
+          type: string
+        reasoning:
+          type: string
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
