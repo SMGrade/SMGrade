@@ -1,44 +1,59 @@
-# [Project name]
+# SMGrade
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+An AI-powered SwordMasters account grader. Users paste their bot `/stats` output and receive a deterministic score (0–100), letter grade (S+ to D), and an AI-generated written analysis comparing them to real players at their level.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
+- `pnpm --filter @workspace/smgrade run dev` — run the frontend (port 23994)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `OPENAI_API_KEY` — for AI explanation generation
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
+- Frontend: React + Vite + Tailwind CSS (artifacts/smgrade)
+- API: Express 5 (artifacts/api-server)
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- AI: OpenAI (`gpt-5-mini`) for written explanations only
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — API contract source of truth
+- `lib/api-client-react/src/generated/` — generated React Query hooks
+- `lib/api-zod/src/generated/` — generated Zod validation schemas
+- `artifacts/smgrade/src/lib/benchmark.ts` — benchmark database built from real player data
+- `artifacts/smgrade/src/lib/parser.ts` — Discord bot output parser
+- `artifacts/smgrade/src/lib/scorer.ts` — deterministic scoring engine
+- `artifacts/smgrade/src/lib/numberParser.ts` — SwordMasters number notation parser (K/M/B/T/QT/QNT/SXT...)
+- `artifacts/api-server/src/routes/grade.ts` — AI explanation endpoint
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Scoring is 100% deterministic — AI only writes the explanation after scores are computed.
+- Benchmark data is hardcoded from real player logs (benchmark.ts) — no DB needed.
+- Number parsing supports all SM suffixes: K, M, B, T, QT, QNT, SXT, SEP, OCT.
+- Parser uses Discord formatting cleanup + field extraction by label matching.
+- Scores are level-tier relative — low-level vs high-level players are never directly compared.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Homepage: paste box for Discord bot output, immediately visible
+- Result page: letter grade, score breakdown (Gear/Power/Progress/Wealth), player stats, top enemies, AI analysis
+- Score categories: S+ S A+ A B+ B C+ C D (thresholds at 97/90/83/75/67/58/48/38)
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+_Populate as you build._
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- The benchmark power values in `benchmark.ts` are log-scale compared — absolute numbers vary enormously between tiers.
+- The OpenAI model `gpt-5-mini` is used for cost efficiency on the explanation endpoint.
+- The smgrade frontend passes result data via URL query param (base64 JSON), so there's no DB needed for results.
 
 ## Pointers
 

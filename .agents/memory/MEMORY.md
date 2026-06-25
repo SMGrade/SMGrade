@@ -1,0 +1,1 @@
+- [SMGrade scoring engine](smgrade-scoring.md) — deterministic log-scale power scoring; benchmark data in benchmark.ts must match real dataset tiers
