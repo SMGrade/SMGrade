@@ -119,7 +119,15 @@ export default function Result() {
   const [, navigate] = useLocation();
   const [data, setData] = useState<ResultData | null>(null);
   const [parseError, setParseError] = useState(false);
+  const [copied, setCopied] = useState(false);
   const hasExplained = useRef(false);
+
+  function copyLink() {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -426,6 +434,26 @@ export default function Result() {
               <path d="M7.5 1v9m0 0L4.5 7m3 3 3-3M1 11v1.5A1.5 1.5 0 0 0 2.5 14h10A1.5 1.5 0 0 0 14 12.5V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             Save Grade Card
+          </button>
+          <button
+            onClick={copyLink}
+            className={`inline-flex items-center gap-2 border text-sm px-6 py-2.5 rounded-sm transition-colors ${
+              copied
+                ? "border-[#9ecb7a] text-[#9ecb7a]"
+                : "border-[#333] hover:border-[#888] text-[#888] hover:text-[#ccc]"
+            }`}
+          >
+            {copied ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Link Copied!
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy Result Link
+              </>
+            )}
           </button>
           <Link
             href="/"
