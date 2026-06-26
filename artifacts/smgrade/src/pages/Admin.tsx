@@ -1,6 +1,79 @@
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { BENCHMARK_TIERS, SWORD_TIER, SHIELD_TIER } from "@/lib/benchmark";
 import { SWORDS, SHIELDS } from "@/lib/gearDatabase";
+
+const ADMIN_KEY = "smg_admin_auth";
+const CORRECT = atob("aGFycmlzb25Ac21ncmFkZQ==");
+
+function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
+  const [value, setValue] = useState("");
+  const [error, setError] = useState(false);
+  const [shake, setShake] = useState(false);
+
+  function attempt() {
+    if (value === CORRECT) {
+      sessionStorage.setItem(ADMIN_KEY, "1");
+      onUnlock();
+    } else {
+      setError(true);
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div
+        className={`border border-[#1e1e1e] rounded-sm p-8 w-full max-w-sm space-y-5 transition-transform ${shake ? "animate-[shake_0.4s_ease]" : ""}`}
+        style={shake ? { animation: "shake 0.4s ease" } : {}}
+      >
+        <div className="text-center space-y-1">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <span className="text-[#c9a84c] font-bold text-lg">SM</span>
+            <span className="text-white font-bold text-lg">Grade</span>
+          </div>
+          <p className="text-[#555] text-xs uppercase tracking-widest">Admin Access</p>
+        </div>
+
+        <div className="space-y-3">
+          <input
+            type="password"
+            className="w-full bg-[#111] border border-[#2a2a2a] focus:border-[#c9a84c] text-white text-sm px-4 py-2.5 rounded-sm outline-none transition-colors placeholder-[#333] font-mono"
+            placeholder="Password"
+            value={value}
+            autoFocus
+            onChange={(e) => { setValue(e.target.value); setError(false); }}
+            onKeyDown={(e) => e.key === "Enter" && attempt()}
+          />
+          {error && (
+            <p className="text-[#e05a5a] text-xs text-center">Incorrect password</p>
+          )}
+          <button
+            onClick={attempt}
+            className="w-full bg-[#c9a84c] hover:bg-[#d4b55e] text-black font-semibold text-sm py-2.5 rounded-sm transition-colors"
+          >
+            Unlock
+          </button>
+        </div>
+
+        <div className="text-center">
+          <Link href="/" className="text-[#333] text-xs hover:text-[#555] transition-colors">← Back to home</Link>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes shake {
+          0%,100% { transform: translateX(0); }
+          20% { transform: translateX(-8px); }
+          40% { transform: translateX(8px); }
+          60% { transform: translateX(-6px); }
+          80% { transform: translateX(6px); }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -45,6 +118,12 @@ function fmt(n: number): string {
 }
 
 export default function Admin() {
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(ADMIN_KEY) === "1");
+
+  if (!unlocked) {
+    return <PasswordGate onUnlock={() => setUnlocked(true)} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <header className="border-b border-[#1a1a1a] px-6 py-3 flex items-center justify-between">
