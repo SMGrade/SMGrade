@@ -5,6 +5,7 @@ import type { ParsedPlayer } from "@/lib/parser";
 import type { ScoreResult, GearSlotGrade } from "@/lib/scorer";
 import { formatNumber } from "@/lib/numberParser";
 import { getSwordRarity, getShieldRarity } from "@/lib/benchmark";
+import { downloadShareCard } from "@/lib/shareCard";
 
 interface ResultData {
   player: ParsedPlayer;
@@ -416,7 +417,16 @@ export default function Result() {
         </div>
 
         {/* CTA */}
-        <div className="text-center pb-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pb-4">
+          <button
+            onClick={() => downloadShareCard(player, scores)}
+            className="inline-flex items-center gap-2 bg-[#c9a84c] hover:bg-[#d4b55e] text-black font-bold text-sm px-6 py-2.5 rounded-sm transition-colors"
+          >
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7.5 1v9m0 0L4.5 7m3 3 3-3M1 11v1.5A1.5 1.5 0 0 0 2.5 14h10A1.5 1.5 0 0 0 14 12.5V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Save Grade Card
+          </button>
           <Link
             href="/"
             className="inline-block bg-transparent border border-[#333] hover:border-[#c9a84c] text-[#888] hover:text-[#c9a84c] text-sm px-6 py-2.5 rounded-sm transition-colors"
