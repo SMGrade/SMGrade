@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { useExplainGrade } from "@workspace/api-client-react";
 import type { ParsedPlayer } from "@/lib/parser";
-import type { ScoreResult } from "@/lib/scorer";
+import type { ScoreResult, GearSlotGrade } from "@/lib/scorer";
 import { formatNumber } from "@/lib/numberParser";
 import { getSwordRarity, getShieldRarity } from "@/lib/benchmark";
 
@@ -53,6 +53,63 @@ function StatRow({ label, value }: { label: string; value: string | number }) {
     <div className="flex justify-between py-2 border-b border-[#1a1a1a] last:border-0">
       <span className="text-[#666] text-sm">{label}</span>
       <span className="text-[#ddd] text-sm font-mono">{value}</span>
+    </div>
+  );
+}
+
+function SlotGradeCard({ slot }: { slot: GearSlotGrade }) {
+  const gradeColor = GRADE_COLOR[slot.grade] ?? "#888";
+  const isOptimal = !slot.tip;
+
+  return (
+    <div className="border border-[#222] rounded-sm p-4 space-y-3 bg-[#0f0f0f]">
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[#555] text-[10px] uppercase tracking-widest mb-0.5">{slot.slotName}</div>
+          <div className="text-[#ddd] text-sm font-semibold truncate">{slot.itemName}</div>
+          <div className="text-[#555] text-xs mt-0.5 font-mono">{slot.stat}</div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-2xl font-black leading-none" style={{ color: gradeColor }}>
+            {slot.grade}
+          </div>
+          <div className="text-[#444] text-[10px] mt-0.5">{slot.score}/100</div>
+        </div>
+      </div>
+
+      {/* Score bar */}
+      <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${slot.score}%`, backgroundColor: gradeColor }}
+        />
+      </div>
+
+      {/* Tip or optimal badge */}
+      {isOptimal ? (
+        <div className="flex items-center gap-1.5">
+          <span className="text-[#9ecb7a] text-xs">✓</span>
+          <span className="text-[#9ecb7a] text-xs">Best in slot — no upgrade needed</span>
+        </div>
+      ) : (
+        <div className="bg-[#1a1400] border border-[#3a2a00] rounded-sm p-3 space-y-1">
+          <div className="text-[#c9a84c] text-[10px] uppercase tracking-widest font-semibold">
+            Needs Improvement
+          </div>
+          <div className="text-[#ddd] text-xs">
+            Upgrade to <span className="text-white font-semibold">{slot.tip!.targetName}</span>
+            {slot.tip!.damageGainPct > 0 && (
+              <span className="text-[#9ecb7a]"> (+{slot.tip!.damageGainPct}% DS boost)</span>
+            )}
+          </div>
+          {slot.tip!.marketPriceNote && (
+            <div className="text-[#666] text-xs">
+              💰 Market: {slot.tip!.marketPriceNote}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -208,6 +265,16 @@ export default function Result() {
               {scores.standing}
             </span>
             <span className="text-[#444] text-xs">vs {scores.levelTier} tier players</span>
+          </div>
+        </div>
+
+        {/* Gear Report Card */}
+        <div className="space-y-3">
+          <h3 className="text-xs uppercase tracking-widest text-[#555]">Gear Report Card</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {scores.slotGrades.map((slot) => (
+              <SlotGradeCard key={slot.slotName} slot={slot} />
+            ))}
           </div>
         </div>
 

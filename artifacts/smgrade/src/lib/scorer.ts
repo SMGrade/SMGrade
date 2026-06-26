@@ -5,9 +5,35 @@ import {
   SWORD_TIER,
   SHIELD_TIER,
 } from "./benchmark";
+import {
+  getSwordData,
+  getShieldData,
+  getNextSwordUpgrade,
+  getNextShieldUpgrade,
+  scaledSwordDamage,
+  scaledShieldDM,
+  swordUpgradeGain,
+  shieldUpgradeGain,
+} from "./gearDatabase";
 import type { ParsedPlayer } from "./parser";
 
 export type GradeLetter = "S+" | "S" | "A+" | "A" | "B+" | "B" | "C+" | "C" | "D";
+
+export interface UpgradeTip {
+  targetName: string;
+  targetLevel: number;
+  damageGainPct: number;        // % estimated damage gain
+  marketPriceNote: string | null;
+}
+
+export interface GearSlotGrade {
+  slotName: string;             // "Sword" | "Shield" | "Power"
+  itemName: string;             // e.g. "Solbrand Lv7"
+  score: number;                // 0–100
+  grade: GradeLetter;
+  stat: string;                 // Display stat (e.g. "DS: 5.0B" or "9.95QT")
+  tip: UpgradeTip | null;       // null = already optimal or no upgrade known
+}
 
 export interface ScoreResult {
   overallScore: number;
@@ -18,6 +44,7 @@ export interface ScoreResult {
   wealthScore: number;
   standing: "Elite" | "Above Average" | "Average" | "Below Average" | "Weak";
   levelTier: string;
+  slotGrades: GearSlotGrade[];
 }
 
 function clamp(val: number, min = 0, max = 100): number {
@@ -55,11 +82,9 @@ function scoreGear(player: ParsedPlayer): number {
   const swordTier = getSwordTier(player.sword);
   const shieldTier = getShieldTier(player.shield);
 
-  // Base tier score (0-80 points)
   const swordBaseScore = (swordTier / maxSwordTier) * 40;
   const shieldBaseScore = (shieldTier / maxShieldTier) * 40;
 
-  // Upgrade level bonus (0-20 points) — higher level upgrades = better
   const swordLevelBonus = Math.min(player.swordLevel * 2, 10);
   const shieldLevelBonus = Math.min(player.shieldLevel * 2, 10);
 
@@ -72,7 +97,6 @@ function scorePower(player: ParsedPlayer): number {
   if (player.powerRaw <= 0) return 0;
   const benchmark = getBenchmarkForLevel(player.level);
 
-  // Log-scale comparison against benchmark tiers
   const logPower = Math.log10(Math.max(player.powerRaw, 1));
   const logWeak = Math.log10(Math.max(benchmark.weakPower, 1));
   const logElite = Math.log10(Math.max(benchmark.elitePower, 1));
@@ -94,11 +118,9 @@ function scoreProgress(player: ParsedPlayer): number {
   const maxExpectedSword = Math.max(...benchmark.topSwords.map(getSwordTier));
   const maxExpectedShield = Math.max(...benchmark.topShields.map(getShieldTier));
 
-  // Gear is at or above expected tier
   const swordPct = maxExpectedSword > 0 ? clamp((swordTier / maxExpectedSword) * 100) : 100;
   const shieldPct = maxExpectedShield > 0 ? clamp((shieldTier / maxExpectedShield) * 100) : 100;
 
-  // Power contribution
   const powerPct = scorePower(player);
 
   return clamp(Math.round(swordPct * 0.35 + shieldPct * 0.35 + powerPct * 0.30));
@@ -121,6 +143,109 @@ function scoreWealth(player: ParsedPlayer): number {
   return clamp(Math.round(15 + ratio * 85));
 }
 
+/** Per-slot grade for sword */
+function gradeSword(player: ParsedPlayer): GearSlotGrade {
+  const maxSwordTier = Math.max(...Object.values(SWORD_TIER));
+  const tier = getSwordTier(player.sword);
+  const tierScore = (tier / maxSwordTier) * 80;
+  const levelBonus = Math.min(player.swordLevel * 2, 20);
+  const score = clamp(Math.round(tierScore + levelBonus));
+  const grade = scoreToGrade(score);
+
+  const swordData = getSwordData(player.sword);
+  const dsDisplay = swordData
+    ? `DS: ${scaledSwordDamage(swordData.baseDamage, player.swordLevel).toFixed(2)}B`
+    : `Lv${player.swordLevel}`;
+
+  const nextSword = getNextSwordUpgrade(player.sword);
+  let tip: UpgradeTip | null = null;
+  if (nextSword) {
+    const gain = swordUpgradeGain(player.sword, player.swordLevel, nextSword.name);
+    tip = {
+      targetName: nextSword.name,
+      targetLevel: 1,
+      damageGainPct: gain,
+      marketPriceNote: nextSword.marketPriceNote,
+    };
+  }
+
+  return {
+    slotName: "Sword",
+    itemName: `${player.sword} Lv${player.swordLevel}`,
+    score,
+    grade,
+    stat: dsDisplay,
+    tip,
+  };
+}
+
+/** Per-slot grade for shield */
+function gradeShield(player: ParsedPlayer): GearSlotGrade {
+  const maxShieldTier = Math.max(...Object.values(SHIELD_TIER));
+  const tier = getShieldTier(player.shield);
+  const tierScore = (tier / maxShieldTier) * 80;
+  const levelBonus = Math.min(player.shieldLevel * 2, 20);
+  const score = clamp(Math.round(tierScore + levelBonus));
+  const grade = scoreToGrade(score);
+
+  const shieldData = getShieldData(player.shield);
+  const dmDisplay = shieldData
+    ? `DM: ${scaledShieldDM(shieldData.baseDM, player.shieldLevel).toFixed(1)}x`
+    : `Lv${player.shieldLevel}`;
+
+  const nextShield = getNextShieldUpgrade(player.shield);
+  let tip: UpgradeTip | null = null;
+  if (nextShield) {
+    const gain = shieldUpgradeGain(player.shield, player.shieldLevel, nextShield.name);
+    tip = {
+      targetName: nextShield.name,
+      targetLevel: 1,
+      damageGainPct: gain,
+      marketPriceNote: nextShield.marketPriceNote,
+    };
+  }
+
+  return {
+    slotName: "Shield",
+    itemName: `${player.shield} Lv${player.shieldLevel}`,
+    score,
+    grade,
+    stat: dmDisplay,
+    tip,
+  };
+}
+
+/** Per-slot grade for power */
+function gradePower(player: ParsedPlayer): GearSlotGrade {
+  const score = scorePower(player);
+  const grade = scoreToGrade(score);
+  const benchmark = getBenchmarkForLevel(player.level);
+
+  let tip: UpgradeTip | null = null;
+  if (score < 90) {
+    const logCurrent = Math.log10(Math.max(player.powerRaw, 1));
+    const logTarget = Math.log10(Math.max(benchmark.strongPower, 1));
+    const gainPct = logTarget > logCurrent
+      ? Math.round((Math.pow(10, logTarget - logCurrent) - 1) * 100)
+      : 0;
+    tip = {
+      targetName: `${benchmark.label} avg power`,
+      targetLevel: 0,
+      damageGainPct: Math.min(gainPct, 999),
+      marketPriceNote: "Grind PvP or buy power from market",
+    };
+  }
+
+  return {
+    slotName: "Power",
+    itemName: player.power,
+    score,
+    grade,
+    stat: player.power,
+    tip,
+  };
+}
+
 export function scorePlayer(player: ParsedPlayer): ScoreResult {
   const benchmark = getBenchmarkForLevel(player.level);
 
@@ -129,7 +254,6 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
   const progressScore = scoreProgress(player);
   const wealthScore = scoreWealth(player);
 
-  // Weighted overall: power matters most, then gear, then progress, then wealth
   const overallScore = clamp(
     Math.round(
       gearScore * 0.30 +
@@ -142,6 +266,12 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
   const overallGrade = scoreToGrade(overallScore);
   const standing = scoreStanding(player.powerRaw, benchmark);
 
+  const slotGrades: GearSlotGrade[] = [
+    gradeSword(player),
+    gradeShield(player),
+    gradePower(player),
+  ];
+
   return {
     overallScore,
     overallGrade,
@@ -151,5 +281,6 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
     wealthScore,
     standing,
     levelTier: benchmark.label,
+    slotGrades,
   };
 }
