@@ -41,12 +41,24 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white flex flex-col">
       {/* Header */}
-      <header className="border-b border-[#222] px-6 py-4 flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-[#c9a84c] font-bold text-xl tracking-wide">SM</span>
-          <span className="text-white font-bold text-xl tracking-wide">Grade</span>
+      <header className="border-b border-[#222] px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[#c9a84c] font-bold text-xl tracking-wide">SM</span>
+            <span className="text-white font-bold text-xl tracking-wide">Grade</span>
+          </div>
+          <span className="text-[#444] text-sm">SwordMasters Account Grader</span>
         </div>
-        <span className="text-[#444] text-sm ml-2">SwordMasters Account Grader</span>
+        <a
+          href="/admin"
+          className="flex items-center gap-1.5 text-[#1e1e1e] hover:text-[#333] transition-colors text-xs select-none"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+          </svg>
+          admin
+        </a>
       </header>
 
       {/* Hero */}
