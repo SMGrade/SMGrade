@@ -162,12 +162,14 @@ function gradeSword(player: ParsedPlayer): GearSlotGrade {
   let tip: UpgradeTip | null = null;
   if (nextSword) {
     const gain = swordUpgradeGain(player.sword, player.swordLevel, nextSword.name);
-    tip = {
-      targetName: nextSword.name,
-      targetLevel: 1,
-      damageGainPct: gain,
-      marketPriceNote: getPriceNote(nextSword.name, 1),
-    };
+    if (gain > 0) {
+      tip = {
+        targetName: nextSword.name,
+        targetLevel: 1,
+        damageGainPct: gain,
+        marketPriceNote: getPriceNote(nextSword.name, 1),
+      };
+    }
   }
 
   return {
@@ -198,12 +200,14 @@ function gradeShield(player: ParsedPlayer): GearSlotGrade {
   let tip: UpgradeTip | null = null;
   if (nextShield) {
     const gain = shieldUpgradeGain(player.shield, player.shieldLevel, nextShield.name);
-    tip = {
-      targetName: nextShield.name,
-      targetLevel: 1,
-      damageGainPct: gain,
-      marketPriceNote: getPriceNote(nextShield.name, 1),
-    };
+    if (gain > 0) {
+      tip = {
+        targetName: nextShield.name,
+        targetLevel: 1,
+        damageGainPct: gain,
+        marketPriceNote: getPriceNote(nextShield.name, 1),
+      };
+    }
   }
 
   return {

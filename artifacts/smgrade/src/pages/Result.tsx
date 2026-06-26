@@ -6,6 +6,7 @@ import type { ScoreResult, GearSlotGrade } from "@/lib/scorer";
 import { formatNumber } from "@/lib/numberParser";
 import { getSwordRarity, getShieldRarity } from "@/lib/benchmark";
 import { downloadShareCard } from "@/lib/shareCard";
+import { getSwordData, getShieldData, scaledSwordDamage, scaledShieldDM } from "@/lib/gearDatabase";
 
 interface ResultData {
   player: ParsedPlayer;
@@ -112,9 +113,12 @@ function SlotGradeCard({ slot }: { slot: GearSlotGrade }) {
             Needs Improvement
           </div>
           <div className="text-[#ddd] text-xs">
-            Upgrade to <span className="text-white font-semibold">{slot.tip!.targetName}</span>
+            Upgrade to{" "}
+            <span className="text-white font-semibold">
+              {slot.tip!.targetName} Lv{slot.tip!.targetLevel}
+            </span>
             {slot.tip!.damageGainPct > 0 && (
-              <span className="text-[#9ecb7a]"> (+{slot.tip!.damageGainPct}% DS boost)</span>
+              <span className="text-[#9ecb7a]"> (+{slot.tip!.damageGainPct}% boost)</span>
             )}
           </div>
           {slot.tip!.marketPriceNote && (
@@ -124,6 +128,58 @@ function SlotGradeCard({ slot }: { slot: GearSlotGrade }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function CombatStats({ player }: { player: ParsedPlayer }) {
+  const swordData = getSwordData(player.sword);
+  const shieldData = getShieldData(player.shield);
+
+  if (!swordData && !shieldData) return null;
+
+  const ds = swordData ? scaledSwordDamage(swordData.baseDamage, player.swordLevel) : 0; // billions
+  const ms = shieldData ? scaledShieldDM(shieldData.baseDM, player.shieldLevel) : 0;     // multiplier
+  const dsRaw = ds * 1e9;
+  const p = Math.max(player.powerRaw, 0);
+
+  // Damage/Hit = (DS + 2√p + 1) × (1 + ms)
+  const damagePerHit = dsRaw > 0 || p > 0
+    ? (dsRaw + 2 * Math.sqrt(p) + 1) * (1 + ms)
+    : 0;
+  const dps = damagePerHit * 2.77;
+
+  function fmtBig(n: number): string {
+    if (n >= 1e24) return (n / 1e24).toFixed(2) + " OCT";
+    if (n >= 1e21) return (n / 1e21).toFixed(2) + " SXT";
+    if (n >= 1e18) return (n / 1e18).toFixed(2) + " QNT";
+    if (n >= 1e15) return (n / 1e15).toFixed(2) + " QT";
+    if (n >= 1e12) return (n / 1e12).toFixed(2) + " T";
+    if (n >= 1e9)  return (n / 1e9).toFixed(2)  + " B";
+    if (n >= 1e6)  return (n / 1e6).toFixed(2)  + " M";
+    return n.toFixed(0);
+  }
+
+  const rows: { label: string; value: string; sub?: string }[] = [
+    ...(swordData ? [{ label: "DS (Sword)", value: `${ds.toFixed(2)}B`, sub: `${swordData.name} Lv${player.swordLevel}` }] : []),
+    ...(shieldData ? [{ label: "MS (Shield)", value: `${ms.toFixed(1)}×`, sub: `${shieldData.name} Lv${player.shieldLevel}` }] : []),
+    ...(damagePerHit > 0 ? [
+      { label: "Damage / Hit", value: fmtBig(damagePerHit), sub: "(DS + 2√Power + 1) × (1 + MS)" },
+      { label: "DPS", value: fmtBig(dps), sub: "Damage/Hit × 2.77" },
+    ] : []),
+  ];
+
+  return (
+    <div className="space-y-2">
+      {rows.map(({ label, value, sub }) => (
+        <div key={label} className="flex items-center justify-between py-2 border-b border-[#111] last:border-0">
+          <div>
+            <div className="text-[#666] text-sm">{label}</div>
+            {sub && <div className="text-[#333] text-[10px] font-mono mt-0.5">{sub}</div>}
+          </div>
+          <div className="text-white font-mono font-semibold text-sm">{value}</div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -321,6 +377,12 @@ export default function Result() {
             <ScoreBar label="Progress Score" score={scores.progressScore} color="#9ecb7a" />
             <ScoreBar label="Wealth Score" score={scores.wealthScore} color="#b89fce" />
           </div>
+        </div>
+
+        {/* Combat Stats */}
+        <div className="border border-[#222] rounded-sm p-5 space-y-1">
+          <h3 className="text-xs uppercase tracking-widest text-[#555] mb-3">Combat Stats</h3>
+          <CombatStats player={player} />
         </div>
 
         {/* Stats */}
