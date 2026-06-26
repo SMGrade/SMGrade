@@ -1,5 +1,6 @@
 // Market prices editor — stored in localStorage, editable from admin panel
-// Prices are strings like "390QNT", "2SXT", "50QT" — display-only, not parsed for math
+// Prices are strings like "390QNT", "2SXT", "50QT"
+import { parseNumber } from "./numberParser";
 
 const STORAGE_KEY = "smg_market_prices_v1";
 
@@ -57,4 +58,12 @@ export function getPriceNote(itemName: string, level: number): string | null {
   const itemPrices = prices[itemName];
   if (!itemPrices) return null;
   return itemPrices[level] || itemPrices[1] || null;
+}
+
+/** Parse price string to raw number (0 if unknown) */
+export function getPriceRaw(itemName: string, level: number): number {
+  const note = getPriceNote(itemName, level);
+  if (!note) return 0;
+  // Strip spaces so "390 QNT" → "390QNT"
+  return parseNumber(note.replace(/\s+/g, ""));
 }

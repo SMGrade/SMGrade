@@ -16,7 +16,7 @@ import {
   shieldUpgradeGain,
   switchWorthwhileLevel,
 } from "./gearDatabase";
-import { getPriceNote } from "./marketPrices";
+import { getPriceNote, getPriceRaw } from "./marketPrices";
 import type { ParsedPlayer } from "./parser";
 
 export type GradeLetter = "S+" | "S" | "A+" | "A" | "B+" | "B" | "C+" | "C" | "D";
@@ -28,6 +28,8 @@ export interface UpgradeTip {
   marketPriceNote: string | null;
   /** If > 0, switching only becomes worthwhile when next item reaches this level */
   switchWorthwhileAtLevel?: number;
+  /** False when the item cost far exceeds the player's gold */
+  affordable: boolean;
 }
 
 export interface GearSlotGrade {
@@ -166,11 +168,13 @@ function gradeSword(player: ParsedPlayer): GearSlotGrade {
   if (nextSword) {
     const gain = swordUpgradeGain(player.sword, player.swordLevel, nextSword.name);
     if (gain > 0) {
+      const priceRaw = getPriceRaw(nextSword.name, 1);
       tip = {
         targetName: nextSword.name,
         targetLevel: 1,
         damageGainPct: gain,
         marketPriceNote: getPriceNote(nextSword.name, 1),
+        affordable: priceRaw === 0 || priceRaw <= player.goldRaw * 3,
       };
     } else {
       // Current sword at current level beats next sword Lv1 — show when to switch
@@ -178,12 +182,15 @@ function gradeSword(player: ParsedPlayer): GearSlotGrade {
       const nxtData = getSwordData(nextSword.name);
       if (curData && nxtData) {
         const switchAt = switchWorthwhileLevel(curData.baseDamage, player.swordLevel, nxtData.baseDamage);
+        const targetLvl = switchAt ?? 1;
+        const priceRaw = getPriceRaw(nextSword.name, targetLvl);
         tip = {
           targetName: nextSword.name,
-          targetLevel: switchAt ?? 1,
+          targetLevel: targetLvl,
           damageGainPct: gain,
-          marketPriceNote: getPriceNote(nextSword.name, switchAt ?? 1),
+          marketPriceNote: getPriceNote(nextSword.name, targetLvl),
           switchWorthwhileAtLevel: switchAt ?? undefined,
+          affordable: priceRaw === 0 || priceRaw <= player.goldRaw * 3,
         };
       }
     }
@@ -218,11 +225,13 @@ function gradeShield(player: ParsedPlayer): GearSlotGrade {
   if (nextShield) {
     const gain = shieldUpgradeGain(player.shield, player.shieldLevel, nextShield.name);
     if (gain > 0) {
+      const priceRaw = getPriceRaw(nextShield.name, 1);
       tip = {
         targetName: nextShield.name,
         targetLevel: 1,
         damageGainPct: gain,
         marketPriceNote: getPriceNote(nextShield.name, 1),
+        affordable: priceRaw === 0 || priceRaw <= player.goldRaw * 3,
       };
     } else {
       // Current shield at current level beats next shield Lv1 — show when to switch
@@ -230,12 +239,15 @@ function gradeShield(player: ParsedPlayer): GearSlotGrade {
       const nxtData = getShieldData(nextShield.name);
       if (curData && nxtData) {
         const switchAt = switchWorthwhileLevel(curData.baseDM, player.shieldLevel, nxtData.baseDM);
+        const targetLvl = switchAt ?? 1;
+        const priceRaw = getPriceRaw(nextShield.name, targetLvl);
         tip = {
           targetName: nextShield.name,
-          targetLevel: switchAt ?? 1,
+          targetLevel: targetLvl,
           damageGainPct: gain,
-          marketPriceNote: getPriceNote(nextShield.name, switchAt ?? 1),
+          marketPriceNote: getPriceNote(nextShield.name, targetLvl),
           switchWorthwhileAtLevel: switchAt ?? undefined,
+          affordable: priceRaw === 0 || priceRaw <= player.goldRaw * 3,
         };
       }
     }
