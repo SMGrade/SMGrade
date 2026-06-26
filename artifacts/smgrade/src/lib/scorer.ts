@@ -15,6 +15,7 @@ import {
   swordUpgradeGain,
   shieldUpgradeGain,
 } from "./gearDatabase";
+import { getPriceNote } from "./marketPrices";
 import type { ParsedPlayer } from "./parser";
 
 export type GradeLetter = "S+" | "S" | "A+" | "A" | "B+" | "B" | "C+" | "C" | "D";
@@ -165,7 +166,7 @@ function gradeSword(player: ParsedPlayer): GearSlotGrade {
       targetName: nextSword.name,
       targetLevel: 1,
       damageGainPct: gain,
-      marketPriceNote: nextSword.marketPriceNote,
+      marketPriceNote: getPriceNote(nextSword.name, 1),
     };
   }
 
@@ -201,7 +202,7 @@ function gradeShield(player: ParsedPlayer): GearSlotGrade {
       targetName: nextShield.name,
       targetLevel: 1,
       damageGainPct: gain,
-      marketPriceNote: nextShield.marketPriceNote,
+      marketPriceNote: getPriceNote(nextShield.name, 1),
     };
   }
 
