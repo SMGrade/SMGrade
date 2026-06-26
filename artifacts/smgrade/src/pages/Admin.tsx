@@ -1,8 +1,9 @@
 import { useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { BENCHMARK_TIERS, SWORD_TIER, SHIELD_TIER } from "@/lib/benchmark";
+import { BENCHMARK_TIERS, SWORD_TIER, SHIELD_TIER, getBenchmarkForLevel } from "@/lib/benchmark";
 import { SWORDS, SHIELDS } from "@/lib/gearDatabase";
 import { loadPrices, savePrices, DEFAULT_PRICES, type PriceTable } from "@/lib/marketPrices";
+import { parsePlayerData, type ParsedPlayer } from "@/lib/parser";
 
 const ADMIN_KEY = "smg_admin_auth";
 const CORRECT = atob("aGFycmlzb25Ac21ncmFkZQ==");
@@ -142,20 +143,113 @@ function PriceGrid({
 
 // ── Bot Logs Upload ───────────────────────────────────────────────────────────
 
+interface LogStats {
+  fileName: string;
+  fileSizeKB: number;
+  totalPlayers: number;
+  failedBlocks: number;
+  byTier: { label: string; count: number; avgPower: number; minLevel: number; maxLevel: number }[];
+  topSwords: { name: string; count: number }[];
+  topShields: { name: string; count: number }[];
+  levelRange: { min: number; max: number };
+  powerRange: { min: number; max: number };
+}
+
+function splitPlayerBlocks(text: string): string[] {
+  // Each block starts with a line like "SomeUsername Stats"
+  const lines = text.split("\n");
+  const blocks: string[] = [];
+  let current: string[] = [];
+
+  for (const line of lines) {
+    if (/^.+\s+Stats\s*$/.test(line.trim()) && current.length > 2) {
+      blocks.push(current.join("\n"));
+      current = [];
+    }
+    current.push(line);
+  }
+  if (current.length > 2) blocks.push(current.join("\n"));
+  return blocks;
+}
+
+function analyzeLog(text: string, fileName: string, fileSize: number): LogStats {
+  const blocks = splitPlayerBlocks(text);
+  const players: ParsedPlayer[] = [];
+  let failedBlocks = 0;
+
+  for (const block of blocks) {
+    const p = parsePlayerData(block);
+    if (p && p.level > 0 && p.powerRaw > 0) {
+      players.push(p);
+    } else if (block.trim().length > 20) {
+      failedBlocks++;
+    }
+  }
+
+  // Group by tier
+  const tierMap = new Map<string, { count: number; totalPower: number; minLevel: number; maxLevel: number }>();
+  for (const p of players) {
+    const tier = getBenchmarkForLevel(p.level);
+    const existing = tierMap.get(tier.label) ?? { count: 0, totalPower: 0, minLevel: Infinity, maxLevel: 0 };
+    tierMap.set(tier.label, {
+      count: existing.count + 1,
+      totalPower: existing.totalPower + p.powerRaw,
+      minLevel: Math.min(existing.minLevel, p.level),
+      maxLevel: Math.max(existing.maxLevel, p.level),
+    });
+  }
+
+  const byTier = BENCHMARK_TIERS.map((t) => {
+    const d = tierMap.get(t.label);
+    return {
+      label: t.label,
+      count: d?.count ?? 0,
+      avgPower: d ? d.totalPower / d.count : 0,
+      minLevel: d?.minLevel === Infinity ? 0 : (d?.minLevel ?? 0),
+      maxLevel: d?.maxLevel ?? 0,
+    };
+  }).filter((t) => t.count > 0);
+
+  // Top swords/shields
+  const swordCounts: Record<string, number> = {};
+  const shieldCounts: Record<string, number> = {};
+  for (const p of players) {
+    swordCounts[p.sword] = (swordCounts[p.sword] ?? 0) + 1;
+    shieldCounts[p.shield] = (shieldCounts[p.shield] ?? 0) + 1;
+  }
+  const topSwords = Object.entries(swordCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, count]) => ({ name, count }));
+  const topShields = Object.entries(shieldCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, count]) => ({ name, count }));
+
+  const levels = players.map((p) => p.level);
+  const powers = players.map((p) => p.powerRaw);
+
+  return {
+    fileName,
+    fileSizeKB: fileSize / 1024,
+    totalPlayers: players.length,
+    failedBlocks,
+    byTier,
+    topSwords,
+    topShields,
+    levelRange: { min: Math.min(...levels, Infinity), max: Math.max(...levels, 0) },
+    powerRange: { min: Math.min(...powers, Infinity), max: Math.max(...powers, 0) },
+  };
+}
+
 function BotLogsUpload() {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [result, setResult] = useState<string | null>(null);
+  const [stats, setStats] = useState<LogStats | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   function processFile(file: File) {
+    setLoading(true);
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      const lines = text.split("\n");
-      // Count players (lines with "Stats" after a name)
-      const statsLines = lines.filter((l) => l.trim().endsWith("Stats"));
-      const levelLines = lines.filter((l) => /^\d{3,6}$/.test(l.trim()));
-      setResult(`Parsed ${statsLines.length} player entries, ${levelLines.length} level entries from ${file.name} (${(file.size / 1024).toFixed(1)} KB). Review and apply benchmark updates manually from the data below.`);
+      const result = analyzeLog(text, file.name, file.size);
+      setStats(result);
+      setLoading(false);
     };
     reader.readAsText(file);
   }
@@ -170,27 +264,106 @@ function BotLogsUpload() {
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-[#c9a84c] text-xs font-bold uppercase tracking-widest mb-1">Weekly Bot Command Logs</p>
         <p className="text-[#555] text-xs leading-relaxed">
-          Upload your weekly .txt file of bot command logs. The AI will use this data to update player averages and improve grading accuracy.
+          Upload your weekly .txt file of bot command logs to inspect dataset distribution and check benchmark calibration.
         </p>
       </div>
 
       <div
-        className={`border-2 border-dashed rounded-sm py-10 px-6 text-center cursor-pointer transition-colors ${dragging ? "border-[#c9a84c] bg-[#1a1200]" : "border-[#2a2a2a] hover:border-[#3a3a3a]"}`}
+        className={`border-2 border-dashed rounded-sm py-8 px-6 text-center cursor-pointer transition-colors ${dragging ? "border-[#c9a84c] bg-[#1a1200]" : "border-[#2a2a2a] hover:border-[#3a3a3a]"}`}
         onClick={() => fileRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
       >
-        <input ref={fileRef} type="file" accept=".txt" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) processFile(f); }} />
-        <span className="text-[#c9a84c] font-semibold text-sm">Click to upload</span>
-        <span className="text-[#555] text-sm"> weekly bot command .txt file</span>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".txt"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) processFile(f); }}
+        />
+        {loading ? (
+          <span className="text-[#555] text-sm animate-pulse">Parsing...</span>
+        ) : (
+          <>
+            <span className="text-[#c9a84c] font-semibold text-sm">Click to upload</span>
+            <span className="text-[#555] text-sm"> or drag a .txt file here</span>
+          </>
+        )}
       </div>
 
-      {result && (
-        <div className="bg-[#0f1a00] border border-[#2a3a00] rounded-sm px-4 py-3">
-          <p className="text-[#9ecb7a] text-xs leading-relaxed">{result}</p>
+      {stats && (
+        <div className="space-y-4">
+          {/* Summary row */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Players Parsed", value: stats.totalPlayers.toLocaleString() },
+              { label: "Level Range", value: stats.levelRange.min === Infinity ? "—" : `${stats.levelRange.min.toLocaleString()}–${stats.levelRange.max.toLocaleString()}` },
+              { label: "Failed Blocks", value: stats.failedBlocks.toLocaleString() },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-[#111] border border-[#1e1e1e] rounded-sm px-3 py-3 text-center">
+                <div className="text-white font-mono font-bold text-lg">{value}</div>
+                <div className="text-[#444] text-[10px] uppercase tracking-wider mt-0.5">{label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tier breakdown */}
+          <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-sm overflow-hidden">
+            <div className="px-4 py-2 border-b border-[#1e1e1e] bg-[#111]">
+              <span className="text-[#555] text-[10px] uppercase tracking-widest">Tier Distribution</span>
+            </div>
+            <div className="divide-y divide-[#111]">
+              {stats.byTier.map((t) => (
+                <div key={t.label} className="flex items-center gap-3 px-4 py-2.5">
+                  <div className="w-20 text-[#888] text-xs font-semibold shrink-0">{t.label}</div>
+                  <div className="flex-1 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#c9a84c] rounded-full"
+                      style={{ width: `${Math.min((t.count / stats.totalPlayers) * 100 * 3, 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-[#666] text-xs font-mono w-10 text-right shrink-0">{t.count}×</div>
+                  <div className="text-[#444] text-xs font-mono w-24 text-right shrink-0 hidden sm:block">avg {fmt(t.avgPower)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Top gear */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-sm overflow-hidden">
+              <div className="px-3 py-2 border-b border-[#1e1e1e] bg-[#111]">
+                <span className="text-[#555] text-[10px] uppercase tracking-widest">Top Swords</span>
+              </div>
+              <div className="divide-y divide-[#111]">
+                {stats.topSwords.map((s) => (
+                  <div key={s.name} className="flex justify-between items-center px-3 py-2">
+                    <span className="text-[#888] text-xs truncate">{s.name}</span>
+                    <span className="text-[#c9a84c] text-xs font-mono shrink-0 ml-2">{s.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-sm overflow-hidden">
+              <div className="px-3 py-2 border-b border-[#1e1e1e] bg-[#111]">
+                <span className="text-[#555] text-[10px] uppercase tracking-widest">Top Shields</span>
+              </div>
+              <div className="divide-y divide-[#111]">
+                {stats.topShields.map((s) => (
+                  <div key={s.name} className="flex justify-between items-center px-3 py-2">
+                    <span className="text-[#888] text-xs truncate">{s.name}</span>
+                    <span className="text-[#c9a84c] text-xs font-mono shrink-0 ml-2">{s.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[#333] text-[10px]">
+            Source: {stats.fileName} · {stats.fileSizeKB.toFixed(1)} KB
+          </p>
         </div>
       )}
     </div>
