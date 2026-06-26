@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { BENCHMARK_TIERS, SWORD_TIER, SHIELD_TIER } from "@/lib/benchmark";
 import { SWORDS, SHIELDS } from "@/lib/gearDatabase";
 import { loadPrices, savePrices, DEFAULT_PRICES, type PriceTable } from "@/lib/marketPrices";
@@ -283,6 +283,7 @@ function ScoringRef() {
 // ── Main Admin ────────────────────────────────────────────────────────────────
 
 export default function Admin() {
+  const [, navigate] = useLocation();
   const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(ADMIN_KEY) === "1");
   const [prices, setPrices] = useState<PriceTable>(() => loadPrices());
   const [saved, setSaved] = useState(false);
@@ -302,7 +303,7 @@ export default function Admin() {
   function handleSave() {
     savePrices(prices);
     setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setTimeout(() => navigate("/"), 800);
   }
 
   function handleReset() {
