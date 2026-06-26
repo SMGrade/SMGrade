@@ -32,6 +32,19 @@ const STANDING_COLOR: Record<string, string> = {
   Weak: "#e05a5a",
 };
 
+function estimatePercentile(overallScore: number): { label: string; top: boolean } {
+  // Approximate percentile from overall score using a skewed distribution
+  // (most players cluster in the 40–70 range)
+  if (overallScore >= 93) return { label: "Top 3%", top: true };
+  if (overallScore >= 85) return { label: "Top 10%", top: true };
+  if (overallScore >= 75) return { label: "Top 20%", top: true };
+  if (overallScore >= 65) return { label: "Top 35%", top: true };
+  if (overallScore >= 55) return { label: "Top 50%", top: false };
+  if (overallScore >= 45) return { label: "Bottom 40%", top: false };
+  if (overallScore >= 35) return { label: "Bottom 25%", top: false };
+  return { label: "Bottom 10%", top: false };
+}
+
 function ScoreBar({ label, score, color }: { label: string; score: number; color: string }) {
   return (
     <div className="space-y-1">
@@ -190,6 +203,7 @@ export default function Result() {
   const { player, scores } = data;
   const gradeColor = GRADE_COLOR[scores.overallGrade] ?? "#888";
   const standingColor = STANDING_COLOR[scores.standing] ?? "#888";
+  const percentile = estimatePercentile(scores.overallScore);
   const explanation = explainMutation.data;
 
   const topEnemies = Object.entries(player.killedEnemies)
@@ -261,7 +275,7 @@ export default function Result() {
           </div>
 
           {/* Standing badge */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[#555] text-xs">Standing:</span>
             <span
               className="text-xs font-semibold px-2 py-0.5 rounded-sm border"
@@ -274,6 +288,17 @@ export default function Result() {
               {scores.standing}
             </span>
             <span className="text-[#444] text-xs">vs {scores.levelTier} tier players</span>
+            <span className="text-[#333]">·</span>
+            <span
+              className="text-xs font-semibold px-2 py-0.5 rounded-sm border"
+              style={{
+                color: percentile.top ? "#9ecb7a" : "#666",
+                borderColor: percentile.top ? "#9ecb7a44" : "#33333388",
+                backgroundColor: percentile.top ? "#9ecb7a11" : "#11111188",
+              }}
+            >
+              {percentile.label}
+            </span>
           </div>
         </div>
 
