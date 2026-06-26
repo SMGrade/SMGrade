@@ -14,6 +14,7 @@ import {
   scaledShieldDM,
   swordUpgradeGain,
   shieldUpgradeGain,
+  switchWorthwhileLevel,
 } from "./gearDatabase";
 import { getPriceNote } from "./marketPrices";
 import type { ParsedPlayer } from "./parser";
@@ -23,8 +24,10 @@ export type GradeLetter = "S+" | "S" | "A+" | "A" | "B+" | "B" | "C+" | "C" | "D
 export interface UpgradeTip {
   targetName: string;
   targetLevel: number;
-  damageGainPct: number;        // % estimated damage gain
+  damageGainPct: number;        // % estimated damage gain (negative = not worth switching yet)
   marketPriceNote: string | null;
+  /** If > 0, switching only becomes worthwhile when next item reaches this level */
+  switchWorthwhileAtLevel?: number;
 }
 
 export interface GearSlotGrade {
@@ -169,6 +172,20 @@ function gradeSword(player: ParsedPlayer): GearSlotGrade {
         damageGainPct: gain,
         marketPriceNote: getPriceNote(nextSword.name, 1),
       };
+    } else {
+      // Current sword at current level beats next sword Lv1 — show when to switch
+      const curData = getSwordData(player.sword);
+      const nxtData = getSwordData(nextSword.name);
+      if (curData && nxtData) {
+        const switchAt = switchWorthwhileLevel(curData.baseDamage, player.swordLevel, nxtData.baseDamage);
+        tip = {
+          targetName: nextSword.name,
+          targetLevel: switchAt ?? 1,
+          damageGainPct: gain,
+          marketPriceNote: getPriceNote(nextSword.name, switchAt ?? 1),
+          switchWorthwhileAtLevel: switchAt ?? undefined,
+        };
+      }
     }
   }
 
@@ -207,6 +224,20 @@ function gradeShield(player: ParsedPlayer): GearSlotGrade {
         damageGainPct: gain,
         marketPriceNote: getPriceNote(nextShield.name, 1),
       };
+    } else {
+      // Current shield at current level beats next shield Lv1 — show when to switch
+      const curData = getShieldData(player.shield);
+      const nxtData = getShieldData(nextShield.name);
+      if (curData && nxtData) {
+        const switchAt = switchWorthwhileLevel(curData.baseDM, player.shieldLevel, nxtData.baseDM);
+        tip = {
+          targetName: nextShield.name,
+          targetLevel: switchAt ?? 1,
+          damageGainPct: gain,
+          marketPriceNote: getPriceNote(nextShield.name, switchAt ?? 1),
+          switchWorthwhileAtLevel: switchAt ?? undefined,
+        };
+      }
     }
   }
 

@@ -107,13 +107,38 @@ function SlotGradeCard({ slot }: { slot: GearSlotGrade }) {
           <span className="text-[#9ecb7a] text-xs">✓</span>
           <span className="text-[#9ecb7a] text-xs">Best in slot — no upgrade needed</span>
         </div>
-      ) : (
-        <div className="bg-[#1a1400] border border-[#3a2a00] rounded-sm p-3 space-y-1">
-          <div className="text-[#c9a84c] text-[10px] uppercase tracking-widest font-semibold">
-            Needs Improvement
+      ) : slot.tip!.switchWorthwhileAtLevel ? (
+        /* Advisory: current gear beats next item Lv1 — don't switch yet */
+        <div className="bg-[#001a0a] border border-[#003a18] rounded-sm p-3 space-y-1">
+          <div className="text-[#9ecb7a] text-[10px] uppercase tracking-widest font-semibold">
+            Keep Leveling — Don't Switch Yet
           </div>
           <div className="text-[#ddd] text-xs">
-            Upgrade to{" "}
+            Your current item beats{" "}
+            <span className="text-white font-semibold">
+              {slot.tip!.targetName} Lv1
+            </span>
+            {". "}
+            Switch only when you can get it to{" "}
+            <span className="text-[#c9a84c] font-semibold">
+              Lv{slot.tip!.switchWorthwhileAtLevel}
+            </span>
+            .
+          </div>
+          {slot.tip!.marketPriceNote && (
+            <div className="text-[#555] text-xs">
+              💰 At Lv{slot.tip!.switchWorthwhileAtLevel}: {slot.tip!.marketPriceNote}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Switch now — next item Lv1 is already better */
+        <div className="bg-[#1a1400] border border-[#3a2a00] rounded-sm p-3 space-y-1">
+          <div className="text-[#c9a84c] text-[10px] uppercase tracking-widest font-semibold">
+            Upgrade Now
+          </div>
+          <div className="text-[#ddd] text-xs">
+            Switch to{" "}
             <span className="text-white font-semibold">
               {slot.tip!.targetName} Lv{slot.tip!.targetLevel}
             </span>

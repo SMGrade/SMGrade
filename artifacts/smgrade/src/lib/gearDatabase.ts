@@ -184,3 +184,21 @@ export function shieldUpgradeGain(currentName: string, currentLevel: number, nex
   const nxtDM = scaledShieldDM(nxt.baseDM, 1);
   return Math.round(((nxtDM - curDM) / curDM) * 100);
 }
+
+/**
+ * The level the NEXT item needs to reach before it beats your current item at its current level.
+ * Returns null if next item at Lv1 is already better (switch now).
+ * Returns a level 1–10 if you should wait until the next item hits that level.
+ */
+export function switchWorthwhileLevel(
+  currentBase: number,
+  currentLevel: number,
+  nextBase: number
+): number | null {
+  const curStat = currentBase * (1 + 0.25 * (currentLevel - 1));
+  if (nextBase >= curStat) return null; // next Lv1 already wins → switch now
+  // nextBase × (1 + 0.25×(X−1)) = curStat
+  // X = 1 + 4×(curStat/nextBase − 1)
+  const x = 1 + 4 * (curStat / nextBase - 1);
+  return Math.ceil(Math.min(x, 10));
+}
