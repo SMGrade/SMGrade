@@ -106,4 +106,44 @@ Be concise, specific, and accurate. Reference real game terms. Do not be generic
   }
 });
 
+// ── AI Chat ──────────────────────────────────────────────────────────────────
+const CHAT_SYSTEM = `You are the SMGrade AI Coach — a sharp, knowledgeable SwordMasters expert.
+You have access to the player's full stats and grade report below.
+Answer questions concisely (2–5 sentences max). Be direct, game-accurate, and helpful.
+Never make up items. If the question is unrelated to SwordMasters or the player, politely redirect.
+
+${GEAR_CONTEXT}`;
+
+router.post("/grade/chat", async (req, res) => {
+  const { question, playerContext } = req.body as {
+    question?: string;
+    playerContext?: Record<string, unknown>;
+  };
+
+  if (!question || typeof question !== "string" || question.trim().length === 0) {
+    res.status(400).json({ error: "question is required" });
+    return;
+  }
+
+  const ctx = playerContext
+    ? `Player context:\n${JSON.stringify(playerContext, null, 2)}`
+    : "";
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5-mini",
+      messages: [
+        { role: "system", content: CHAT_SYSTEM },
+        { role: "user", content: `${ctx}\n\nPlayer question: ${question.trim()}` },
+      ],
+      max_completion_tokens: 300,
+    });
+    const answer = response.choices[0]?.message?.content ?? "I couldn't generate a response. Try again.";
+    res.json({ answer });
+  } catch (err) {
+    req.log.error({ err }, "AI chat failed");
+    res.status(500).json({ error: "AI chat failed" });
+  }
+});
+
 export default router;

@@ -281,6 +281,7 @@ function gradePower(player: ParsedPlayer): GearSlotGrade {
       targetLevel: 0,
       damageGainPct: Math.min(gainPct, 999),
       marketPriceNote: "Grind PvP or buy power from market",
+      affordable: true,
     };
   }
 

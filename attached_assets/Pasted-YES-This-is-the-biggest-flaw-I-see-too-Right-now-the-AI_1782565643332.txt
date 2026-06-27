@@ -1,0 +1,95 @@
+YES!! This is the biggest flaw I see too.
+
+Right now the AI is thinking:
+
+"Highest damage shield = best recommendation."
+
+That's wrong for a progression game.
+
+It should think like an experienced SwordMasters player.
+
+I'd change the recommendation logic to something like this:
+
+Improve the recommendation engine.
+
+Never recommend an item simply because it has the highest damage or multiplier.
+
+Recommendations must consider progression.
+
+Before suggesting any sword or shield, evaluate:
+
+Can the player realistically afford it?
+Is it appropriate for their current level?
+Is it appropriate for their current power?
+Is it the next logical upgrade instead of an endgame item?
+Will it provide good value for its cost?
+
+Do not recommend equipment that is far beyond the player's progression.
+
+Instead, recommend the next realistic upgrade path.
+
+For example:
+
+Incorrect:
+"Buy Asgardian Aegis."
+
+Correct:
+"Your next upgrade should be Celestial Bulwark. It is affordable for your current progression and provides a significant damage increase. Asgardian Aegis should be your long-term goal after reaching approximately X power and earning more gold."
+
+For swords, understand that swords generally contribute less to total damage than damage multipliers from shields.
+
+Prioritize recommendations in this order unless the player's data indicates otherwise:
+
+Damage multiplier improvements.
+Shield upgrades.
+Power progression.
+Sword upgrades.
+Level progression.
+
+Every recommendation must explain WHY it was chosen.
+
+Never recommend unrealistic or impossible upgrades.
+
+The website should behave like an experienced SwordMasters veteran giving practical advice rather than simply selecting the strongest item in the database.
+
+I'd even add another feature:
+
+Instead of:
+
+Recommended Shield: Asgardian Aegis
+
+Show:
+
+Immediate Goal
+⭐⭐⭐⭐⭐
+
+Celestial Bulwark
+
+Estimated Damage Gain
++14%
+
+Affordable
+✅ Yes
+
+Recommended Now
+
+Then below it:
+
+Long-Term Goal
+⭐⭐⭐⭐⭐
+
+Asgardian Aegis
+
+Estimated Damage Gain
++31%
+
+Affordable
+❌ Not Yet
+
+Estimated Requirement
+Level ~24,000
+Power ~150QNT
+
+That feels much more like a real progression guide.
+
+I think this single change would make SMGrade much smarter, because the advice becomes practical instead of simply pointing at the strongest gear in the game.
