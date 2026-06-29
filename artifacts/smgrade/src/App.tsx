@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Home from "@/pages/Home";
 import Result from "@/pages/Result";
 import Admin from "@/pages/Admin";
+import Compare from "@/pages/Compare";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/result" component={Result} />
       <Route path="/admin" component={Admin} />
+      <Route path="/compare" component={Compare} />
       <Route component={NotFound} />
     </Switch>
   );

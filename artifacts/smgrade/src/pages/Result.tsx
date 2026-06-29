@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation, Link } from "wouter";
+import { motion } from "framer-motion";
 import { useExplainGrade } from "@workspace/api-client-react";
 import type { ParsedPlayer } from "@/lib/parser";
 import type { ScoreResult, GearSlotGrade } from "@/lib/scorer";
@@ -7,6 +8,8 @@ import { formatNumber } from "@/lib/numberParser";
 import { getSwordRarity, getShieldRarity } from "@/lib/benchmark";
 import { downloadShareCard } from "@/lib/shareCard";
 import { getSwordData, getShieldData, scaledSwordDamage, scaledShieldDM } from "@/lib/gearDatabase";
+import Simulator from "@/components/Simulator";
+import HistoryTracker from "@/components/HistoryTracker";
 
 interface ResultData {
   player: ParsedPlayer;
@@ -79,7 +82,7 @@ function StatRow({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function SlotGradeCard({ slot }: { slot: GearSlotGrade }) {
+function SlotGradeCard({ slot, index }: { slot: GearSlotGrade; index: number }) {
   const gradeColor = GRADE_COLOR[slot.grade] ?? "#888";
   const isOptimal = !slot.tip;
   const tip = slot.tip;
@@ -89,7 +92,10 @@ function SlotGradeCard({ slot }: { slot: GearSlotGrade }) {
   const isSwitchNow = tip && !isKeepLeveling;
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.08, ease: "easeOut" }}
       className="rounded-xl p-4 space-y-3"
       style={{
         background: "#0c0c0c",
@@ -170,7 +176,7 @@ function SlotGradeCard({ slot }: { slot: GearSlotGrade }) {
           )}
         </div>
       ) : null}
-    </div>
+    </motion.div>
   );
 }
 
@@ -198,11 +204,12 @@ function CombatStats({ player }: { player: ParsedPlayer }) {
   }
 
   const rows = [
-    ...(swordData ? [{ label: "DS (Sword)", value: `${ds.toFixed(2)}B`, sub: `${swordData.name} Lv${player.swordLevel}` }] : []),
-    ...(shieldData ? [{ label: "MS (Shield)", value: `${ms.toFixed(1)}×`, sub: `${shieldData.name} Lv${player.shieldLevel}` }] : []),
+    ...(swordData ? [{ label: "DS (Sword Damage)", value: `${ds.toFixed(2)}B`, sub: `${swordData.name} Lv${player.swordLevel} (Base: ${(swordData.baseDamage / 1e9).toFixed(2)}B)` }] : []),
+    ...(shieldData ? [{ label: "MS (Shield Multiplier)", value: `${ms.toFixed(1)}×`, sub: `${shieldData.name} Lv${player.shieldLevel} (Base: ${shieldData.baseDM}x)` }] : []),
+    { label: "Power Contribution (2√Power)", value: fmtBig(2 * Math.sqrt(p)), sub: `2 × √${formatNumber(p)}` },
     ...(damagePerHit > 0 ? [
-      { label: "Damage / Hit", value: fmtBig(damagePerHit), sub: "(DS + 2√Power + 1) × (1 + MS)" },
-      { label: "DPS", value: fmtBig(dps), sub: "Damage/Hit × 2.77" },
+      { label: "Damage / Hit", value: fmtBig(damagePerHit), sub: `(DS + 2√Power + 1) × (1 + MS) = (${ds.toFixed(2)}B + ${fmtBig(2*Math.sqrt(p))} + 1) × ${(1+ms).toFixed(1)}` },
+      { label: "DPS (Hits/Sec)", value: fmtBig(dps), sub: "Damage/Hit × 2.77 hits per second" },
     ] : []),
   ];
 
@@ -498,7 +505,7 @@ export default function Result() {
     const raw = params.get("d");
     if (!raw) { setParseError(true); return; }
     try {
-      const parsed = JSON.parse(decodeURIComponent(raw));
+      const parsed = JSON.parse(raw);
       setData(parsed);
     } catch {
       setParseError(true);
@@ -573,14 +580,22 @@ export default function Result() {
           }}>SM</span>
           <span className="text-white font-black text-xl">Grade</span>
         </div>
-        <Link href="/" className="text-[#444] text-sm hover:text-[#777] transition-colors">
-          ← Grade another
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/compare" className="text-xs text-[#555] hover:text-[#c9a84c] transition-colors font-semibold">
+            Compare Accounts
+          </Link>
+          <Link href="/" className="text-[#444] text-sm hover:text-[#777] transition-colors">
+            ← Grade another
+          </Link>
+        </div>
       </header>
 
       <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-10 space-y-6">
         {/* Hero grade block */}
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
           className="rounded-xl p-6 space-y-5"
           style={{
             background: "#0c0c0c",
@@ -653,15 +668,86 @@ export default function Result() {
               {percentile.label}
             </span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Gear Report Card */}
         <div>
           <SectionLabel>Gear Report Card</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {scores.slotGrades.map((slot) => (
-              <SlotGradeCard key={slot.slotName} slot={slot} />
+            {scores.slotGrades.map((slot, index) => (
+              <SlotGradeCard key={slot.slotName} slot={slot} index={index} />
             ))}
+          </div>
+        </div>
+
+        {/* Progression Upgrade Path */}
+        <div className="border border-[#1e1e1e] rounded-xl overflow-hidden bg-[#0c0c0c] text-white">
+          <div className="px-5 py-4 border-b border-[#151515] bg-[#0f0f0f] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⭐</span>
+              <span className="text-[#c9a84c] font-bold text-sm tracking-wide">UPGRADE PATH RECOMMENDATIONS</span>
+            </div>
+          </div>
+          
+          <div className="p-5 space-y-4">
+            {/* Immediate Goal */}
+            {scores.upgradeAdvice.immediate && (
+              <div className="rounded-lg p-4 space-y-2 border border-[#2a2200] bg-[#110e00]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-black text-[#c9a84c] tracking-widest">Immediate Goal</span>
+                  <span className="text-xs px-2 py-0.5 rounded-sm font-bold bg-[#4a9e5c]/10 text-[#4a9e5c]">Affordable Now</span>
+                </div>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-sm font-bold text-white">
+                      {scores.upgradeAdvice.immediate.name}
+                      {scores.upgradeAdvice.immediate.level > 0 && ` Lv${scores.upgradeAdvice.immediate.level}`}
+                    </h4>
+                    <p className="text-xs text-[#aaa] mt-1">{scores.upgradeAdvice.immediate.reason}</p>
+                  </div>
+                  {scores.upgradeAdvice.immediate.damageGainPct > 0 && (
+                    <div className="text-right shrink-0">
+                      <span className="text-[#4a9e5c] text-xs font-bold font-mono">+{scores.upgradeAdvice.immediate.damageGainPct}% DMG</span>
+                    </div>
+                  )}
+                </div>
+                {scores.upgradeAdvice.immediate.marketPriceNote && (
+                  <div className="text-[10px] text-[#555] font-mono border-t border-[#222]/30 pt-2 mt-2">
+                    💰 Estimated Cost: {scores.upgradeAdvice.immediate.marketPriceNote}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Long Term Goal */}
+            {scores.upgradeAdvice.longTerm && (
+              <div className="rounded-lg p-4 space-y-2 border border-[#1a1a1a] bg-[#0d0d0d]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-black text-[#555] tracking-widest">Long-Term Goal</span>
+                  <span className="text-xs px-2 py-0.5 rounded-sm font-bold bg-[#888]/10 text-[#888]">Not Yet Affordable</span>
+                </div>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-sm font-bold text-[#ddd]">
+                      {scores.upgradeAdvice.longTerm.name}
+                      {scores.upgradeAdvice.longTerm.level > 0 && ` Lv${scores.upgradeAdvice.longTerm.level}`}
+                    </h4>
+                    <p className="text-xs text-[#888] mt-1">{scores.upgradeAdvice.longTerm.reason}</p>
+                  </div>
+                  {scores.upgradeAdvice.longTerm.damageGainPct > 0 && (
+                    <div className="text-right shrink-0">
+                      <span className="text-[#888] text-xs font-bold font-mono">+{scores.upgradeAdvice.longTerm.damageGainPct}% DMG</span>
+                    </div>
+                  )}
+                </div>
+                {(scores.upgradeAdvice.longTerm.marketPriceNote || scores.upgradeAdvice.longTerm.estimatedRequirements) && (
+                  <div className="text-[10px] text-[#444] font-mono border-t border-[#151515] pt-2 mt-2 space-y-1">
+                    {scores.upgradeAdvice.longTerm.marketPriceNote && <div>💰 Estimated Cost: {scores.upgradeAdvice.longTerm.marketPriceNote}</div>}
+                    {scores.upgradeAdvice.longTerm.estimatedRequirements && <div>📈 Requirements: {scores.upgradeAdvice.longTerm.estimatedRequirements}</div>}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -681,6 +767,12 @@ export default function Result() {
           <SectionLabel>Combat Stats</SectionLabel>
           <CombatStats player={player} />
         </div>
+
+        {/* Upgrade Simulator */}
+        <Simulator currentPlayer={player} currentScores={scores} />
+
+        {/* Progression Tracker */}
+        <HistoryTracker player={player} scores={scores} />
 
         {/* Player info */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

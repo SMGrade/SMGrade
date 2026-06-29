@@ -15,6 +15,42 @@ export interface BenchmarkTier {
   topShields: string[];
 }
 
+const BENCHMARK_STORAGE_KEY = "smg_benchmark_tiers_v1";
+
+export function loadBenchmarkTiers(): BenchmarkTier[] {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const raw = localStorage.getItem(BENCHMARK_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as BenchmarkTier[];
+        // Fix stringified Infinities back to numeric Infinity
+        return parsed.map(t => ({
+          ...t,
+          maxLevel: t.maxLevel === null || (t.maxLevel as any) === "Infinity" ? Infinity : t.maxLevel
+        }));
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return BENCHMARK_TIERS;
+}
+
+export function saveBenchmarkTiers(tiers: BenchmarkTier[]): void {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      // Serialize Infinity as "Infinity" string so it preserves correctly in JSON
+      const serialized = tiers.map(t => ({
+        ...t,
+        maxLevel: t.maxLevel === Infinity ? "Infinity" : t.maxLevel
+      }));
+      localStorage.setItem(BENCHMARK_STORAGE_KEY, JSON.stringify(serialized));
+    }
+  } catch {
+    // ignore
+  }
+}
+
 // Gear rarity/tier rankings (higher = better)
 export const SWORD_TIER: Record<string, number> = {
   Empty: 0,
@@ -185,10 +221,60 @@ export const BENCHMARK_TIERS: BenchmarkTier[] = [
   },
 ];
 
+export function getInterpolatedBenchmark(level: number): BenchmarkTier {
+  const matched = getBenchmarkForLevel(level);
+  const tiers = loadBenchmarkTiers();
+  
+  // Midpoints of level ranges for interpolation
+  const reprLevels = [500, 3000, 7500, 15000, 30000, 60000, 100000];
+  
+  if (level <= reprLevels[0]) return { ...tiers[0] };
+  if (level >= reprLevels[reprLevels.length - 1]) {
+    return { ...tiers[tiers.length - 1] };
+  }
+  
+  // Find interval [idx, idx + 1]
+  let idx = 0;
+  for (let i = 0; i < reprLevels.length - 1; i++) {
+    if (level >= reprLevels[i] && level < reprLevels[i + 1]) {
+      idx = i;
+      break;
+    }
+  }
+  
+  const L1 = reprLevels[idx];
+  const L2 = reprLevels[idx + 1];
+  const T1 = tiers[idx];
+  const T2 = tiers[idx + 1];
+  
+  const r = (level - L1) / (L2 - L1);
+  
+  const logInterp = (v1: number, v2: number) => {
+    if (v1 <= 0 || v2 <= 0) return 0;
+    return Math.pow(10, (1 - r) * Math.log10(v1) + r * Math.log10(v2));
+  };
+  
+  return {
+    minLevel: T1.minLevel,
+    maxLevel: T2.maxLevel,
+    label: matched.label,
+    avgPower: logInterp(T1.avgPower, T2.avgPower),
+    weakPower: logInterp(T1.weakPower, T2.weakPower),
+    strongPower: logInterp(T1.strongPower, T2.strongPower),
+    elitePower: logInterp(T1.elitePower, T2.elitePower),
+    avgGold: logInterp(T1.avgGold, T2.avgGold),
+    typicalSwords: matched.typicalSwords,
+    topSwords: matched.topSwords,
+    typicalShields: matched.typicalShields,
+    topShields: matched.topShields,
+  };
+}
+
 export function getBenchmarkForLevel(level: number): BenchmarkTier {
+  const tiers = loadBenchmarkTiers();
   return (
-    BENCHMARK_TIERS.find((t) => level >= t.minLevel && level <= t.maxLevel) ??
-    BENCHMARK_TIERS[BENCHMARK_TIERS.length - 1]
+    tiers.find((t) => level >= t.minLevel && level <= t.maxLevel) ??
+    tiers[tiers.length - 1]
   );
 }
 

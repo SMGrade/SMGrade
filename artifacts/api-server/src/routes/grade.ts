@@ -1,11 +1,11 @@
 import { Router } from "express";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { ExplainGradeBody } from "@workspace/api-zod";
 
 const router = Router();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY || "missing-key-please-set-GEMINI_API_KEY",
 });
 
 // Real gear knowledge for accurate AI advice
@@ -32,6 +32,11 @@ MARKET PRICES are in Power (QT = Quadrillion, QNT = Quintillion).
 `;
 
 router.post("/grade/explain", async (req, res) => {
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.trim() === "" || process.env.GEMINI_API_KEY.includes("missing-key")) {
+    res.status(400).json({ error: "Gemini API key is missing. Please configure GEMINI_API_KEY in your environment." });
+    return;
+  }
+
   const parsed = ExplainGradeBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body" });
@@ -85,14 +90,15 @@ Respond in JSON with exactly this structure (no markdown, no code block):
 Be concise, specific, and accurate. Reference real game terms. Do not be generic.`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_completion_tokens: 600,
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
     });
 
-    const content = response.choices[0]?.message?.content;
+    const content = response.text;
     if (!content) {
       res.status(500).json({ error: "No response from AI" });
       return;
@@ -115,6 +121,11 @@ Never make up items. If the question is unrelated to SwordMasters or the player,
 ${GEAR_CONTEXT}`;
 
 router.post("/grade/chat", async (req, res) => {
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.trim() === "" || process.env.GEMINI_API_KEY.includes("missing-key")) {
+    res.status(400).json({ error: "Gemini API key is missing. Please configure GEMINI_API_KEY in your environment." });
+    return;
+  }
+
   const { question, playerContext } = req.body as {
     question?: string;
     playerContext?: Record<string, unknown>;
@@ -130,15 +141,14 @@ router.post("/grade/chat", async (req, res) => {
     : "";
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      messages: [
-        { role: "system", content: CHAT_SYSTEM },
-        { role: "user", content: `${ctx}\n\nPlayer question: ${question.trim()}` },
-      ],
-      max_completion_tokens: 300,
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `${ctx}\n\nPlayer question: ${question.trim()}`,
+      config: {
+        systemInstruction: CHAT_SYSTEM,
+      },
     });
-    const answer = response.choices[0]?.message?.content ?? "I couldn't generate a response. Try again.";
+    const answer = response.text ?? "I couldn't generate a response. Try again.";
     res.json({ answer });
   } catch (err) {
     req.log.error({ err }, "AI chat failed");

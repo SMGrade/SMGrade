@@ -25,17 +25,22 @@ export interface ParsedPlayer {
 }
 
 function cleanText(input: string): string {
-  return input
+  // Normalize line endings first
+  let text = input.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  // Replace special Unicode spaces (in general punctuation block) with standard space
+  text = text.replace(/[\u2000-\u200b\u202f\u205f]/g, " ");
+
+  return text
     // Remove Discord markdown / formatting artifacts
-    .replace(/^\s*\*+\s*/gm, "")
+    .replace(/^[ \t]*\*+[ \t]*/gm, "") // horizontal spaces only to avoid consuming newlines
     .replace(/\*+/g, "")
-    .replace(/•\s*/g, "")
+    .replace(/•[ \t]*/g, "")
     .replace(/—+/g, "")
     .replace(/:[a-zA-Z_]+:/g, "") // emoji shortcodes
     .replace(/[\u{1F300}-\u{1FFFF}]/gu, "") // unicode emoji
     .replace(/[\u2000-\u206F]/g, "") // general punctuation (some emoji)
     .replace(/[\u2600-\u27BF]/g, "") // misc symbols
-    .replace(/\r/g, "")
     .replace(/^\s*Today at.*$/gm, "")
     .replace(/^\s*Sword MastersAPP\s*$/gm, "")
     .replace(/^\s*ZiraAPP\s*$/gm, "")

@@ -1,12 +1,14 @@
 import { useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { BENCHMARK_TIERS, SWORD_TIER, SHIELD_TIER, getBenchmarkForLevel } from "@/lib/benchmark";
+import { BENCHMARK_TIERS, SWORD_TIER, SHIELD_TIER, getBenchmarkForLevel, loadBenchmarkTiers, saveBenchmarkTiers, type BenchmarkTier } from "@/lib/benchmark";
 import { SWORDS, SHIELDS } from "@/lib/gearDatabase";
 import { loadPrices, savePrices, DEFAULT_PRICES, type PriceTable } from "@/lib/marketPrices";
 import { parsePlayerData, type ParsedPlayer } from "@/lib/parser";
+import { loadGradingConstants, saveGradingConstants, DEFAULT_CONSTANTS, type GradingConstants } from "@/lib/settings";
+import { parseNumber, formatNumber } from "@/lib/numberParser";
 
 const ADMIN_KEY = "smg_admin_auth";
-const CORRECT = atob("aGFycmlzb25Ac21ncmFkZQ==");
+const CORRECT = atob("aGFycmlzb25Ac21ncmFkZTIwMjY=");
 
 // ── Password Gate ─────────────────────────────────────────────────────────────
 
@@ -385,7 +387,26 @@ function SectionCard({ title, children }: { title: string; children: React.React
 
 // ── Scoring reference ─────────────────────────────────────────────────────────
 
-function ScoringRef() {
+interface ScoringRefProps {
+  tiers: BenchmarkTier[];
+  settings: GradingConstants;
+  onTierChange: (idx: number, field: keyof BenchmarkTier, val: any) => void;
+  validationError: string | null;
+  onResetTiers: () => void;
+}
+
+function ScoringRef({
+  tiers,
+  settings,
+  onTierChange,
+  validationError,
+  onResetTiers
+}: ScoringRefProps) {
+  const fmt = (v: number) => {
+    if (v === Infinity) return "∞";
+    return formatNumber(v);
+  };
+
   return (
     <div className="space-y-6">
       {/* Formula */}
@@ -429,22 +450,83 @@ function ScoringRef() {
 
       {/* Benchmark tiers */}
       <div>
-        <p className="text-[#c9a84c] text-xs font-bold uppercase tracking-widest mb-3">Benchmark Tiers</p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[#c9a84c] text-xs font-bold uppercase tracking-widest">Benchmark Tiers</p>
+          <button
+            type="button"
+            onClick={onResetTiers}
+            className="text-[10px] text-[#555] hover:text-[#c9a84c] uppercase tracking-wider font-semibold border border-[#1e1e1e] rounded px-2 py-0.5 bg-[#0f0f0f] transition-colors"
+          >
+            Reset Tiers
+          </button>
+        </div>
+
+        {validationError && (
+          <div className="text-red-500 text-xs font-semibold mb-3 border border-red-950 bg-red-950/20 p-2 rounded">
+            ⚠️ {validationError}
+          </div>
+        )}
+
         <div className="overflow-x-auto">
-          <div className="grid text-[10px] uppercase tracking-widest pb-1.5 mb-1 border-b border-[#222] min-w-[600px]" style={{ gridTemplateColumns: "100px 130px 90px 90px 90px 90px 90px" }}>
+          <div className="grid text-[10px] uppercase tracking-widest pb-1.5 mb-1 border-b border-[#222] min-w-[700px]" style={{ gridTemplateColumns: "100px 140px 90px 90px 90px 90px 90px" }}>
             {["Tier", "Levels", "Weak", "Avg", "Strong", "Elite", "Avg Gold"].map((h) => (
               <span key={h} className="text-[#444]">{h}</span>
             ))}
           </div>
-          {BENCHMARK_TIERS.map((t) => (
-            <div key={t.label} className="grid font-mono text-xs py-1.5 border-b border-[#111] last:border-0 min-w-[600px]" style={{ gridTemplateColumns: "100px 130px 90px 90px 90px 90px 90px" }}>
+          {tiers.map((t, idx) => (
+            <div key={t.label} className="grid font-mono text-xs py-1 border-b border-[#111] last:border-0 min-w-[700px] items-center" style={{ gridTemplateColumns: "100px 140px 90px 90px 90px 90px 90px" }}>
               <span className="text-[#888]">{t.label}</span>
-              <span className="text-[#888]">{t.minLevel.toLocaleString()}–{t.maxLevel === Infinity ? "∞" : t.maxLevel.toLocaleString()}</span>
-              <span className="text-[#888]">{fmt(t.weakPower)}</span>
-              <span className="text-[#888]">{fmt(t.avgPower)}</span>
-              <span className="text-[#888]">{fmt(t.strongPower)}</span>
-              <span className="text-[#888]">{fmt(t.elitePower)}</span>
-              <span className="text-[#888]">{fmt(t.avgGold)}</span>
+              <span className="text-[#888] flex items-center gap-1">
+                <input
+                  type="number"
+                  value={t.minLevel}
+                  onChange={(e) => onTierChange(idx, "minLevel", parseInt(e.target.value) || 0)}
+                  className="w-12 bg-[#111] border border-[#222] rounded text-white text-center text-[10px] py-0.5"
+                />
+                <span className="text-[#444]">—</span>
+                <input
+                  type="text"
+                  value={t.maxLevel === Infinity ? "Infinity" : t.maxLevel}
+                  onChange={(e) => {
+                    const v = e.target.value.trim();
+                    onTierChange(idx, "maxLevel", v === "Infinity" || v === "∞" || v === "" ? Infinity : parseInt(v) || 0);
+                  }}
+                  className="w-12 bg-[#111] border border-[#222] rounded text-white text-center text-[10px] py-0.5"
+                />
+              </span>
+              {/* Power and gold inputs */}
+              {(["weakPower", "avgPower", "strongPower", "elitePower", "avgGold"] as const).map((field) => {
+                let val = t[field];
+                if (field === "avgGold") {
+                  val = val / settings.goldExchangeRate;
+                }
+                return (
+                  <span key={field} className="text-[#888]">
+                    <input
+                      type="text"
+                      key={`${idx}-${field}-${val}`} // Force input refresh when val updates
+                      defaultValue={fmt(val)}
+                      onBlur={(e) => {
+                        let parsed = parseNumber(e.target.value);
+                        if (field === "avgGold") {
+                          parsed = parsed * settings.goldExchangeRate;
+                        }
+                        onTierChange(idx, field, parsed);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          let parsed = parseNumber((e.target as HTMLInputElement).value);
+                          if (field === "avgGold") {
+                            parsed = parsed * settings.goldExchangeRate;
+                          }
+                          onTierChange(idx, field, parsed);
+                        }
+                      }}
+                      className="w-16 bg-[#111] border border-[#222] rounded text-white text-center text-[10px] py-0.5"
+                    />
+                  </span>
+                );
+              })}
             </div>
           ))}
         </div>
@@ -455,10 +537,28 @@ function ScoringRef() {
 
 // ── Main Admin ────────────────────────────────────────────────────────────────
 
+function validateTiers(tList: BenchmarkTier[]): string | null {
+  for (let i = 0; i < tList.length; i++) {
+    if (tList[i].minLevel < 0 || tList[i].maxLevel < 0) {
+      return `Tier ${tList[i].label}: Levels cannot be negative.`;
+    }
+    if (tList[i].minLevel > tList[i].maxLevel) {
+      return `Tier ${tList[i].label}: Min level (${tList[i].minLevel}) cannot be greater than Max level (${tList[i].maxLevel}).`;
+    }
+    if (i > 0 && tList[i].minLevel <= tList[i - 1].maxLevel) {
+      return `Overlapping ranges: Tier ${tList[i].label} starts at ${tList[i].minLevel}, which overlaps with Tier ${tList[i - 1].label} (max ${tList[i - 1].maxLevel}).`;
+    }
+  }
+  return null;
+}
+
 export default function Admin() {
   const [, navigate] = useLocation();
   const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(ADMIN_KEY) === "1");
   const [prices, setPrices] = useState<PriceTable>(() => loadPrices());
+  const [settings, setSettings] = useState<GradingConstants>(() => loadGradingConstants());
+  const [tiers, setTiers] = useState<BenchmarkTier[]>(() => loadBenchmarkTiers());
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   if (!unlocked) {
@@ -474,16 +574,45 @@ export default function Admin() {
   }
 
   function handleSave() {
+    const err = validateTiers(tiers);
+    if (err) {
+      setValidationError(err);
+      return;
+    }
     savePrices(prices);
+    saveGradingConstants(settings);
+    saveBenchmarkTiers(tiers);
     setSaved(true);
     setTimeout(() => navigate("/"), 800);
   }
 
   function handleReset() {
     setPrices({ ...DEFAULT_PRICES });
+    setSettings({ ...DEFAULT_CONSTANTS });
+    setTiers([...BENCHMARK_TIERS]);
+    setValidationError(null);
     savePrices(DEFAULT_PRICES);
+    saveGradingConstants(DEFAULT_CONSTANTS);
+    saveBenchmarkTiers(BENCHMARK_TIERS);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+  }
+
+  function handleTierChange(idx: number, field: keyof BenchmarkTier, val: any) {
+    const updated = [...tiers];
+    updated[idx] = { ...updated[idx], [field]: val };
+    const err = validateTiers(updated);
+    setValidationError(err);
+    setTiers(updated);
+    if (!err) {
+      saveBenchmarkTiers(updated);
+    }
+  }
+
+  function handleResetTiers() {
+    setTiers([...BENCHMARK_TIERS]);
+    setValidationError(null);
+    saveBenchmarkTiers(BENCHMARK_TIERS);
   }
 
   return (
@@ -509,6 +638,107 @@ export default function Admin() {
           <BotLogsUpload />
         </SectionCard>
 
+        {/* Grading Configurations */}
+        <SectionCard title="Grading Constants & Configurations">
+          <div className="space-y-6">
+            
+            {/* Gold Exchange Rate */}
+            <div>
+              <label className="text-xs font-bold text-[#c9a84c] block mb-1 uppercase tracking-wider">Gold Exchange Rate</label>
+              <p className="text-[#555] text-xs mb-3">Define how much Power 1 unit of Gold represents in calculation. Default is 100 (meaning 1 QT Gold = 100 QT Power).</p>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-white">1 Gold = </span>
+                <input
+                  type="number"
+                  className="bg-[#111] border border-[#2a2a2a] focus:border-[#c9a84c] text-white text-xs px-3 py-2 rounded-sm outline-none transition-colors font-mono w-32"
+                  value={settings.goldExchangeRate}
+                  onChange={(e) => {
+                    setSettings({ ...settings, goldExchangeRate: parseFloat(e.target.value) || 0 });
+                    setSaved(false);
+                  }}
+                />
+                <span className="text-xs text-[#555]">Power Units</span>
+              </div>
+            </div>
+
+            <div className="border-t border-[#1e1e1e]" />
+
+            {/* Grading Weights */}
+            <div>
+              <label className="text-xs font-bold text-[#c9a84c] block mb-1 uppercase tracking-wider">Grading Component Weights (Must sum to 100%)</label>
+              <p className="text-[#555] text-xs mb-3">Adjust how much weight each metric contributes to the overall grade calculation.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { label: "Gear Weight", field: "gearWeight" },
+                  { label: "Power Weight", field: "powerWeight" },
+                  { label: "Progress Weight", field: "progressWeight" },
+                  { label: "Wealth Weight", field: "wealthWeight" },
+                ].map((w) => (
+                  <div key={w.field} className="space-y-1">
+                    <label className="text-[#888] text-[10px] uppercase font-bold">{w.label}</label>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        step="0.05"
+                        min="0"
+                        max="1"
+                        className="bg-[#111] border border-[#2a2a2a] focus:border-[#c9a84c] text-white text-xs px-2 py-2 rounded-sm outline-none transition-colors font-mono w-20"
+                        value={settings[w.field as keyof GradingConstants]}
+                        onChange={(e) => {
+                          setSettings({ ...settings, [w.field]: parseFloat(e.target.value) || 0 });
+                          setSaved(false);
+                        }}
+                      />
+                      <span className="text-xs text-[#555]">({Math.round((settings[w.field as keyof GradingConstants] as number) * 100)}%)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[10px] font-mono mt-3" style={{
+                color: Math.abs(settings.gearWeight + settings.powerWeight + settings.progressWeight + settings.wealthWeight - 1.0) < 0.001 ? "#4a9e5c" : "#e05a5a"
+              }}>
+                Total Sum: {Math.round((settings.gearWeight + settings.powerWeight + settings.progressWeight + settings.wealthWeight) * 100)}%
+              </div>
+            </div>
+
+            <div className="border-t border-[#1e1e1e]" />
+
+            {/* Grade Thresholds */}
+            <div>
+              <label className="text-xs font-bold text-[#c9a84c] block mb-1 uppercase tracking-wider">Score Grade Thresholds (0-100)</label>
+              <p className="text-[#555] text-xs mb-3">Adjust the minimum score needed to receive each grade letter.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { grade: "S+", field: "gradeThresholdSPlus" },
+                  { grade: "S", field: "gradeThresholdS" },
+                  { grade: "A+", field: "gradeThresholdAPlus" },
+                  { grade: "A", field: "gradeThresholdA" },
+                  { grade: "B+", field: "gradeThresholdBPlus" },
+                  { grade: "B", field: "gradeThresholdB" },
+                  { grade: "C+", field: "gradeThresholdCPlus" },
+                  { grade: "C", field: "gradeThresholdC" },
+                ].map((g) => (
+                  <div key={g.field} className="space-y-1">
+                    <label className="text-[#888] text-[10px] uppercase font-bold">Grade {g.grade} (min score)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="bg-[#111] border border-[#2a2a2a] focus:border-[#c9a84c] text-white text-xs px-2 py-2 rounded-sm outline-none transition-colors font-mono w-24"
+                      value={settings[g.field as keyof GradingConstants]}
+                      onChange={(e) => {
+                        setSettings({ ...settings, [g.field]: parseInt(e.target.value) || 0 });
+                        setSaved(false);
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </SectionCard>
+
         {/* Market Prices Editor */}
         <SectionCard title="Market Prices (Power-Based, Update Weekly)">
           <div className="space-y-5">
@@ -531,9 +761,14 @@ export default function Admin() {
           {saved ? "✓ Prices Saved" : "Save All Prices"}
         </button>
 
-        {/* Scoring reference */}
         <SectionCard title="Scoring Reference">
-          <ScoringRef />
+          <ScoringRef
+            tiers={tiers}
+            settings={settings}
+            onTierChange={handleTierChange}
+            validationError={validationError}
+            onResetTiers={handleResetTiers}
+          />
         </SectionCard>
 
       </main>

@@ -12,5 +12,9 @@
   "devDependencies": {
     "prettier": "^3.8.4",
     "typescript": "~5.9.3"
-  }
+  },
+  "onlyBuiltDependencies": [
+    "@google/genai",
+    "protobufjs"
+  ]
 }
