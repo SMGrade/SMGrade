@@ -16,10 +16,10 @@ export interface GradingConstants {
 
 export const DEFAULT_CONSTANTS: GradingConstants = {
   goldExchangeRate: 100,
-  gearWeight: 0.30,
-  powerWeight: 0.40,
-  progressWeight: 0.20,
-  wealthWeight: 0.10,
+  gearWeight: 0.25,
+  powerWeight: 0.60,
+  progressWeight: 0.10,
+  wealthWeight: 0.05,
   gradeThresholdSPlus: 97,
   gradeThresholdS: 90,
   gradeThresholdAPlus: 83,

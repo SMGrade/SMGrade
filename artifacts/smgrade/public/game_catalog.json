@@ -1,0 +1,4284 @@
+{
+  "schema_version": 1,
+  "source": {
+    "root": "https://swordmasters.io/",
+    "bundle_url": "https://swordmasters.io/__game-scripts.js",
+    "bundle_last_modified": "Tue, 23 Jun 2026 08:06:01 GMT",
+    "bundle_sha256": "97491cff77b9c87567c9b8d8a68a6c7761f97483b4ee089369d11bbc2fa7a6e6",
+    "config_url": "https://swordmasters.io/config.json",
+    "config_last_modified": "Tue, 23 Jun 2026 08:06:42 GMT",
+    "config_sha256": "96f129b1fd143c9b8fe1f13abeb32d2233e869bf02497dc96a52b46af045e049",
+    "data_url": "https://swordmasters.io/files/assets/167624587/1/Data.js",
+    "data_last_modified": "Tue, 23 Jun 2026 08:06:01 GMT",
+    "data_sha256": "4c6d5cde32c1e5564b86c7013ef528b8a74d16843c1768261a29f1a119383f09"
+  },
+  "level_scale_per_level": 0.25,
+  "world_room_capacities": {
+    "default": 8,
+    "by_world": {
+      "3": 4,
+      "6": 4,
+      "100": 16,
+      "102": 16,
+      "103": 32,
+      "104": 6,
+      "105": 16,
+      "106": -1
+    }
+  },
+  "enemies": [
+    {
+      "name": "Roundhead",
+      "type": 0,
+      "health": 100.0,
+      "damage": 10.0,
+      "coinDropHPLimit": 20.0,
+      "coinDropCount": 3,
+      "coinRewardRange": [
+        1.0,
+        3.0
+      ],
+      "dropsSword": [
+        0,
+        1,
+        2
+      ],
+      "dropsShield": [
+        0,
+        1
+      ],
+      "dropsChest": 0,
+      "attackDelay": 0.0,
+      "respawDelay": 3000.0
+    },
+    {
+      "name": "Forest Orc",
+      "type": 1,
+      "health": 2500.0,
+      "damage": 500.0,
+      "coinDropHPLimit": 250.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        20.0,
+        40.0
+      ],
+      "dropsSword": [
+        0,
+        2,
+        3
+      ],
+      "dropsShield": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "dropsChest": 0,
+      "attackDelay": 1000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Bonechewer",
+      "type": 2,
+      "health": 10000.0,
+      "damage": 2000.0,
+      "coinDropHPLimit": 1000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        70.0,
+        100.0
+      ],
+      "dropsSword": [
+        0,
+        3,
+        4,
+        5
+      ],
+      "dropsShield": [
+        0,
+        3,
+        4,
+        5
+      ],
+      "dropsChest": 0,
+      "attackDelay": 1000.0,
+      "respawDelay": 10000.0
+    },
+    {
+      "name": "Cocoa Guardian",
+      "type": 3,
+      "health": 15000.0,
+      "damage": 5000.0,
+      "coinDropHPLimit": 1500.0,
+      "coinDropCount": 3,
+      "coinRewardRange": [
+        150.0,
+        250.0
+      ],
+      "dropsSword": [
+        0,
+        6,
+        7
+      ],
+      "dropsShield": [
+        0,
+        6
+      ],
+      "dropsChest": 0,
+      "attackDelay": 1000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Chocolate Knight",
+      "type": 4,
+      "health": 50000.0,
+      "damage": 15000.0,
+      "coinDropHPLimit": 5000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        300.0,
+        600.0
+      ],
+      "dropsSword": [
+        0,
+        7,
+        8
+      ],
+      "dropsShield": [
+        0,
+        6,
+        7,
+        8
+      ],
+      "dropsChest": 0,
+      "attackDelay": 1000.0,
+      "respawDelay": 10000.0
+    },
+    {
+      "name": "Mallowbeast",
+      "type": 5,
+      "health": 500000.0,
+      "damage": 30000.0,
+      "coinDropHPLimit": 50000.0,
+      "coinDropCount": 10,
+      "coinRewardRange": [
+        600.0,
+        1000.0
+      ],
+      "dropsSword": [
+        0,
+        8,
+        9,
+        10
+      ],
+      "dropsShield": [
+        0,
+        8,
+        9,
+        10
+      ],
+      "dropsChest": 0,
+      "attackDelay": 1000.0,
+      "respawDelay": 10000.0
+    },
+    {
+      "name": "Ice King",
+      "type": 6,
+      "health": 1000000.0,
+      "damage": 25000.0,
+      "coinDropHPLimit": 100000.0,
+      "coinDropCount": 10,
+      "coinRewardRange": [
+        10000.0,
+        20000.0
+      ],
+      "dropsSword": [
+        0,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "dropsShield": [
+        0,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "dropsChest": 1,
+      "attackDelay": 2000.0,
+      "respawDelay": 10000.0
+    },
+    {
+      "name": "Spiked Tortoise",
+      "type": 7,
+      "health": 250000.0,
+      "damage": 50000.0,
+      "coinDropHPLimit": 25000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        6000.0,
+        12000.0
+      ],
+      "dropsSword": [
+        0,
+        16,
+        17
+      ],
+      "dropsShield": [
+        0,
+        16
+      ],
+      "dropsChest": 0,
+      "attackDelay": 2000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Cursed Stone",
+      "type": 8,
+      "health": 500000.0,
+      "damage": 200000.0,
+      "coinDropHPLimit": 50000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        12000.0,
+        20000.0
+      ],
+      "dropsSword": [
+        0,
+        17,
+        18
+      ],
+      "dropsShield": [
+        0,
+        16,
+        17,
+        18
+      ],
+      "dropsChest": 0,
+      "attackDelay": 2000.0,
+      "respawDelay": 10000.0
+    },
+    {
+      "name": "Mummy",
+      "type": 9,
+      "health": 2000000.0,
+      "damage": 500000.0,
+      "coinDropHPLimit": 100000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        20000.0,
+        40000.0
+      ],
+      "dropsSword": [
+        0,
+        18,
+        19,
+        20
+      ],
+      "dropsShield": [
+        0,
+        18,
+        19,
+        20
+      ],
+      "dropsChest": 0,
+      "attackDelay": 2000.0,
+      "respawDelay": 10000.0
+    },
+    {
+      "name": "Giga Moai",
+      "type": 10,
+      "health": 3000000.0,
+      "damage": 2000000.0,
+      "coinDropHPLimit": 500000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        40000.0,
+        50000.0
+      ],
+      "dropsSword": [
+        0,
+        21,
+        22,
+        23
+      ],
+      "dropsShield": [
+        0,
+        21,
+        22
+      ],
+      "dropsChest": 0,
+      "attackDelay": 2000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Lava Rock",
+      "type": 11,
+      "health": 20000000.0,
+      "damage": 5000000.0,
+      "coinDropHPLimit": 1000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        50000.0,
+        70000.0
+      ],
+      "dropsSword": [
+        0,
+        22,
+        23
+      ],
+      "dropsShield": [
+        0,
+        21,
+        22
+      ],
+      "dropsChest": 0,
+      "attackDelay": 2000.0,
+      "respawDelay": 7000.0
+    },
+    {
+      "name": "Nether Lord",
+      "type": 12,
+      "health": 100000000.0,
+      "damage": 3000000.0,
+      "coinDropHPLimit": 1000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        70000.0,
+        80000.0
+      ],
+      "dropsSword": [
+        0,
+        23,
+        24,
+        25
+      ],
+      "dropsShield": [
+        0,
+        23,
+        24,
+        25
+      ],
+      "dropsChest": 0,
+      "attackDelay": 2000.0,
+      "respawDelay": 10000.0
+    },
+    {
+      "name": "Zeus",
+      "type": 13,
+      "health": 800000000.0,
+      "damage": 10000000.0,
+      "coinDropHPLimit": 10000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        80000.0,
+        90000.0
+      ],
+      "dropsSword": [
+        0,
+        26
+      ],
+      "dropsShield": [
+        0
+      ],
+      "dropsChest": 18,
+      "attackDelay": 1000.0,
+      "respawDelay": 10000.0
+    },
+    {
+      "name": "Crokora",
+      "type": 14,
+      "health": 100000000.0,
+      "damage": 10000000.0,
+      "coinDropHPLimit": 10000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        200000.0,
+        300000.0
+      ],
+      "dropsSword": [
+        0,
+        27
+      ],
+      "dropsShield": [
+        0,
+        26
+      ],
+      "dropsChest": 0,
+      "attackDelay": 1000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Hydrino",
+      "type": 15,
+      "health": 300000000.0,
+      "damage": 20000000.0,
+      "coinDropHPLimit": 10000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        300000.0,
+        400000.0
+      ],
+      "dropsSword": [
+        0,
+        27,
+        28
+      ],
+      "dropsShield": [
+        0,
+        26,
+        27
+      ],
+      "dropsChest": 0,
+      "attackDelay": 1000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Temple Guardian",
+      "type": 16,
+      "health": 500000000.0,
+      "damage": 30000000.0,
+      "coinDropHPLimit": 10000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        400000.0,
+        600000.0
+      ],
+      "dropsSword": [
+        0,
+        28,
+        29
+      ],
+      "dropsShield": [
+        0,
+        27,
+        28
+      ],
+      "dropsChest": 0,
+      "attackDelay": 2000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Dragon Guardian",
+      "type": 17,
+      "health": 5000000000.0,
+      "damage": 50000000.0,
+      "coinDropHPLimit": 100000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        400000.0,
+        600000.0
+      ],
+      "dropsSword": [
+        0,
+        30
+      ],
+      "dropsShield": [
+        0,
+        29
+      ],
+      "dropsChest": 0,
+      "attackDelay": 2000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Dragon",
+      "type": 18,
+      "health": 100000000000.0,
+      "damage": 100000000.0,
+      "coinDropHPLimit": 100000000.0,
+      "coinDropCount": 50,
+      "coinRewardRange": [
+        400000.0,
+        600000.0
+      ],
+      "dropsSword": [
+        0,
+        31
+      ],
+      "dropsShield": [
+        0,
+        30
+      ],
+      "dropsChest": 0,
+      "attackDelay": 5000.0,
+      "respawDelay": 10000.0
+    },
+    {
+      "name": "Bouugo",
+      "type": 19,
+      "health": 1000000000.0,
+      "damage": 50000000.0,
+      "coinDropHPLimit": 100000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        350000.0,
+        450000.0
+      ],
+      "dropsSword": [
+        0,
+        32
+      ],
+      "dropsShield": [
+        0,
+        31
+      ],
+      "dropsChest": 0,
+      "attackDelay": 1000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Anaxion",
+      "type": 20,
+      "health": 3000000000.0,
+      "damage": 100000000.0,
+      "coinDropHPLimit": 500000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        450000.0,
+        600000.0
+      ],
+      "dropsSword": [
+        0,
+        32,
+        33
+      ],
+      "dropsShield": [
+        0,
+        31,
+        32
+      ],
+      "dropsChest": 0,
+      "attackDelay": 1000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Xenomor",
+      "type": 21,
+      "health": 6000000000.0,
+      "damage": 150000000.0,
+      "coinDropHPLimit": 1000000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        600000.0,
+        700000.0
+      ],
+      "dropsSword": [
+        0,
+        33,
+        34
+      ],
+      "dropsShield": [
+        0,
+        32,
+        33
+      ],
+      "dropsChest": 0,
+      "attackDelay": 2000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Reaper",
+      "type": 22,
+      "health": 3000000000000.0,
+      "damage": 2000000000.0,
+      "coinDropHPLimit": 150000000000.0,
+      "coinDropCount": 10,
+      "coinRewardRange": [
+        500000000.0,
+        900000000.0
+      ],
+      "dropsSword": [
+        0,
+        35,
+        36
+      ],
+      "dropsShield": [
+        0,
+        34
+      ],
+      "dropsChest": 0,
+      "attackDelay": 3000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "The Rival",
+      "type": 23,
+      "health": 100000000000000.0,
+      "damage": 10000000000.0,
+      "coinDropHPLimit": 1500000000000.0,
+      "coinDropCount": 10,
+      "coinRewardRange": [
+        15000000000.0,
+        20000000000.0
+      ],
+      "dropsSword": [
+        0,
+        40
+      ],
+      "dropsShield": [
+        0,
+        38
+      ],
+      "dropsChest": 0,
+      "attackDelay": 3000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Thrones",
+      "type": 24,
+      "health": 1000000000000.0,
+      "damage": 800000000.0,
+      "coinDropHPLimit": 1500000000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        100000000.0,
+        500000000.0
+      ],
+      "dropsSword": [
+        0,
+        38
+      ],
+      "dropsShield": [
+        0,
+        36
+      ],
+      "dropsChest": 0,
+      "attackDelay": 1000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Seraphim",
+      "type": 25,
+      "health": 5000000000000.0,
+      "damage": 3500000000.0,
+      "coinDropHPLimit": 1500000000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        500000000.0,
+        900000000.0
+      ],
+      "dropsSword": [
+        0,
+        38,
+        39
+      ],
+      "dropsShield": [
+        0,
+        36,
+        37
+      ],
+      "dropsChest": 0,
+      "attackDelay": 1000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Wargmaw",
+      "type": 26,
+      "health": 3000000000000.0,
+      "damage": 6000000000.0,
+      "coinDropHPLimit": 2500000000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        1000000000.0,
+        1500000000.0
+      ],
+      "dropsSword": [
+        0,
+        42
+      ],
+      "dropsShield": [
+        0,
+        40
+      ],
+      "dropsChest": 0,
+      "attackDelay": 500.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Lornblade",
+      "type": 27,
+      "health": 10000000000000.0,
+      "damage": 15000000000.0,
+      "coinDropHPLimit": 5000000000000.0,
+      "coinDropCount": 5,
+      "coinRewardRange": [
+        1500000000.0,
+        2500000000.0
+      ],
+      "dropsSword": [
+        0,
+        42,
+        43
+      ],
+      "dropsShield": [
+        0,
+        40,
+        41
+      ],
+      "dropsChest": 0,
+      "attackDelay": 5000.0,
+      "respawDelay": 5000.0
+    },
+    {
+      "name": "Mordolith",
+      "type": 28,
+      "health": 500000000000000.0,
+      "damage": 35000000000.0,
+      "coinDropHPLimit": 5000000000000.0,
+      "coinDropCount": 10,
+      "coinRewardRange": [
+        30000000000.0,
+        45000000000.0
+      ],
+      "dropsSword": [
+        0,
+        44
+      ],
+      "dropsShield": [
+        0,
+        42
+      ],
+      "dropsChest": 0,
+      "attackDelay": 5000.0,
+      "respawDelay": 5000.0
+    }
+  ],
+  "swords": [
+    {
+      "type": 1,
+      "name": "Old Sword",
+      "rarity": "Common",
+      "commonnessPercentage": 25,
+      "damageProtection": 0,
+      "healthMultiplier": 0,
+      "goldMultiplier": 0.25,
+      "damage": 10,
+      "priceGold": 50,
+      "minLevel": 0,
+      "drop_chance": 25.0,
+      "world": "Orkland W1",
+      "source": "Roundhead"
+    },
+    {
+      "type": 2,
+      "name": "Orc Sword",
+      "rarity": "Common",
+      "commonnessPercentage": 20,
+      "damageProtection": 0,
+      "healthMultiplier": 0.25,
+      "goldMultiplier": 0.25,
+      "damage": 15,
+      "priceGold": 100,
+      "minLevel": 0,
+      "drop_chance": 20.0,
+      "world": "Orkland W1",
+      "source": "Roundhead / Forest Orc"
+    },
+    {
+      "type": 3,
+      "name": "Double-Edged Sword",
+      "rarity": "Rare",
+      "commonnessPercentage": 15,
+      "damageProtection": 0,
+      "healthMultiplier": 0.5,
+      "goldMultiplier": 0,
+      "damage": 100,
+      "priceGold": 5000,
+      "minLevel": 0,
+      "drop_chance": 15.0,
+      "world": "Orkland W1",
+      "source": "Forest Orc / Bonechewer"
+    },
+    {
+      "type": 4,
+      "name": "Spiked Sword",
+      "rarity": "Rare",
+      "commonnessPercentage": 10,
+      "damageProtection": 0,
+      "healthMultiplier": 0.75,
+      "goldMultiplier": 0.5,
+      "damage": 250,
+      "priceGold": 10000,
+      "minLevel": 0,
+      "drop_chance": 10.0,
+      "world": "Orkland W1",
+      "source": "Bonechewer"
+    },
+    {
+      "type": 5,
+      "name": "Dead Man's Sword",
+      "rarity": "Epic",
+      "commonnessPercentage": 3,
+      "damageProtection": 0,
+      "healthMultiplier": 1.5,
+      "goldMultiplier": 1.5,
+      "damage": 3000,
+      "priceGold": 100000,
+      "minLevel": 0,
+      "drop_chance": 3.0,
+      "world": "Orkland W1",
+      "source": "Bonechewer"
+    },
+    {
+      "type": 6,
+      "name": "Machete Sword",
+      "rarity": "Common",
+      "commonnessPercentage": 20,
+      "damageProtection": 0,
+      "healthMultiplier": 1,
+      "goldMultiplier": 0.75,
+      "damage": 750,
+      "priceGold": 500,
+      "minLevel": 25,
+      "drop_chance": 20.0,
+      "world": "Sugarland W2",
+      "source": "Cocoa Guardian"
+    },
+    {
+      "type": 7,
+      "name": "Scimitar Claw",
+      "rarity": "Common",
+      "commonnessPercentage": 15,
+      "damageProtection": 1000,
+      "healthMultiplier": 1.25,
+      "goldMultiplier": 1,
+      "damage": 1000,
+      "priceGold": 5000,
+      "minLevel": 25,
+      "drop_chance": 15.0,
+      "world": "Sugarland W2",
+      "source": "Cocoa Guardian / Chocolate Knight"
+    },
+    {
+      "type": 8,
+      "name": "Morbid Will",
+      "rarity": "Rare",
+      "commonnessPercentage": 8,
+      "damageProtection": 1500,
+      "healthMultiplier": 1.75,
+      "goldMultiplier": 1.25,
+      "damage": 2000,
+      "priceGold": 25000,
+      "minLevel": 25,
+      "drop_chance": 8.0,
+      "world": "Sugarland W2",
+      "source": "Chocolate Knight / Mallowbeast"
+    },
+    {
+      "type": 9,
+      "name": "Inferno Claw",
+      "rarity": "Rare",
+      "commonnessPercentage": 4,
+      "damageProtection": 1750,
+      "healthMultiplier": 2,
+      "goldMultiplier": 1.5,
+      "damage": 3000,
+      "priceGold": 50000,
+      "minLevel": 25,
+      "drop_chance": 4.0,
+      "world": "Sugarland W2",
+      "source": "Mallowbeast"
+    },
+    {
+      "type": 10,
+      "name": "Burned Spikeblade",
+      "rarity": "Epic",
+      "commonnessPercentage": 1,
+      "damageProtection": 3000,
+      "healthMultiplier": 3,
+      "goldMultiplier": 3,
+      "damage": 15000,
+      "priceGold": 500000,
+      "minLevel": 25,
+      "drop_chance": 1.0,
+      "world": "Sugarland W2",
+      "source": "Mallowbeast"
+    },
+    {
+      "type": 11,
+      "name": "Icebreaker",
+      "rarity": "Common",
+      "commonnessPercentage": 50,
+      "damageProtection": 2000,
+      "healthMultiplier": 2.5,
+      "goldMultiplier": 2,
+      "damage": 5000,
+      "priceGold": 10000,
+      "minLevel": 50,
+      "drop_chance": 50.0,
+      "world": "Iceworld W3",
+      "source": "Ice King"
+    },
+    {
+      "type": 12,
+      "name": "Frostbite",
+      "rarity": "Common",
+      "commonnessPercentage": 35,
+      "damageProtection": 2500,
+      "healthMultiplier": 3,
+      "goldMultiplier": 3,
+      "damage": 7500,
+      "priceGold": 30000,
+      "minLevel": 50,
+      "drop_chance": 35.0,
+      "world": "Iceworld W3",
+      "source": "Ice King"
+    },
+    {
+      "type": 13,
+      "name": "Froststeel",
+      "rarity": "Rare",
+      "commonnessPercentage": 20,
+      "damageProtection": 3000,
+      "healthMultiplier": 2.75,
+      "goldMultiplier": 3,
+      "damage": 10000,
+      "priceGold": 60000,
+      "minLevel": 50,
+      "drop_chance": 20.0,
+      "world": "Iceworld W3",
+      "source": "Ice King"
+    },
+    {
+      "type": 14,
+      "name": "Frostfang",
+      "rarity": "Rare",
+      "commonnessPercentage": 12,
+      "damageProtection": 4000,
+      "healthMultiplier": 3,
+      "goldMultiplier": 3.5,
+      "damage": 15000,
+      "priceGold": 10000,
+      "minLevel": 50,
+      "drop_chance": 12.0,
+      "world": "Iceworld W3",
+      "source": "Ice King"
+    },
+    {
+      "type": 15,
+      "name": "Winter's Wrath",
+      "rarity": "Epic",
+      "commonnessPercentage": 1,
+      "damageProtection": 15000,
+      "healthMultiplier": 5,
+      "goldMultiplier": 5,
+      "damage": 500000,
+      "priceGold": 1000000,
+      "minLevel": 50,
+      "drop_chance": 1.0,
+      "world": "Iceworld W3",
+      "source": "Ice King"
+    },
+    {
+      "type": 16,
+      "name": "Sandstrike",
+      "rarity": "Common",
+      "commonnessPercentage": 25,
+      "damageProtection": 10000,
+      "healthMultiplier": 3.25,
+      "goldMultiplier": 3.75,
+      "damage": 25000,
+      "priceGold": 20000,
+      "minLevel": 60,
+      "drop_chance": 25.0,
+      "world": "Desertland W4",
+      "source": "Spiked Tortoise"
+    },
+    {
+      "type": 17,
+      "name": "Duneslicer",
+      "rarity": "Common",
+      "commonnessPercentage": 20,
+      "damageProtection": 15000,
+      "healthMultiplier": 3.5,
+      "goldMultiplier": 3.5,
+      "damage": 40000,
+      "priceGold": 30000,
+      "minLevel": 60,
+      "drop_chance": 20.0,
+      "world": "Desertland W4",
+      "source": "Spiked Tortoise / Cursed Stone"
+    },
+    {
+      "type": 18,
+      "name": "Sandslasher",
+      "rarity": "Rare",
+      "commonnessPercentage": 15,
+      "damageProtection": 100000,
+      "healthMultiplier": 3.5,
+      "goldMultiplier": 3,
+      "damage": 60000,
+      "priceGold": 50000,
+      "minLevel": 60,
+      "drop_chance": 15.0,
+      "world": "Desertland W4",
+      "source": "Cursed Stone / Mummy"
+    },
+    {
+      "type": 19,
+      "name": "Sunfire",
+      "rarity": "Rare",
+      "commonnessPercentage": 7,
+      "damageProtection": 250000,
+      "healthMultiplier": 3.5,
+      "goldMultiplier": 3.75,
+      "damage": 85000,
+      "priceGold": 75000,
+      "minLevel": 60,
+      "drop_chance": 7.0,
+      "world": "Desertland W4",
+      "source": "Mummy"
+    },
+    {
+      "type": 20,
+      "name": "Emberwraith",
+      "rarity": "Epic",
+      "commonnessPercentage": 0.25,
+      "damageProtection": 1000000,
+      "healthMultiplier": 6,
+      "goldMultiplier": 6,
+      "damage": 1000000,
+      "priceGold": 500000,
+      "minLevel": 60,
+      "drop_chance": 0.25,
+      "world": "Desertland W4",
+      "source": "Mummy"
+    },
+    {
+      "type": 21,
+      "name": "Blade of Sorrow",
+      "rarity": "Common",
+      "commonnessPercentage": 35,
+      "damageProtection": 500000,
+      "healthMultiplier": 4,
+      "goldMultiplier": 3.75,
+      "damage": 100000,
+      "priceGold": 100000,
+      "minLevel": 100,
+      "drop_chance": 35.0,
+      "world": "Netherworld W5",
+      "source": "Giga Moai"
+    },
+    {
+      "type": 22,
+      "name": "Flame Heart",
+      "rarity": "Common",
+      "commonnessPercentage": 30,
+      "damageProtection": 750000,
+      "healthMultiplier": 4.25,
+      "goldMultiplier": 3.75,
+      "damage": 150000,
+      "priceGold": 200000,
+      "minLevel": 100,
+      "drop_chance": 30.0,
+      "world": "Netherworld W5",
+      "source": "Giga Moai / Lava Rock"
+    },
+    {
+      "type": 23,
+      "name": "Darkblade",
+      "rarity": "Rare",
+      "commonnessPercentage": 20,
+      "damageProtection": 1000000,
+      "healthMultiplier": 4.5,
+      "goldMultiplier": 4,
+      "damage": 200000,
+      "priceGold": 500000,
+      "minLevel": 100,
+      "drop_chance": 20.0,
+      "world": "Netherworld W5",
+      "source": "Giga Moai / Lava Rock / Nether Lord"
+    },
+    {
+      "type": 24,
+      "name": "Fatecutter",
+      "rarity": "Rare",
+      "commonnessPercentage": 10,
+      "damageProtection": 2000000,
+      "healthMultiplier": 4.75,
+      "goldMultiplier": 4,
+      "damage": 250000,
+      "priceGold": 1000000,
+      "minLevel": 100,
+      "drop_chance": 10.0,
+      "world": "Netherworld W5",
+      "source": "Nether Lord"
+    },
+    {
+      "type": 25,
+      "name": "Devil's Blade",
+      "rarity": "Epic",
+      "commonnessPercentage": 0.01,
+      "damageProtection": 3000000,
+      "healthMultiplier": 6,
+      "goldMultiplier": 4,
+      "damage": 10000000,
+      "priceGold": 100000000,
+      "minLevel": 100,
+      "drop_chance": 0.01,
+      "world": "Netherworld W5",
+      "source": "Nether Lord"
+    },
+    {
+      "type": 26,
+      "name": "Spear of Zeus",
+      "rarity": "Epic",
+      "commonnessPercentage": 1,
+      "damageProtection": 0,
+      "healthMultiplier": 0,
+      "goldMultiplier": 0,
+      "damage": 15000000,
+      "priceGold": 3000000000,
+      "minLevel": 300,
+      "drop_chance": 1.0,
+      "world": "Heaven W6",
+      "source": "Zeus"
+    },
+    {
+      "type": 27,
+      "name": "Coral Blade",
+      "rarity": "Common",
+      "commonnessPercentage": 20,
+      "damageProtection": 2500000,
+      "healthMultiplier": 5,
+      "goldMultiplier": 4,
+      "damage": 5000000,
+      "priceGold": 2000000,
+      "minLevel": 400,
+      "drop_chance": 20.0,
+      "world": "Aqualand W7",
+      "source": "Crokora / Hydrino"
+    },
+    {
+      "type": 28,
+      "name": "Spiked Moss",
+      "rarity": "Rare",
+      "commonnessPercentage": 7,
+      "damageProtection": 4000000,
+      "healthMultiplier": 5.5,
+      "goldMultiplier": 4.25,
+      "damage": 12000000,
+      "priceGold": 5000000,
+      "minLevel": 400,
+      "drop_chance": 7.0,
+      "world": "Aqualand W7",
+      "source": "Hydrino / Temple Guardian"
+    },
+    {
+      "type": 29,
+      "name": "Guardian's Spear",
+      "rarity": "Epic",
+      "commonnessPercentage": 0.0001,
+      "damageProtection": 6000000,
+      "healthMultiplier": 6,
+      "goldMultiplier": 4.5,
+      "damage": 50000000,
+      "priceGold": 3000000000,
+      "minLevel": 400,
+      "drop_chance": 0.0001,
+      "world": "Aqualand W7",
+      "source": "Temple Guardian"
+    },
+    {
+      "type": 30,
+      "name": "Dragon's Teeth",
+      "rarity": "Rare",
+      "commonnessPercentage": 1,
+      "damageProtection": 8000000,
+      "healthMultiplier": 7,
+      "goldMultiplier": 5,
+      "damage": 90000000,
+      "priceGold": 1000000000,
+      "minLevel": 1000,
+      "drop_chance": 1.0,
+      "world": "Dragon World",
+      "source": "Dragon Guardian"
+    },
+    {
+      "type": 31,
+      "name": "Dragon's Poison",
+      "rarity": "Epic",
+      "commonnessPercentage": 1,
+      "damageProtection": 12000000,
+      "healthMultiplier": 9,
+      "goldMultiplier": 7,
+      "damage": 200000000,
+      "priceGold": 50000000000,
+      "minLevel": 1000,
+      "drop_chance": 1.0,
+      "world": "Dragon World",
+      "source": "Dragon"
+    },
+    {
+      "type": 32,
+      "name": "Starfire Blade",
+      "rarity": "Common",
+      "commonnessPercentage": 25,
+      "damageProtection": 5000000,
+      "healthMultiplier": 5.75,
+      "goldMultiplier": 4.5,
+      "damage": 50000000,
+      "priceGold": 7000000,
+      "minLevel": 700,
+      "drop_chance": 25.0,
+      "world": "Spaceland W8",
+      "source": "Bouugo / Anaxion"
+    },
+    {
+      "type": 33,
+      "name": "Nova Blade",
+      "rarity": "Rare",
+      "commonnessPercentage": 7,
+      "damageProtection": 5000000,
+      "healthMultiplier": 6.5,
+      "goldMultiplier": 4.5,
+      "damage": 70000000,
+      "priceGold": 10000000,
+      "minLevel": 700,
+      "drop_chance": 7.0,
+      "world": "Spaceland W8",
+      "source": "Anaxion / Xenomor"
+    },
+    {
+      "type": 34,
+      "name": "Cosmic Blader",
+      "rarity": "Epic",
+      "commonnessPercentage": 1e-05,
+      "damageProtection": 12000000,
+      "healthMultiplier": 6,
+      "goldMultiplier": 8,
+      "damage": 100000000,
+      "priceGold": 5000000000,
+      "minLevel": 700,
+      "drop_chance": 1e-05,
+      "world": "Spaceland W8",
+      "source": "Xenomor"
+    },
+    {
+      "type": 35,
+      "name": "Netherite Blade",
+      "rarity": "Rare",
+      "commonnessPercentage": 5,
+      "damageProtection": 20000000,
+      "healthMultiplier": 8,
+      "goldMultiplier": 10,
+      "damage": 500000000,
+      "priceGold": 8000000000,
+      "minLevel": 1500,
+      "drop_chance": 5.0,
+      "world": "Death World W9",
+      "source": "Reaper"
+    },
+    {
+      "type": 36,
+      "name": "Death's Scythe",
+      "rarity": "Epic",
+      "commonnessPercentage": 1,
+      "damageProtection": 80000000,
+      "healthMultiplier": 12,
+      "goldMultiplier": 12,
+      "damage": 1000000000,
+      "priceGold": 200000000000,
+      "minLevel": 1500,
+      "drop_chance": 1.0,
+      "world": "Death World W9",
+      "source": "Reaper"
+    },
+    {
+      "type": 37,
+      "name": "Dragon's Devil",
+      "rarity": "Legendary",
+      "commonnessPercentage": 0,
+      "damageProtection": 120000000,
+      "healthMultiplier": 15,
+      "goldMultiplier": 15,
+      "damage": 5000000000,
+      "priceGold": 700000000000,
+      "minLevel": 1500,
+      "drop_chance": 0.0,
+      "world": "Elf",
+      "source": "Elf"
+    },
+    {
+      "type": 38,
+      "name": "Einherjar's Blade",
+      "rarity": "Common",
+      "commonnessPercentage": 25,
+      "damageProtection": 70000000,
+      "healthMultiplier": 10,
+      "goldMultiplier": 10,
+      "damage": 800000000,
+      "priceGold": 150000000000,
+      "minLevel": 2000,
+      "drop_chance": 25.0,
+      "world": "Asgard W10",
+      "source": "Thrones / Seraphim"
+    },
+    {
+      "type": 39,
+      "name": "Runebreaker",
+      "rarity": "Rare",
+      "commonnessPercentage": 10,
+      "damageProtection": 100000000,
+      "healthMultiplier": 11,
+      "goldMultiplier": 11,
+      "damage": 1500000000,
+      "priceGold": 250000000000,
+      "minLevel": 2000,
+      "drop_chance": 10.0,
+      "world": "Asgard W10",
+      "source": "Seraphim"
+    },
+    {
+      "type": 40,
+      "name": "Solbrand",
+      "rarity": "Epic",
+      "commonnessPercentage": 1,
+      "damageProtection": 150000000,
+      "healthMultiplier": 15,
+      "goldMultiplier": 16,
+      "damage": 2000000000,
+      "priceGold": 800000000000,
+      "minLevel": 2000,
+      "drop_chance": 1.0,
+      "world": "Asgard W10",
+      "source": "The Rival"
+    },
+    {
+      "type": 41,
+      "name": "Divinity Edge",
+      "rarity": "Legendary",
+      "commonnessPercentage": 0,
+      "damageProtection": 300000000,
+      "healthMultiplier": 20,
+      "goldMultiplier": 20,
+      "damage": 8000000000,
+      "priceGold": 2500000000000,
+      "minLevel": 2000,
+      "drop_chance": 0.0,
+      "world": "Elf",
+      "source": "Elf"
+    },
+    {
+      "type": 42,
+      "name": "Graveborn Edge",
+      "rarity": "Common",
+      "commonnessPercentage": 25,
+      "damageProtection": 100000000,
+      "healthMultiplier": 11,
+      "goldMultiplier": 11,
+      "damage": 1400000000,
+      "priceGold": 250000000000,
+      "minLevel": 3000,
+      "drop_chance": 25.0,
+      "source": "Wargmaw / Lornblade"
+    },
+    {
+      "type": 43,
+      "name": "Dreadmourne",
+      "rarity": "Rare",
+      "commonnessPercentage": 10,
+      "damageProtection": 200000000,
+      "healthMultiplier": 13,
+      "goldMultiplier": 13,
+      "damage": 3000000000,
+      "priceGold": 500000000000,
+      "minLevel": 3000,
+      "drop_chance": 10.0,
+      "source": "Lornblade"
+    },
+    {
+      "type": 44,
+      "name": "Soulkeeper's Blade",
+      "rarity": "Epic",
+      "commonnessPercentage": 1,
+      "damageProtection": 250000000,
+      "healthMultiplier": 17,
+      "goldMultiplier": 18,
+      "damage": 4000000000,
+      "priceGold": 1400000000000,
+      "minLevel": 3000,
+      "drop_chance": 1.0,
+      "source": "Mordolith"
+    },
+    {
+      "type": 45,
+      "name": "Last Horizon",
+      "rarity": "Legendary",
+      "commonnessPercentage": 0,
+      "damageProtection": 400000000,
+      "healthMultiplier": 23,
+      "goldMultiplier": 22,
+      "damage": 12000000000,
+      "priceGold": 3500000000000,
+      "minLevel": 3000,
+      "drop_chance": 0.0
+    }
+  ],
+  "shields": [
+    {
+      "type": 1,
+      "name": "Wooden Shield",
+      "rarity": "Common",
+      "commonnessPercentage": 25,
+      "damageProtection": 100,
+      "healthMultiplier": 0,
+      "goldMultiplier": 0,
+      "damageMultiplier": 0,
+      "priceGold": 200,
+      "minLevel": 0,
+      "drop_chance": 25.0,
+      "world": "Orkland W1",
+      "source": "Roundhead / Forest Orc"
+    },
+    {
+      "type": 2,
+      "name": "Iron Shield",
+      "rarity": "Common",
+      "commonnessPercentage": 20,
+      "damageProtection": 250,
+      "healthMultiplier": 0,
+      "goldMultiplier": 0.25,
+      "damageMultiplier": 0,
+      "priceGold": 1000,
+      "minLevel": 0,
+      "drop_chance": 20.0,
+      "world": "Orkland W1",
+      "source": "Forest Orc"
+    },
+    {
+      "type": 3,
+      "name": "Elite Shield",
+      "rarity": "Rare",
+      "commonnessPercentage": 15,
+      "damageProtection": 500,
+      "healthMultiplier": 0,
+      "goldMultiplier": 0,
+      "damageMultiplier": 0.25,
+      "priceGold": 2000,
+      "minLevel": 0,
+      "drop_chance": 15.0,
+      "world": "Orkland W1",
+      "source": "Forest Orc / Bonechewer"
+    },
+    {
+      "type": 4,
+      "name": "Warrior's Shield",
+      "rarity": "Rare",
+      "commonnessPercentage": 10,
+      "damageProtection": 750,
+      "healthMultiplier": 0.25,
+      "goldMultiplier": 0.25,
+      "damageMultiplier": 0,
+      "priceGold": 20000,
+      "minLevel": 0,
+      "drop_chance": 10.0,
+      "world": "Orkland W1",
+      "source": "Bonechewer"
+    },
+    {
+      "type": 5,
+      "name": "Shield of the Kingdom",
+      "rarity": "Epic",
+      "commonnessPercentage": 2,
+      "damageProtection": 3000,
+      "healthMultiplier": 2,
+      "goldMultiplier": 2,
+      "damageMultiplier": 0,
+      "priceGold": 100000,
+      "minLevel": 0,
+      "drop_chance": 2.0,
+      "world": "Orkland W1",
+      "source": "Bonechewer"
+    },
+    {
+      "type": 6,
+      "name": "Sweetguard",
+      "rarity": "Common",
+      "commonnessPercentage": 24,
+      "damageProtection": 2000,
+      "healthMultiplier": 0.5,
+      "goldMultiplier": 0.25,
+      "damageMultiplier": 0,
+      "priceGold": 5000,
+      "minLevel": 25,
+      "drop_chance": 24.0,
+      "world": "Sugarland W2",
+      "source": "Cocoa Guardian / Chocolate Knight"
+    },
+    {
+      "type": 7,
+      "name": "Warden's Shield",
+      "rarity": "Common",
+      "commonnessPercentage": 18,
+      "damageProtection": 3000,
+      "healthMultiplier": 0.75,
+      "goldMultiplier": 0.5,
+      "damageMultiplier": 0,
+      "priceGold": 10000,
+      "minLevel": 25,
+      "drop_chance": 18.0,
+      "world": "Sugarland W2",
+      "source": "Chocolate Knight"
+    },
+    {
+      "type": 8,
+      "name": "Light Barrier",
+      "rarity": "Rare",
+      "commonnessPercentage": 14,
+      "damageProtection": 5000,
+      "healthMultiplier": 1,
+      "goldMultiplier": 0.75,
+      "damageMultiplier": 0,
+      "priceGold": 20000,
+      "minLevel": 25,
+      "drop_chance": 14.0,
+      "world": "Sugarland W2",
+      "source": "Chocolate Knight / Mallowbeast"
+    },
+    {
+      "type": 9,
+      "name": "Obsidian Canny",
+      "rarity": "Rare",
+      "commonnessPercentage": 7,
+      "damageProtection": 7000,
+      "healthMultiplier": 1.5,
+      "goldMultiplier": 1,
+      "damageMultiplier": 0,
+      "priceGold": 50000,
+      "minLevel": 25,
+      "drop_chance": 7.0,
+      "world": "Sugarland W2",
+      "source": "Mallowbeast"
+    },
+    {
+      "type": 10,
+      "name": "Dead Guard's Shield",
+      "rarity": "Epic",
+      "commonnessPercentage": 3,
+      "damageProtection": 15000,
+      "healthMultiplier": 3,
+      "goldMultiplier": 3,
+      "damageMultiplier": 0.5,
+      "priceGold": 500000,
+      "minLevel": 25,
+      "drop_chance": 3.0,
+      "world": "Sugarland W2",
+      "source": "Mallowbeast"
+    },
+    {
+      "type": 11,
+      "name": "Snowfall Defender",
+      "rarity": "Common",
+      "commonnessPercentage": 50,
+      "damageProtection": 8000,
+      "healthMultiplier": 2,
+      "goldMultiplier": 1.5,
+      "damageMultiplier": 0,
+      "priceGold": 10000,
+      "minLevel": 50,
+      "drop_chance": 50.0,
+      "world": "Iceworld W3",
+      "source": "Ice King"
+    },
+    {
+      "type": 12,
+      "name": "Arctic Ward",
+      "rarity": "Common",
+      "commonnessPercentage": 35,
+      "damageProtection": 10000,
+      "healthMultiplier": 1.5,
+      "goldMultiplier": 1,
+      "damageMultiplier": 0,
+      "priceGold": 15000,
+      "minLevel": 50,
+      "drop_chance": 35.0,
+      "world": "Iceworld W3",
+      "source": "Ice King"
+    },
+    {
+      "type": 13,
+      "name": "Icy Rampart",
+      "rarity": "Rare",
+      "commonnessPercentage": 15,
+      "damageProtection": 12000,
+      "healthMultiplier": 2,
+      "goldMultiplier": 1.5,
+      "damageMultiplier": 0,
+      "priceGold": 30000,
+      "minLevel": 50,
+      "drop_chance": 15.0,
+      "world": "Iceworld W3",
+      "source": "Ice King"
+    },
+    {
+      "type": 14,
+      "name": "Frozen Fortress",
+      "rarity": "Rare",
+      "commonnessPercentage": 7,
+      "damageProtection": 15000,
+      "healthMultiplier": 2.25,
+      "goldMultiplier": 3,
+      "damageMultiplier": 0,
+      "priceGold": 60000,
+      "minLevel": 50,
+      "drop_chance": 7.0,
+      "world": "Iceworld W3",
+      "source": "Ice King"
+    },
+    {
+      "type": 15,
+      "name": "Winter's Wrathguard",
+      "rarity": "Epic",
+      "commonnessPercentage": 1,
+      "damageProtection": 50000,
+      "healthMultiplier": 4,
+      "goldMultiplier": 5,
+      "damageMultiplier": 1,
+      "priceGold": 1000000,
+      "minLevel": 50,
+      "drop_chance": 1.0,
+      "world": "Iceworld W3",
+      "source": "Ice King"
+    },
+    {
+      "type": 16,
+      "name": "Sunshield",
+      "rarity": "Common",
+      "commonnessPercentage": 25,
+      "damageProtection": 25000,
+      "healthMultiplier": 2.5,
+      "goldMultiplier": 3,
+      "damageMultiplier": 0,
+      "priceGold": 70000,
+      "minLevel": 60,
+      "drop_chance": 25.0,
+      "world": "Desertland W4",
+      "source": "Spiked Tortoise / Cursed Stone"
+    },
+    {
+      "type": 17,
+      "name": "Barbed Sunward",
+      "rarity": "Common",
+      "commonnessPercentage": 20,
+      "damageProtection": 35000,
+      "healthMultiplier": 2.75,
+      "goldMultiplier": 2.5,
+      "damageMultiplier": 0.25,
+      "priceGold": 80000,
+      "minLevel": 60,
+      "drop_chance": 20.0,
+      "world": "Desertland W4",
+      "source": "Cursed Stone"
+    },
+    {
+      "type": 18,
+      "name": "Sunshroud",
+      "rarity": "Rare",
+      "commonnessPercentage": 15,
+      "damageProtection": 50000,
+      "healthMultiplier": 3,
+      "goldMultiplier": 2,
+      "damageMultiplier": 0,
+      "priceGold": 100000,
+      "minLevel": 60,
+      "drop_chance": 15.0,
+      "world": "Desertland W4",
+      "source": "Cursed Stone / Mummy"
+    },
+    {
+      "type": 19,
+      "name": "Sandstone Shield",
+      "rarity": "Rare",
+      "commonnessPercentage": 5,
+      "damageProtection": 70000,
+      "healthMultiplier": 3,
+      "goldMultiplier": 2.25,
+      "damageMultiplier": 0.25,
+      "priceGold": 120000,
+      "minLevel": 60,
+      "drop_chance": 5.0,
+      "world": "Desertland W4",
+      "source": "Mummy"
+    },
+    {
+      "type": 20,
+      "name": "Emberwraith Shield",
+      "rarity": "Epic",
+      "commonnessPercentage": 0.1,
+      "damageProtection": 500000,
+      "healthMultiplier": 3.25,
+      "goldMultiplier": 2.5,
+      "damageMultiplier": 0,
+      "priceGold": 500000,
+      "minLevel": 60,
+      "drop_chance": 0.1,
+      "world": "Desertland W4",
+      "source": "Mummy"
+    },
+    {
+      "type": 21,
+      "name": "Hell Shield",
+      "rarity": "Common",
+      "commonnessPercentage": 20,
+      "damageProtection": 250000,
+      "healthMultiplier": 3.5,
+      "goldMultiplier": 2.5,
+      "damageMultiplier": 0,
+      "priceGold": 100000,
+      "minLevel": 100,
+      "drop_chance": 20.0,
+      "world": "Netherworld W5",
+      "source": "Giga Moai / Lava Rock"
+    },
+    {
+      "type": 22,
+      "name": "Shield of Fire",
+      "rarity": "Common",
+      "commonnessPercentage": 15,
+      "damageProtection": 300000,
+      "healthMultiplier": 3.75,
+      "goldMultiplier": 2.25,
+      "damageMultiplier": 0,
+      "priceGold": 200000,
+      "minLevel": 100,
+      "drop_chance": 15.0,
+      "world": "Netherworld W5",
+      "source": "Giga Moai / Lava Rock"
+    },
+    {
+      "type": 23,
+      "name": "Fire Rampart",
+      "rarity": "Rare",
+      "commonnessPercentage": 10,
+      "damageProtection": 600000,
+      "healthMultiplier": 4,
+      "goldMultiplier": 2.5,
+      "damageMultiplier": 0,
+      "priceGold": 300000,
+      "minLevel": 100,
+      "drop_chance": 10.0,
+      "world": "Netherworld W5",
+      "source": "Nether Lord"
+    },
+    {
+      "type": 24,
+      "name": "Infernal Protection",
+      "rarity": "Rare",
+      "commonnessPercentage": 1,
+      "damageProtection": 1000000,
+      "healthMultiplier": 4.25,
+      "goldMultiplier": 2.25,
+      "damageMultiplier": 0,
+      "priceGold": 400000,
+      "minLevel": 100,
+      "drop_chance": 1.0,
+      "world": "Netherworld W5",
+      "source": "Nether Lord"
+    },
+    {
+      "type": 25,
+      "name": "Lord of Hell",
+      "rarity": "Epic",
+      "commonnessPercentage": 0.01,
+      "damageProtection": 3000000,
+      "healthMultiplier": 5,
+      "goldMultiplier": 6,
+      "damageMultiplier": 0.5,
+      "priceGold": 100000000,
+      "minLevel": 100,
+      "drop_chance": 0.01,
+      "world": "Netherworld W5",
+      "source": "Nether Lord"
+    },
+    {
+      "type": 26,
+      "name": "Steel Shield",
+      "rarity": "Common",
+      "commonnessPercentage": 20,
+      "damageProtection": 1000000,
+      "healthMultiplier": 4.5,
+      "goldMultiplier": 2,
+      "damageMultiplier": 0,
+      "priceGold": 1000000,
+      "minLevel": 400,
+      "drop_chance": 20.0,
+      "world": "Aqualand W7",
+      "source": "Crokora / Hydrino"
+    },
+    {
+      "type": 27,
+      "name": "Hardened Moss",
+      "rarity": "Rare",
+      "commonnessPercentage": 1,
+      "damageProtection": 2500000,
+      "healthMultiplier": 5,
+      "goldMultiplier": 2.25,
+      "damageMultiplier": 0,
+      "priceGold": 10000000,
+      "minLevel": 400,
+      "drop_chance": 1.0,
+      "world": "Aqualand W7",
+      "source": "Hydrino / Temple Guardian"
+    },
+    {
+      "type": 28,
+      "name": "Guardian's Protection",
+      "rarity": "Epic",
+      "commonnessPercentage": 0.01,
+      "damageProtection": 4000000,
+      "healthMultiplier": 6,
+      "goldMultiplier": 5,
+      "damageMultiplier": 1,
+      "priceGold": 500000000,
+      "minLevel": 400,
+      "drop_chance": 0.01,
+      "world": "Aqualand W7",
+      "source": "Temple Guardian"
+    },
+    {
+      "type": 29,
+      "name": "Dragon's Shell",
+      "rarity": "Rare",
+      "commonnessPercentage": 1,
+      "damageProtection": 6000000,
+      "healthMultiplier": 8,
+      "goldMultiplier": 3,
+      "damageMultiplier": 1,
+      "priceGold": 1000000000,
+      "minLevel": 1000,
+      "drop_chance": 1.0,
+      "world": "Dragon World",
+      "source": "Dragon Guardian"
+    },
+    {
+      "type": 30,
+      "name": "Dragon's Anger",
+      "rarity": "Epic",
+      "commonnessPercentage": 1,
+      "damageProtection": 10000000,
+      "healthMultiplier": 12,
+      "goldMultiplier": 10,
+      "damageMultiplier": 2,
+      "priceGold": 50000000000,
+      "minLevel": 1000,
+      "drop_chance": 1.0,
+      "world": "Dragon World",
+      "source": "Dragon"
+    },
+    {
+      "type": 31,
+      "name": "Nebula Shield",
+      "rarity": "Common",
+      "commonnessPercentage": 25,
+      "damageProtection": 3000000,
+      "healthMultiplier": 5,
+      "goldMultiplier": 2.5,
+      "damageMultiplier": 0,
+      "priceGold": 2000000,
+      "minLevel": 700,
+      "drop_chance": 25.0,
+      "world": "Spaceland W8",
+      "source": "Bouugo / Anaxion"
+    },
+    {
+      "type": 32,
+      "name": "Starburst Shield",
+      "rarity": "Rare",
+      "commonnessPercentage": 3,
+      "damageProtection": 6000000,
+      "healthMultiplier": 6,
+      "goldMultiplier": 3,
+      "damageMultiplier": 0,
+      "priceGold": 50000000,
+      "minLevel": 700,
+      "drop_chance": 3.0,
+      "world": "Spaceland W8",
+      "source": "Anaxion / Xenomor"
+    },
+    {
+      "type": 33,
+      "name": "Lunar Shield",
+      "rarity": "Epic",
+      "commonnessPercentage": 0.0001,
+      "damageProtection": 10000000,
+      "healthMultiplier": 6,
+      "goldMultiplier": 6,
+      "damageMultiplier": 1.5,
+      "priceGold": 2000000000,
+      "minLevel": 700,
+      "drop_chance": 0.0001,
+      "world": "Spaceland W8",
+      "source": "Xenomor"
+    },
+    {
+      "type": 34,
+      "name": "Death's Shield",
+      "rarity": "Epic",
+      "commonnessPercentage": 1,
+      "damageProtection": 300000000,
+      "healthMultiplier": 13,
+      "goldMultiplier": 13,
+      "damageMultiplier": 4,
+      "priceGold": 50000000000,
+      "minLevel": 1500,
+      "drop_chance": 1.0,
+      "world": "Death World W9",
+      "source": "Reaper"
+    },
+    {
+      "type": 35,
+      "name": "Dragon's Soul",
+      "rarity": "Legendary",
+      "commonnessPercentage": 0,
+      "damageProtection": 1000000000,
+      "healthMultiplier": 17,
+      "goldMultiplier": 17,
+      "damageMultiplier": 8,
+      "priceGold": 400000000000,
+      "minLevel": 1500,
+      "drop_chance": 0.0,
+      "world": "Elf",
+      "source": "Elf"
+    },
+    {
+      "type": 36,
+      "name": "Einherjar's Guard",
+      "rarity": "Common",
+      "commonnessPercentage": 25,
+      "damageProtection": 12000000,
+      "healthMultiplier": 6.5,
+      "goldMultiplier": 6.5,
+      "damageMultiplier": 1.75,
+      "priceGold": 2500000000,
+      "minLevel": 2000,
+      "drop_chance": 25.0,
+      "world": "Asgard W10",
+      "source": "Thrones / Seraphim"
+    },
+    {
+      "type": 37,
+      "name": "Runeguard",
+      "rarity": "Rare",
+      "commonnessPercentage": 10,
+      "damageProtection": 100000000,
+      "healthMultiplier": 10,
+      "goldMultiplier": 10,
+      "damageMultiplier": 2.5,
+      "priceGold": 50000000000,
+      "minLevel": 2000,
+      "drop_chance": 10.0,
+      "world": "Asgard W10",
+      "source": "Seraphim"
+    },
+    {
+      "type": 38,
+      "name": "Sunward Bulwark",
+      "rarity": "Epic",
+      "commonnessPercentage": 1,
+      "damageProtection": 2000000000,
+      "healthMultiplier": 15,
+      "goldMultiplier": 15,
+      "damageMultiplier": 5,
+      "priceGold": 300000000000,
+      "minLevel": 2000,
+      "drop_chance": 1.0,
+      "world": "Asgard W10",
+      "source": "The Rival"
+    },
+    {
+      "type": 39,
+      "name": "Asgardian Aegis",
+      "rarity": "Legendary",
+      "commonnessPercentage": 0,
+      "damageProtection": 10000000000,
+      "healthMultiplier": 20,
+      "goldMultiplier": 20,
+      "damageMultiplier": 12,
+      "priceGold": 2500000000000,
+      "minLevel": 2000,
+      "drop_chance": 0.0,
+      "world": "Elf",
+      "source": "Elf"
+    },
+    {
+      "type": 40,
+      "name": "Crackshield",
+      "rarity": "Common",
+      "commonnessPercentage": 25,
+      "damageProtection": 20000000,
+      "healthMultiplier": 8,
+      "goldMultiplier": 8,
+      "damageMultiplier": 2,
+      "priceGold": 5000000000,
+      "minLevel": 3000,
+      "drop_chance": 25.0,
+      "source": "Wargmaw / Lornblade"
+    },
+    {
+      "type": 41,
+      "name": "Tombplate",
+      "rarity": "Rare",
+      "commonnessPercentage": 10,
+      "damageProtection": 150000000,
+      "healthMultiplier": 12,
+      "goldMultiplier": 12,
+      "damageMultiplier": 3,
+      "priceGold": 100000000000,
+      "minLevel": 3000,
+      "drop_chance": 10.0,
+      "source": "Lornblade"
+    },
+    {
+      "type": 42,
+      "name": "Sealguard",
+      "rarity": "Epic",
+      "commonnessPercentage": 1,
+      "damageProtection": 3000000000,
+      "healthMultiplier": 17,
+      "goldMultiplier": 17,
+      "damageMultiplier": 6.5,
+      "priceGold": 750000000000,
+      "minLevel": 3000,
+      "drop_chance": 1.0,
+      "source": "Mordolith"
+    },
+    {
+      "type": 43,
+      "name": "Final Bastion",
+      "rarity": "Legendary",
+      "commonnessPercentage": 0,
+      "damageProtection": 14000000000,
+      "healthMultiplier": 23,
+      "goldMultiplier": 21,
+      "damageMultiplier": 18,
+      "priceGold": 4000000000000,
+      "minLevel": 3000,
+      "drop_chance": 0.0
+    }
+  ],
+  "pets": [
+    {
+      "type": 0,
+      "commonnessPercentage": 100,
+      "rarity": "Common",
+      "name": "Piggie",
+      "priceGold": 100,
+      "attackDamage": 0,
+      "goldMultiplier": 0.25,
+      "powerMultiplier": 0,
+      "speedMultiplier": 0,
+      "drop_chance": 100.0
+    },
+    {
+      "type": 1,
+      "commonnessPercentage": 15,
+      "rarity": "Rare",
+      "name": "Chicko",
+      "priceGold": 2000,
+      "attackDamage": 0,
+      "goldMultiplier": 0.5,
+      "powerMultiplier": 0.25,
+      "speedMultiplier": 0,
+      "drop_chance": 15.0
+    },
+    {
+      "type": 2,
+      "commonnessPercentage": 1,
+      "rarity": "Epic",
+      "name": "Peppy",
+      "priceGold": 10000,
+      "attackDamage": 0,
+      "goldMultiplier": 2,
+      "powerMultiplier": 1.5,
+      "speedMultiplier": 0.25,
+      "enhancedPet": 21,
+      "drop_chance": 1.0,
+      "enhancerMultiplier": 1.0
+    },
+    {
+      "type": 3,
+      "commonnessPercentage": 100,
+      "rarity": "Common",
+      "name": "Gumbear",
+      "priceGold": 1000,
+      "attackDamage": 0,
+      "goldMultiplier": 0.75,
+      "powerMultiplier": 0.5,
+      "speedMultiplier": 0,
+      "drop_chance": 100.0
+    },
+    {
+      "type": 4,
+      "commonnessPercentage": 18,
+      "rarity": "Rare",
+      "name": "Croco",
+      "priceGold": 5000,
+      "attackDamage": 0,
+      "goldMultiplier": 1,
+      "powerMultiplier": 0.75,
+      "speedMultiplier": 0,
+      "drop_chance": 18.0
+    },
+    {
+      "type": 5,
+      "commonnessPercentage": 0.1,
+      "rarity": "Epic",
+      "name": "Blue Axolotl",
+      "priceGold": 50000,
+      "attackDamage": 0,
+      "goldMultiplier": 3,
+      "powerMultiplier": 3,
+      "speedMultiplier": 0.5,
+      "enhancedPet": 22,
+      "drop_chance": 0.1,
+      "enhancerMultiplier": 0.5
+    },
+    {
+      "type": 6,
+      "commonnessPercentage": 100,
+      "rarity": "Common",
+      "name": "Fluffy",
+      "priceGold": 500000,
+      "attackDamage": 0,
+      "goldMultiplier": 1.25,
+      "powerMultiplier": 1,
+      "speedMultiplier": 0,
+      "drop_chance": 100.0
+    },
+    {
+      "type": 7,
+      "commonnessPercentage": 20,
+      "rarity": "Rare",
+      "name": "Sandy",
+      "priceGold": 1000000,
+      "attackDamage": 0,
+      "goldMultiplier": 1.5,
+      "powerMultiplier": 1.25,
+      "speedMultiplier": 0,
+      "drop_chance": 20.0
+    },
+    {
+      "type": 8,
+      "commonnessPercentage": 0.05,
+      "rarity": "Epic",
+      "name": "Pengoo",
+      "priceGold": 10000000,
+      "attackDamage": 0,
+      "goldMultiplier": 4,
+      "powerMultiplier": 5,
+      "speedMultiplier": 0.25,
+      "enhancedPet": 23,
+      "drop_chance": 0.05,
+      "enhancerMultiplier": 0.3333333333333333
+    },
+    {
+      "type": 9,
+      "commonnessPercentage": 100,
+      "rarity": "Common",
+      "name": "Scorp",
+      "priceGold": 5000000,
+      "attackDamage": 0,
+      "goldMultiplier": 1.75,
+      "powerMultiplier": 1.75,
+      "speedMultiplier": 0,
+      "drop_chance": 100.0
+    },
+    {
+      "type": 10,
+      "commonnessPercentage": 12,
+      "rarity": "Rare",
+      "name": "Kamel",
+      "priceGold": 10000000,
+      "attackDamage": 0,
+      "goldMultiplier": 2,
+      "powerMultiplier": 2.5,
+      "speedMultiplier": 0,
+      "drop_chance": 12.0
+    },
+    {
+      "type": 11,
+      "commonnessPercentage": 0.001,
+      "rarity": "Epic",
+      "name": "Leo",
+      "priceGold": 200000000,
+      "attackDamage": 0,
+      "goldMultiplier": 5,
+      "powerMultiplier": 6,
+      "speedMultiplier": 1,
+      "enhancedPet": 24,
+      "drop_chance": 0.001,
+      "enhancerMultiplier": 0.25
+    },
+    {
+      "type": 12,
+      "commonnessPercentage": 100,
+      "rarity": "Common",
+      "name": "Lava Slime",
+      "priceGold": 100000,
+      "attackDamage": 0,
+      "goldMultiplier": 2.5,
+      "powerMultiplier": 3,
+      "speedMultiplier": 0,
+      "drop_chance": 100.0
+    },
+    {
+      "type": 13,
+      "commonnessPercentage": 6,
+      "rarity": "Rare",
+      "name": "Firebat",
+      "priceGold": 500000,
+      "attackDamage": 0,
+      "goldMultiplier": 2.75,
+      "powerMultiplier": 3.5,
+      "speedMultiplier": 1,
+      "drop_chance": 6.0
+    },
+    {
+      "type": 14,
+      "commonnessPercentage": 0.0001,
+      "rarity": "Epic",
+      "name": "Phoenix",
+      "priceGold": 500000000,
+      "attackDamage": 0,
+      "goldMultiplier": 7,
+      "powerMultiplier": 8,
+      "speedMultiplier": 0.5,
+      "enhancedPet": 25,
+      "drop_chance": 0.0001,
+      "enhancerMultiplier": 0.2
+    },
+    {
+      "type": 15,
+      "commonnessPercentage": 100,
+      "rarity": "Common",
+      "name": "Nemo",
+      "priceGold": 200000,
+      "attackDamage": 0,
+      "goldMultiplier": 3,
+      "powerMultiplier": 3.5,
+      "speedMultiplier": 0,
+      "drop_chance": 100.0
+    },
+    {
+      "type": 16,
+      "commonnessPercentage": 10,
+      "rarity": "Rare",
+      "name": "Sharkie",
+      "priceGold": 750000,
+      "attackDamage": 0,
+      "goldMultiplier": 3.5,
+      "powerMultiplier": 4,
+      "speedMultiplier": 0,
+      "drop_chance": 10.0
+    },
+    {
+      "type": 17,
+      "commonnessPercentage": 0.0001,
+      "rarity": "Epic",
+      "name": "Octoo",
+      "priceGold": 700000000,
+      "attackDamage": 0,
+      "goldMultiplier": 7.5,
+      "powerMultiplier": 8.5,
+      "speedMultiplier": 0.5,
+      "enhancedPet": 26,
+      "drop_chance": 0.0001,
+      "enhancerMultiplier": 0.16666666666666666
+    },
+    {
+      "type": 18,
+      "commonnessPercentage": 100,
+      "rarity": "Common",
+      "name": "Fogo",
+      "priceGold": 100000000,
+      "attackDamage": 0,
+      "goldMultiplier": 3.75,
+      "powerMultiplier": 4.25,
+      "speedMultiplier": 0,
+      "drop_chance": 100.0
+    },
+    {
+      "type": 19,
+      "commonnessPercentage": 12,
+      "rarity": "Rare",
+      "name": "Purr",
+      "priceGold": 700000000,
+      "attackDamage": 0,
+      "goldMultiplier": 4,
+      "powerMultiplier": 4.5,
+      "speedMultiplier": 0,
+      "drop_chance": 12.0
+    },
+    {
+      "type": 20,
+      "commonnessPercentage": 1e-05,
+      "rarity": "Epic",
+      "name": "Xen",
+      "priceGold": 20000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 10,
+      "powerMultiplier": 10,
+      "speedMultiplier": 0.75,
+      "enhancedPet": 27,
+      "drop_chance": 1e-05,
+      "enhancerMultiplier": 0.14285714285714285
+    },
+    {
+      "type": 21,
+      "commonnessPercentage": 0,
+      "rarity": "Legendary",
+      "name": "XPeppy",
+      "priceGold": 50000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 13,
+      "powerMultiplier": 12,
+      "speedMultiplier": 0.5,
+      "drop_chance": 0.0
+    },
+    {
+      "type": 22,
+      "commonnessPercentage": 0,
+      "rarity": "Legendary",
+      "name": "XAxolotl",
+      "priceGold": 60000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 15,
+      "powerMultiplier": 13,
+      "speedMultiplier": 0.6,
+      "drop_chance": 0.0
+    },
+    {
+      "type": 23,
+      "commonnessPercentage": 0,
+      "rarity": "Legendary",
+      "name": "XPengoo",
+      "priceGold": 80000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 16.5,
+      "powerMultiplier": 16,
+      "speedMultiplier": 0.75,
+      "drop_chance": 0.0
+    },
+    {
+      "type": 24,
+      "commonnessPercentage": 0,
+      "rarity": "Legendary",
+      "name": "XLeo",
+      "priceGold": 80000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 18,
+      "powerMultiplier": 17.5,
+      "speedMultiplier": 1.5,
+      "drop_chance": 0.0
+    },
+    {
+      "type": 25,
+      "commonnessPercentage": 0,
+      "rarity": "Legendary",
+      "name": "XPhoenix",
+      "priceGold": 100000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 19.5,
+      "powerMultiplier": 19,
+      "speedMultiplier": 0.8,
+      "drop_chance": 0.0
+    },
+    {
+      "type": 26,
+      "commonnessPercentage": 0,
+      "rarity": "Legendary",
+      "name": "XOctoo",
+      "priceGold": 130000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 22,
+      "powerMultiplier": 21,
+      "speedMultiplier": 0.9,
+      "drop_chance": 0.0
+    },
+    {
+      "type": 27,
+      "commonnessPercentage": 0,
+      "rarity": "Legendary",
+      "name": "XXen",
+      "priceGold": 150000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 24,
+      "powerMultiplier": 23,
+      "speedMultiplier": 1,
+      "drop_chance": 0.0
+    },
+    {
+      "type": 28,
+      "commonnessPercentage": 100,
+      "rarity": "Common",
+      "name": "Mimic",
+      "priceGold": 1000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 4,
+      "powerMultiplier": 4.5,
+      "speedMultiplier": 0,
+      "drop_chance": 100.0
+    },
+    {
+      "type": 29,
+      "commonnessPercentage": 4,
+      "rarity": "Rare",
+      "name": "Triwulf",
+      "priceGold": 7000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 4.25,
+      "powerMultiplier": 4.75,
+      "speedMultiplier": 0,
+      "drop_chance": 4.0
+    },
+    {
+      "type": 30,
+      "commonnessPercentage": 1e-05,
+      "rarity": "Epic",
+      "name": "Inferno",
+      "priceGold": 200000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 10.25,
+      "powerMultiplier": 10.25,
+      "speedMultiplier": 1,
+      "enhancedPet": 31,
+      "drop_chance": 1e-05,
+      "enhancerMultiplier": 0.125
+    },
+    {
+      "type": 31,
+      "commonnessPercentage": 0,
+      "rarity": "Legendary",
+      "name": "XInferno",
+      "priceGold": 1500000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 25,
+      "powerMultiplier": 25,
+      "speedMultiplier": 1,
+      "drop_chance": 0.0
+    },
+    {
+      "type": 32,
+      "commonnessPercentage": 100,
+      "rarity": "Common",
+      "name": "Ponyo",
+      "priceGold": 1500000000,
+      "attackDamage": 0,
+      "goldMultiplier": 4.25,
+      "powerMultiplier": 4.75,
+      "speedMultiplier": 0,
+      "drop_chance": 100.0
+    },
+    {
+      "type": 33,
+      "commonnessPercentage": 4,
+      "rarity": "Rare",
+      "name": "Chandy",
+      "priceGold": 10000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 4.5,
+      "powerMultiplier": 5,
+      "speedMultiplier": 0,
+      "drop_chance": 4.0
+    },
+    {
+      "type": 34,
+      "commonnessPercentage": 1e-05,
+      "rarity": "Epic",
+      "name": "Runix",
+      "priceGold": 300000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 12.5,
+      "powerMultiplier": 13.5,
+      "speedMultiplier": 1.2,
+      "enhancedPet": 35,
+      "drop_chance": 1e-05,
+      "enhancerMultiplier": 0.05263157894736842
+    },
+    {
+      "type": 35,
+      "commonnessPercentage": 0,
+      "rarity": "Legendary",
+      "name": "XRunix",
+      "priceGold": 2000000000000,
+      "attackDamage": 0,
+      "goldMultiplier": 27.5,
+      "powerMultiplier": 27.5,
+      "speedMultiplier": 1.35,
+      "drop_chance": 0.0
+    }
+  ],
+  "armor": {
+    "helmets": [
+      {
+        "type": 0,
+        "name": "None",
+        "extraHealth": 0,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0,
+        "powerMultiplier": 0,
+        "priceGold": 0,
+        "pricePower": 0,
+        "raw_name": "Empty"
+      },
+      {
+        "type": 1,
+        "name": "Leather Bandana",
+        "extraHealth": 100,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0,
+        "powerMultiplier": 0,
+        "priceGold": 500,
+        "pricePower": 0
+      },
+      {
+        "type": 2,
+        "name": "Iron Helmet",
+        "extraHealth": 400,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0.25,
+        "powerMultiplier": 0,
+        "priceGold": 10000,
+        "pricePower": 0
+      },
+      {
+        "type": 3,
+        "name": "King's Crown",
+        "extraHealth": 1000,
+        "healthMultiplier": 0.75,
+        "goldMultiplier": 0.5,
+        "powerMultiplier": 0.25,
+        "priceGold": 0,
+        "pricePower": 100000
+      },
+      {
+        "type": 4,
+        "name": "Sweetmallow",
+        "extraHealth": 5000,
+        "healthMultiplier": 0.5,
+        "goldMultiplier": 0.5,
+        "powerMultiplier": 0.5,
+        "priceGold": 0,
+        "pricePower": 50000
+      },
+      {
+        "type": 5,
+        "name": "Chocohead",
+        "extraHealth": 20000,
+        "healthMultiplier": 1,
+        "goldMultiplier": 0,
+        "powerMultiplier": 1,
+        "priceGold": 100000,
+        "pricePower": 0
+      },
+      {
+        "type": 6,
+        "name": "Lollipop Helmet",
+        "extraHealth": 50000,
+        "healthMultiplier": 1.25,
+        "goldMultiplier": 0.75,
+        "powerMultiplier": 0.75,
+        "priceGold": 0,
+        "pricePower": 1000000
+      },
+      {
+        "type": 7,
+        "name": "Cactus Helmet",
+        "extraHealth": 100000,
+        "healthMultiplier": 1.75,
+        "goldMultiplier": 0.75,
+        "powerMultiplier": 0.75,
+        "priceGold": 20000000,
+        "pricePower": 0
+      },
+      {
+        "type": 8,
+        "name": "Bone Helmet",
+        "extraHealth": 400000,
+        "healthMultiplier": 2,
+        "goldMultiplier": 0.75,
+        "powerMultiplier": 0.75,
+        "priceGold": 100000000,
+        "pricePower": 0
+      },
+      {
+        "type": 9,
+        "name": "Immortal Helmet",
+        "extraHealth": 800000,
+        "healthMultiplier": 2.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 400000000,
+        "pricePower": 0
+      },
+      {
+        "type": 10,
+        "name": "Obsidian Helmet",
+        "extraHealth": 1500000,
+        "healthMultiplier": 2.75,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 700000000,
+        "pricePower": 0
+      },
+      {
+        "type": 11,
+        "name": "Nether Helmet",
+        "extraHealth": 3000000,
+        "healthMultiplier": 3,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1.25,
+        "priceGold": 4000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 12,
+        "name": "Hellfire Headguard",
+        "extraHealth": 4500000,
+        "healthMultiplier": 3.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 15000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 13,
+        "name": "Seashell Helmet",
+        "extraHealth": 6000000,
+        "healthMultiplier": 4,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 15000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 14,
+        "name": "Hydrostone Helmet",
+        "extraHealth": 7500000,
+        "healthMultiplier": 4.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1.25,
+        "priceGold": 25000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 15,
+        "name": "Sea Guardian's Helmet",
+        "extraHealth": 8500000,
+        "healthMultiplier": 5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1.5,
+        "priceGold": 30000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 16,
+        "name": "Starfire Helmet",
+        "extraHealth": 9500000,
+        "healthMultiplier": 5.5,
+        "goldMultiplier": 1.25,
+        "powerMultiplier": 1.5,
+        "priceGold": 50000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 17,
+        "name": "Nova Helmet",
+        "extraHealth": 9000000,
+        "healthMultiplier": 6,
+        "goldMultiplier": 1,
+        "powerMultiplier": 2,
+        "priceGold": 100000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 18,
+        "name": "Cosmic Helmet",
+        "extraHealth": 10000000,
+        "healthMultiplier": 6.5,
+        "goldMultiplier": 1.5,
+        "powerMultiplier": 2.5,
+        "priceGold": 500000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 19,
+        "name": "Death's Helmet",
+        "extraHealth": 15000000,
+        "healthMultiplier": 7.5,
+        "goldMultiplier": 2,
+        "powerMultiplier": 3,
+        "priceGold": 15000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 20,
+        "name": "Stormborn Helmet",
+        "extraHealth": 20000000,
+        "healthMultiplier": 8,
+        "goldMultiplier": 2.5,
+        "powerMultiplier": 3.5,
+        "priceGold": 100000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 21,
+        "name": "Solarflare Helmet",
+        "extraHealth": 30000000,
+        "healthMultiplier": 9,
+        "goldMultiplier": 3,
+        "powerMultiplier": 4,
+        "priceGold": 500000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 22,
+        "name": "Graveborn Helmet",
+        "extraHealth": 40000000,
+        "healthMultiplier": 9.5,
+        "goldMultiplier": 3.5,
+        "powerMultiplier": 4.5,
+        "priceGold": 750000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 23,
+        "name": "Mourner's Helmet",
+        "extraHealth": 50000000,
+        "healthMultiplier": 10,
+        "goldMultiplier": 4,
+        "powerMultiplier": 5,
+        "priceGold": 1000000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 24,
+        "name": "Eternal Helmet",
+        "extraHealth": 75000000,
+        "healthMultiplier": 11,
+        "goldMultiplier": 5,
+        "powerMultiplier": 6,
+        "priceGold": 2000000000000000,
+        "pricePower": 0
+      }
+    ],
+    "chestplates": [
+      {
+        "type": 0,
+        "name": "None",
+        "extraHealth": 0,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0,
+        "powerMultiplier": 0,
+        "priceGold": 0,
+        "pricePower": 0,
+        "raw_name": "Empty"
+      },
+      {
+        "type": 1,
+        "name": "Leather Chestplate",
+        "extraHealth": 200,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0,
+        "powerMultiplier": 0,
+        "priceGold": 1000,
+        "pricePower": 0
+      },
+      {
+        "type": 2,
+        "name": "Iron Chestplate",
+        "extraHealth": 600,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0.25,
+        "powerMultiplier": 0,
+        "priceGold": 15000,
+        "pricePower": 0
+      },
+      {
+        "type": 3,
+        "name": "Golden Chestplate",
+        "extraHealth": 1200,
+        "healthMultiplier": 0.25,
+        "goldMultiplier": 0.5,
+        "powerMultiplier": 0.25,
+        "priceGold": 50000,
+        "pricePower": 0
+      },
+      {
+        "type": 4,
+        "name": "Fluffymellow",
+        "extraHealth": 4000,
+        "healthMultiplier": 0.75,
+        "goldMultiplier": 0.75,
+        "powerMultiplier": 0.75,
+        "priceGold": 0,
+        "pricePower": 75000
+      },
+      {
+        "type": 5,
+        "name": "Chocoblock",
+        "extraHealth": 14000,
+        "healthMultiplier": 1.25,
+        "goldMultiplier": 0.25,
+        "powerMultiplier": 1,
+        "priceGold": 125000,
+        "pricePower": 0
+      },
+      {
+        "type": 6,
+        "name": "Candyshell",
+        "extraHealth": 40000,
+        "healthMultiplier": 1.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 250000,
+        "pricePower": 0
+      },
+      {
+        "type": 7,
+        "name": "Spiked Shell",
+        "extraHealth": 150000,
+        "healthMultiplier": 2,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 25000000,
+        "pricePower": 0
+      },
+      {
+        "type": 8,
+        "name": "Boneshell",
+        "extraHealth": 500000,
+        "healthMultiplier": 2.25,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1.25,
+        "priceGold": 150000000,
+        "pricePower": 0
+      },
+      {
+        "type": 9,
+        "name": "Immortal Chestplate",
+        "extraHealth": 1000000,
+        "healthMultiplier": 2.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1.25,
+        "priceGold": 500000000,
+        "pricePower": 0
+      },
+      {
+        "type": 10,
+        "name": "Obsidian Chestplate",
+        "extraHealth": 1600000,
+        "healthMultiplier": 2.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1.25,
+        "priceGold": 850000000,
+        "pricePower": 0
+      },
+      {
+        "type": 11,
+        "name": "Nether Chestplate",
+        "extraHealth": 3200000,
+        "healthMultiplier": 2.75,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 4500000000,
+        "pricePower": 0
+      },
+      {
+        "type": 12,
+        "name": "Hellfire Chestplate",
+        "extraHealth": 5000000,
+        "healthMultiplier": 3,
+        "goldMultiplier": 1.5,
+        "powerMultiplier": 1,
+        "priceGold": 20000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 13,
+        "name": "Seashell Chestplate",
+        "extraHealth": 6000000,
+        "healthMultiplier": 3.25,
+        "goldMultiplier": 1.75,
+        "powerMultiplier": 1,
+        "priceGold": 20000000000,
+        "pricePower": 0,
+        "raw_name": "Seashell Short"
+      },
+      {
+        "type": 14,
+        "name": "Hydrostone Chestplate",
+        "extraHealth": 7000000,
+        "healthMultiplier": 3.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 30000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 15,
+        "name": "Sea Guardian's Chestplate",
+        "extraHealth": 8500000,
+        "healthMultiplier": 4,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 50000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 16,
+        "name": "Starfire Chestplate",
+        "extraHealth": 9500000,
+        "healthMultiplier": 4.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 50000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 17,
+        "name": "Nova Chestplate",
+        "extraHealth": 12000000,
+        "healthMultiplier": 5,
+        "goldMultiplier": 1.25,
+        "powerMultiplier": 1,
+        "priceGold": 250000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 18,
+        "name": "Cosmic Chestplate",
+        "extraHealth": 15000000,
+        "healthMultiplier": 5.5,
+        "goldMultiplier": 1.5,
+        "powerMultiplier": 1,
+        "priceGold": 500000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 19,
+        "name": "Death's Chestplate",
+        "extraHealth": 45000000,
+        "healthMultiplier": 6.5,
+        "goldMultiplier": 2,
+        "powerMultiplier": 2,
+        "priceGold": 100000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 20,
+        "name": "Stormborn Chestplate",
+        "extraHealth": 150000000,
+        "healthMultiplier": 7,
+        "goldMultiplier": 2.5,
+        "powerMultiplier": 2.5,
+        "priceGold": 1000000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 21,
+        "name": "Solarflare Chestplate",
+        "extraHealth": 500000000,
+        "healthMultiplier": 8,
+        "goldMultiplier": 3,
+        "powerMultiplier": 3,
+        "priceGold": 5000000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 22,
+        "name": "Graveborn Chestplate",
+        "extraHealth": 750000000,
+        "healthMultiplier": 8.5,
+        "goldMultiplier": 3.5,
+        "powerMultiplier": 3.5,
+        "priceGold": 7500000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 23,
+        "name": "Mourner's Chestplate",
+        "extraHealth": 1000000000,
+        "healthMultiplier": 9,
+        "goldMultiplier": 4,
+        "powerMultiplier": 4,
+        "priceGold": 10000000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 24,
+        "name": "Eternal Chestplate",
+        "extraHealth": 2500000000,
+        "healthMultiplier": 10,
+        "goldMultiplier": 5,
+        "powerMultiplier": 5,
+        "priceGold": 20000000000000000,
+        "pricePower": 0
+      }
+    ],
+    "shorts": [
+      {
+        "type": 0,
+        "name": "None",
+        "extraHealth": 0,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0,
+        "powerMultiplier": 0,
+        "priceGold": 0,
+        "pricePower": 0,
+        "raw_name": "Empty"
+      },
+      {
+        "type": 1,
+        "name": "Leather Short",
+        "extraHealth": 200,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0,
+        "powerMultiplier": 0,
+        "priceGold": 1000,
+        "pricePower": 0
+      },
+      {
+        "type": 2,
+        "name": "Iron Short",
+        "extraHealth": 600,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0.25,
+        "powerMultiplier": 0.25,
+        "priceGold": 15000,
+        "pricePower": 0
+      },
+      {
+        "type": 3,
+        "name": "Golden Short",
+        "extraHealth": 1200,
+        "healthMultiplier": 0.25,
+        "goldMultiplier": 0.5,
+        "powerMultiplier": 0.25,
+        "priceGold": 40000,
+        "pricePower": 0
+      },
+      {
+        "type": 4,
+        "name": "Softmallow Short",
+        "extraHealth": 6000,
+        "healthMultiplier": 0.75,
+        "goldMultiplier": 0.75,
+        "powerMultiplier": 0.75,
+        "priceGold": 0,
+        "pricePower": 75000
+      },
+      {
+        "type": 5,
+        "name": "Chocoshort",
+        "extraHealth": 25000,
+        "healthMultiplier": 1.25,
+        "goldMultiplier": 0.25,
+        "powerMultiplier": 1,
+        "priceGold": 120000,
+        "pricePower": 0
+      },
+      {
+        "type": 6,
+        "name": "Lollishort",
+        "extraHealth": 60000,
+        "healthMultiplier": 1.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 250000,
+        "pricePower": 0
+      },
+      {
+        "type": 7,
+        "name": "Cactus Short",
+        "extraHealth": 100000,
+        "healthMultiplier": 1.75,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 25000000,
+        "pricePower": 0
+      },
+      {
+        "type": 8,
+        "name": "Bone Short",
+        "extraHealth": 500000,
+        "healthMultiplier": 2,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 150000000,
+        "pricePower": 0
+      },
+      {
+        "type": 9,
+        "name": "Immortal Short",
+        "extraHealth": 1000000,
+        "healthMultiplier": 2.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1.25,
+        "priceGold": 500000000,
+        "pricePower": 0
+      },
+      {
+        "type": 10,
+        "name": "Obsidian Short",
+        "extraHealth": 1600000,
+        "healthMultiplier": 2.75,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 850000000,
+        "pricePower": 0
+      },
+      {
+        "type": 11,
+        "name": "Nether Short",
+        "extraHealth": 3200000,
+        "healthMultiplier": 2.75,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1.25,
+        "priceGold": 4500000000,
+        "pricePower": 0
+      },
+      {
+        "type": 12,
+        "name": "Hellfire Short",
+        "extraHealth": 5000000,
+        "healthMultiplier": 3,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 20000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 13,
+        "name": "Seashell Short",
+        "extraHealth": 5500000,
+        "healthMultiplier": 3.25,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 20000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 14,
+        "name": "Hydrostone Short",
+        "extraHealth": 6000000,
+        "healthMultiplier": 3.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1.25,
+        "priceGold": 30000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 15,
+        "name": "Sea Guardian's Short",
+        "extraHealth": 6500000,
+        "healthMultiplier": 3.75,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1.5,
+        "priceGold": 40000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 16,
+        "name": "Starfire Short",
+        "extraHealth": 7500000,
+        "healthMultiplier": 4.25,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1.75,
+        "priceGold": 60000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 17,
+        "name": "Nova Short",
+        "extraHealth": 8500000,
+        "healthMultiplier": 4.75,
+        "goldMultiplier": 1.5,
+        "powerMultiplier": 2.25,
+        "priceGold": 120000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 18,
+        "name": "Cosmic Short",
+        "extraHealth": 10000000,
+        "healthMultiplier": 5.25,
+        "goldMultiplier": 1.75,
+        "powerMultiplier": 2.75,
+        "priceGold": 300000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 19,
+        "name": "Death's Short",
+        "extraHealth": 15000000,
+        "healthMultiplier": 6,
+        "goldMultiplier": 2,
+        "powerMultiplier": 3,
+        "priceGold": 20000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 20,
+        "name": "Stormborn Short",
+        "extraHealth": 100000000,
+        "healthMultiplier": 6.75,
+        "goldMultiplier": 2.5,
+        "powerMultiplier": 3.5,
+        "priceGold": 100000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 21,
+        "name": "Solarflare Short",
+        "extraHealth": 500000000,
+        "healthMultiplier": 7.5,
+        "goldMultiplier": 3,
+        "powerMultiplier": 4,
+        "priceGold": 500000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 22,
+        "name": "Graveborn Short",
+        "extraHealth": 750000000,
+        "healthMultiplier": 8,
+        "goldMultiplier": 3.75,
+        "powerMultiplier": 4.75,
+        "priceGold": 1000000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 23,
+        "name": "Mourner's Short",
+        "extraHealth": 1000000000,
+        "healthMultiplier": 8.5,
+        "goldMultiplier": 4.25,
+        "powerMultiplier": 5.25,
+        "priceGold": 1500000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 24,
+        "name": "Eternal Short",
+        "extraHealth": 2000000000,
+        "healthMultiplier": 10,
+        "goldMultiplier": 5,
+        "powerMultiplier": 6,
+        "priceGold": 2500000000000000,
+        "pricePower": 0
+      }
+    ],
+    "boots": [
+      {
+        "type": 0,
+        "name": "None",
+        "extraHealth": 0,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0,
+        "powerMultiplier": 0,
+        "priceGold": 0,
+        "pricePower": 0,
+        "raw_name": "Empty"
+      },
+      {
+        "type": 1,
+        "name": "Leather Shoes",
+        "extraHealth": 100,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0,
+        "powerMultiplier": 0,
+        "priceGold": 500,
+        "pricePower": 0
+      },
+      {
+        "type": 2,
+        "name": "Iron Boots",
+        "extraHealth": 250,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0.25,
+        "powerMultiplier": 0,
+        "priceGold": 10000,
+        "pricePower": 0
+      },
+      {
+        "type": 3,
+        "name": "Golden Boots",
+        "extraHealth": 500,
+        "healthMultiplier": 0,
+        "goldMultiplier": 0.25,
+        "powerMultiplier": 0.25,
+        "priceGold": 30000,
+        "pricePower": 0
+      },
+      {
+        "type": 4,
+        "name": "Soft Boots",
+        "extraHealth": 3000,
+        "healthMultiplier": 0.25,
+        "goldMultiplier": 0.5,
+        "powerMultiplier": 0.5,
+        "priceGold": 0,
+        "pricePower": 50000
+      },
+      {
+        "type": 5,
+        "name": "Cake Boots",
+        "extraHealth": 10000,
+        "healthMultiplier": 0.75,
+        "goldMultiplier": 0.25,
+        "powerMultiplier": 0.75,
+        "priceGold": 100000,
+        "pricePower": 0
+      },
+      {
+        "type": 6,
+        "name": "Candy Boots",
+        "extraHealth": 20000,
+        "healthMultiplier": 1,
+        "goldMultiplier": 0.75,
+        "powerMultiplier": 1,
+        "priceGold": 200000,
+        "pricePower": 0
+      },
+      {
+        "type": 7,
+        "name": "Cactus Boots",
+        "extraHealth": 70000,
+        "healthMultiplier": 1.25,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 20000000,
+        "pricePower": 0
+      },
+      {
+        "type": 8,
+        "name": "Bone Boots",
+        "extraHealth": 250000,
+        "healthMultiplier": 1.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 100000000,
+        "pricePower": 0
+      },
+      {
+        "type": 9,
+        "name": "Immortal Boots",
+        "extraHealth": 400000,
+        "healthMultiplier": 2,
+        "goldMultiplier": 1.25,
+        "powerMultiplier": 1,
+        "priceGold": 400000000,
+        "pricePower": 0
+      },
+      {
+        "type": 10,
+        "name": "Obsidian Boots",
+        "extraHealth": 1000000,
+        "healthMultiplier": 2.25,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 700000000,
+        "pricePower": 0
+      },
+      {
+        "type": 11,
+        "name": "Nether Boots",
+        "extraHealth": 2000000,
+        "healthMultiplier": 2.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 4000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 12,
+        "name": "Hellfire Boots",
+        "extraHealth": 4500000,
+        "healthMultiplier": 2.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 15000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 13,
+        "name": "Seashell Boots",
+        "extraHealth": 5500000,
+        "healthMultiplier": 2.75,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 15000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 14,
+        "name": "Hydrostone Boots",
+        "extraHealth": 6500000,
+        "healthMultiplier": 3,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 20000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 15,
+        "name": "Sea Guardian's Boots",
+        "extraHealth": 8000000,
+        "healthMultiplier": 3.5,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1,
+        "priceGold": 25000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 16,
+        "name": "Starfire Boots",
+        "extraHealth": 9000000,
+        "healthMultiplier": 3.75,
+        "goldMultiplier": 1,
+        "powerMultiplier": 1.25,
+        "priceGold": 40000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 17,
+        "name": "Nova Boots",
+        "extraHealth": 10000000,
+        "healthMultiplier": 4.25,
+        "goldMultiplier": 1.25,
+        "powerMultiplier": 1.25,
+        "priceGold": 200000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 18,
+        "name": "Cosmic Boots",
+        "extraHealth": 12000000,
+        "healthMultiplier": 4.5,
+        "goldMultiplier": 1.5,
+        "powerMultiplier": 1.5,
+        "priceGold": 500000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 19,
+        "name": "Death's Boots",
+        "extraHealth": 20000000,
+        "healthMultiplier": 5,
+        "goldMultiplier": 2,
+        "powerMultiplier": 2,
+        "priceGold": 10000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 20,
+        "name": "Stormborn Boots",
+        "extraHealth": 100000000,
+        "healthMultiplier": 5.5,
+        "goldMultiplier": 2.5,
+        "powerMultiplier": 2.5,
+        "priceGold": 50000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 21,
+        "name": "Solarflare Boots",
+        "extraHealth": 200000000,
+        "healthMultiplier": 6,
+        "goldMultiplier": 3,
+        "powerMultiplier": 3,
+        "priceGold": 250000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 22,
+        "name": "Graveborn Boots",
+        "extraHealth": 300000000,
+        "healthMultiplier": 6.5,
+        "goldMultiplier": 3.5,
+        "powerMultiplier": 3.5,
+        "priceGold": 350000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 23,
+        "name": "Mourner's Boots",
+        "extraHealth": 400000000,
+        "healthMultiplier": 7,
+        "goldMultiplier": 4,
+        "powerMultiplier": 4,
+        "priceGold": 500000000000000,
+        "pricePower": 0
+      },
+      {
+        "type": 24,
+        "name": "Eternal Boots",
+        "extraHealth": 600000000,
+        "healthMultiplier": 8,
+        "goldMultiplier": 5,
+        "powerMultiplier": 5,
+        "priceGold": 1000000000000000,
+        "pricePower": 0
+      }
+    ]
+  },
+  "images": {
+    "swords": {
+      "Old Sword": {
+        "asset_id": 132392574,
+        "url": "https://swordmasters.io/files/assets/132392574/1/sword1.png",
+        "hash": "8ba4d0cb4dee19cef1870f4ee099ad00",
+        "filename": "old_sword.png"
+      },
+      "Orc Sword": {
+        "asset_id": 132440050,
+        "url": "https://swordmasters.io/files/assets/132440050/1/sword2.png",
+        "hash": "31c7e1e40ad9f7d47ad76f44726b9f1c",
+        "filename": "orc_sword.png"
+      },
+      "Double-Edged Sword": {
+        "asset_id": 132440053,
+        "url": "https://swordmasters.io/files/assets/132440053/1/sword3.png",
+        "hash": "022357c7fd7d196de152d25709a1eea8",
+        "filename": "double_edged_sword.png"
+      },
+      "Spiked Sword": {
+        "asset_id": 132440052,
+        "url": "https://swordmasters.io/files/assets/132440052/1/sword4.png",
+        "hash": "f946da280848bd0620248fbdb6b6ee88",
+        "filename": "spiked_sword.png"
+      },
+      "Dead Man's Sword": {
+        "asset_id": 132440051,
+        "url": "https://swordmasters.io/files/assets/132440051/1/sword5.png",
+        "hash": "1c0d9d1e642267eecbfbf907a601d226",
+        "filename": "dead_mans_sword.png"
+      },
+      "Machete Sword": {
+        "asset_id": 132441838,
+        "url": "https://swordmasters.io/files/assets/132441838/1/sword6.png",
+        "hash": "e7b9faed78018a87db25e6cd3e37a3ab",
+        "filename": "machete_sword.png"
+      },
+      "Scimitar Claw": {
+        "asset_id": 132441835,
+        "url": "https://swordmasters.io/files/assets/132441835/1/sword7.png",
+        "hash": "735392903906a283f3039d8b35008493",
+        "filename": "scimitar_claw.png"
+      },
+      "Morbid Will": {
+        "asset_id": 132441837,
+        "url": "https://swordmasters.io/files/assets/132441837/1/sword8.png",
+        "hash": "a7a1ebff1ee55b5766a28dfbbafb43a9",
+        "filename": "morbid_will.png"
+      },
+      "Inferno Claw": {
+        "asset_id": 132441834,
+        "url": "https://swordmasters.io/files/assets/132441834/1/sword9.png",
+        "hash": "558a1e1a37b6aee669399bbaf1de0d48",
+        "filename": "inferno_claw.png"
+      },
+      "Burned Spikeblade": {
+        "asset_id": 132441836,
+        "url": "https://swordmasters.io/files/assets/132441836/1/sword10.png",
+        "hash": "d2f26019d83811c6fa1639d45c371e17",
+        "filename": "burned_spikeblade.png"
+      },
+      "Icebreaker": {
+        "asset_id": 137485246,
+        "url": "https://swordmasters.io/files/assets/137485246/1/sword11.png",
+        "hash": "e6194da43432d512ea418cf11f8c88b5",
+        "filename": "icebreaker.png"
+      },
+      "Frostbite": {
+        "asset_id": 137485242,
+        "url": "https://swordmasters.io/files/assets/137485242/1/sword12.png",
+        "hash": "ad6bede2e3c9567a1ce9834a347e26c2",
+        "filename": "frostbite.png"
+      },
+      "Froststeel": {
+        "asset_id": 137485240,
+        "url": "https://swordmasters.io/files/assets/137485240/1/sword13.png",
+        "hash": "199427bb20b88686c01aab0e90754bab",
+        "filename": "froststeel.png"
+      },
+      "Frostfang": {
+        "asset_id": 137485238,
+        "url": "https://swordmasters.io/files/assets/137485238/1/sword14.png",
+        "hash": "9cc264874fab3fef4b04cf0164619991",
+        "filename": "frostfang.png"
+      },
+      "Winter's Wrath": {
+        "asset_id": 137485244,
+        "url": "https://swordmasters.io/files/assets/137485244/1/sword15.png",
+        "hash": "392c9df7343e2c566d972e86fe787925",
+        "filename": "winters_wrath.png"
+      },
+      "Sandstrike": {
+        "asset_id": 138422286,
+        "url": "https://swordmasters.io/files/assets/138422286/1/sword16.png",
+        "hash": "57c7dd161a8ba2d04cde8c5908d40cb9",
+        "filename": "sandstrike.png"
+      },
+      "Duneslicer": {
+        "asset_id": 138422285,
+        "url": "https://swordmasters.io/files/assets/138422285/1/sword17.png",
+        "hash": "ccb0db63bbe85d32b4c806a448a1240e",
+        "filename": "duneslicer.png"
+      },
+      "Sandslasher": {
+        "asset_id": 138422284,
+        "url": "https://swordmasters.io/files/assets/138422284/1/sword18.png",
+        "hash": "cb3df847e56e2e7573b084319be963f7",
+        "filename": "sandslasher.png"
+      },
+      "Sunfire": {
+        "asset_id": 138422283,
+        "url": "https://swordmasters.io/files/assets/138422283/1/sword19.png",
+        "hash": "266287ee2bd663c2ea604be3a6274c05",
+        "filename": "sunfire.png"
+      },
+      "Emberwraith": {
+        "asset_id": 138422282,
+        "url": "https://swordmasters.io/files/assets/138422282/1/sword20.png",
+        "hash": "f0a9b50ff86057d9214a0e8a3955eadf",
+        "filename": "emberwraith.png"
+      },
+      "Blade of Sorrow": {
+        "asset_id": 140963024,
+        "url": "https://swordmasters.io/files/assets/140963024/1/sword21.png",
+        "hash": "d858f67d27bfe576b55a764d520ea7d8",
+        "filename": "blade_of_sorrow.png"
+      },
+      "Flame Heart": {
+        "asset_id": 140963023,
+        "url": "https://swordmasters.io/files/assets/140963023/1/sword22.png",
+        "hash": "b2abafebc651d1087202f64f8eb3f63a",
+        "filename": "flame_heart.png"
+      },
+      "Darkblade": {
+        "asset_id": 140963025,
+        "url": "https://swordmasters.io/files/assets/140963025/1/sword23.png",
+        "hash": "3d1800680f23469bfd12e7a750dd2dc4",
+        "filename": "darkblade.png"
+      },
+      "Fatecutter": {
+        "asset_id": 140963026,
+        "url": "https://swordmasters.io/files/assets/140963026/1/sword24.png",
+        "hash": "c987e0fc923edc527ef380f8b36268f2",
+        "filename": "fatecutter.png"
+      },
+      "Devil's Blade": {
+        "asset_id": 140963022,
+        "url": "https://swordmasters.io/files/assets/140963022/1/sword25.png",
+        "hash": "7de36f475aa38ee2ec23684f627d305f",
+        "filename": "devils_blade.png"
+      },
+      "Spear of Zeus": {
+        "asset_id": 167404540,
+        "url": "https://swordmasters.io/files/assets/167404540/1/sword26.png",
+        "hash": "b9cd421a7403af84c9c1857d0240e344",
+        "filename": "spear_of_zeus.png"
+      },
+      "Coral Blade": {
+        "asset_id": 167963742,
+        "url": "https://swordmasters.io/files/assets/167963742/1/sword27.png",
+        "hash": "c0a420ecb9c62d2f260b9b66693ca144",
+        "filename": "coral_blade.png"
+      },
+      "Spiked Moss": {
+        "asset_id": 167963755,
+        "url": "https://swordmasters.io/files/assets/167963755/1/sword28.png",
+        "hash": "f0254f9a92a3ee71a59022ef126cf2f0",
+        "filename": "spiked_moss.png"
+      },
+      "Guardian's Spear": {
+        "asset_id": 167963772,
+        "url": "https://swordmasters.io/files/assets/167963772/1/sword29.png",
+        "hash": "77271d5f5340f2cab67e1d5ced1c5332",
+        "filename": "guardians_spear.png"
+      },
+      "Dragon's Teeth": {
+        "asset_id": 171267518,
+        "url": "https://swordmasters.io/files/assets/171267518/1/sword30.png",
+        "hash": "d98f3e3afe321c5a5e3c0930d70018fc",
+        "filename": "dragons_teeth.png"
+      },
+      "Dragon's Poison": {
+        "asset_id": 171266022,
+        "url": "https://swordmasters.io/files/assets/171266022/1/sword31.png",
+        "hash": "5140e872a6ca2dcc4be51eb6f626bc4e",
+        "filename": "dragons_poison.png"
+      },
+      "Starfire Blade": {
+        "asset_id": 171772669,
+        "url": "https://swordmasters.io/files/assets/171772669/1/sword32.png",
+        "hash": "305b9a8d60616846966c08a2af2349be",
+        "filename": "starfire_blade.png"
+      },
+      "Nova Blade": {
+        "asset_id": 171773095,
+        "url": "https://swordmasters.io/files/assets/171773095/1/sword33.png",
+        "hash": "de67852bd3ee7a8ac52a9d84bacd8c78",
+        "filename": "nova_blade.png"
+      },
+      "Cosmic Blader": {
+        "asset_id": 171773096,
+        "url": "https://swordmasters.io/files/assets/171773096/1/sword34.png",
+        "hash": "778e2cda9653218279213e64108a72ce",
+        "filename": "cosmic_blader.png"
+      },
+      "Netherite Blade": {
+        "asset_id": 203408314,
+        "url": "https://swordmasters.io/files/assets/203408314/1/sword35.png",
+        "hash": "ccd7a037d11357d3619057d87603b9ae",
+        "filename": "netherite_blade.png"
+      },
+      "Death's Scythe": {
+        "asset_id": 203408313,
+        "url": "https://swordmasters.io/files/assets/203408313/1/sword36.png",
+        "hash": "e8b02d07cce7828b032b6a8c16dc8f52",
+        "filename": "deaths_scythe.png"
+      },
+      "Dragon's Devil": {
+        "asset_id": 203408315,
+        "url": "https://swordmasters.io/files/assets/203408315/1/sword37.png",
+        "hash": "a33b14c6cd469054d2b86b45a786fd77",
+        "filename": "dragons_devil.png"
+      },
+      "Einherjar's Blade": {
+        "asset_id": 256878819,
+        "url": "https://swordmasters.io/files/assets/256878819/1/sword38.png",
+        "hash": "1f98e7685851a2471ae3a620e44a14b3",
+        "filename": "einherjars_blade.png"
+      },
+      "Runebreaker": {
+        "asset_id": 256878820,
+        "url": "https://swordmasters.io/files/assets/256878820/1/sword39.png",
+        "hash": "0880e416f6c510b34c1db6aed1691b04",
+        "filename": "runebreaker.png"
+      },
+      "Solbrand": {
+        "asset_id": 256878818,
+        "url": "https://swordmasters.io/files/assets/256878818/1/sword40.png",
+        "hash": "a5cf722cdb8902e39a96ec97bd882b24",
+        "filename": "solbrand.png"
+      },
+      "Divinity Edge": {
+        "asset_id": 256878817,
+        "url": "https://swordmasters.io/files/assets/256878817/1/sword41.png",
+        "hash": "d807c06cf5e5b30a422f87725fe66d44",
+        "filename": "divinity_edge.png"
+      },
+      "Graveborn Edge": {
+        "asset_id": 293183925,
+        "url": "https://swordmasters.io/files/assets/293183925/1/sword42.png",
+        "hash": "55ef3804d43b16e5c0721bac28fe67ff",
+        "filename": "graveborn_edge.png"
+      },
+      "Dreadmourne": {
+        "asset_id": 293183923,
+        "url": "https://swordmasters.io/files/assets/293183923/1/sword43.png",
+        "hash": "1510d7d9ecd124260208acd6b83a7214",
+        "filename": "dreadmourne.png"
+      },
+      "Soulkeeper's Blade": {
+        "asset_id": 293183922,
+        "url": "https://swordmasters.io/files/assets/293183922/1/sword44.png",
+        "hash": "da50768d80aaf31e4715add7d0dc1e0b",
+        "filename": "soulkeepers_blade.png"
+      },
+      "Last Horizon": {
+        "asset_id": 293183924,
+        "url": "https://swordmasters.io/files/assets/293183924/1/sword45.png",
+        "hash": "ff39bc2fb6f7960367c7dff53bc8b997",
+        "filename": "last_horizon.png"
+      }
+    },
+    "shields": {
+      "Wooden Shield": {
+        "asset_id": 132549579,
+        "url": "https://swordmasters.io/files/assets/132549579/1/shield1.png",
+        "hash": "78f65ad031dcc64611217f23935c77ea",
+        "filename": "wooden_shield.png"
+      },
+      "Iron Shield": {
+        "asset_id": 132549581,
+        "url": "https://swordmasters.io/files/assets/132549581/1/shield2.png",
+        "hash": "35c03e2f39066886564202d9c8243b6a",
+        "filename": "iron_shield.png"
+      },
+      "Elite Shield": {
+        "asset_id": 132549578,
+        "url": "https://swordmasters.io/files/assets/132549578/1/shield3.png",
+        "hash": "b2982525f0ff8c78d8d7f305646f8b93",
+        "filename": "elite_shield.png"
+      },
+      "Warrior's Shield": {
+        "asset_id": 132549580,
+        "url": "https://swordmasters.io/files/assets/132549580/1/shield4.png",
+        "hash": "1c50b12fcd33653c24a62b948e062bde",
+        "filename": "warriors_shield.png"
+      },
+      "Shield of the Kingdom": {
+        "asset_id": 132549577,
+        "url": "https://swordmasters.io/files/assets/132549577/1/shield5.png",
+        "hash": "d11b39dc8e05d75e4b96e0154f8dd7ba",
+        "filename": "shield_of_the_kingdom.png"
+      },
+      "Sweetguard": {
+        "asset_id": 132549583,
+        "url": "https://swordmasters.io/files/assets/132549583/1/shield6.png",
+        "hash": "ebff9f098d13c63759572b258a94448b",
+        "filename": "sweetguard.png"
+      },
+      "Warden's Shield": {
+        "asset_id": 132549582,
+        "url": "https://swordmasters.io/files/assets/132549582/1/shield7.png",
+        "hash": "412d7b08eea69f74f39a03fe47150077",
+        "filename": "wardens_shield.png"
+      },
+      "Light Barrier": {
+        "asset_id": 132549586,
+        "url": "https://swordmasters.io/files/assets/132549586/1/shield8.png",
+        "hash": "253c4c4da8f92191ecc7c6c7d47eddb5",
+        "filename": "light_barrier.png"
+      },
+      "Obsidian Canny": {
+        "asset_id": 132549584,
+        "url": "https://swordmasters.io/files/assets/132549584/1/shield9.png",
+        "hash": "cc07b62e536a04e4edd31bc0d8593827",
+        "filename": "obsidian_canny.png"
+      },
+      "Dead Guard's Shield": {
+        "asset_id": 132549585,
+        "url": "https://swordmasters.io/files/assets/132549585/1/shield10.png",
+        "hash": "755fb4e997a776d12cdbd2173a5494fe",
+        "filename": "dead_guards_shield.png"
+      },
+      "Snowfall Defender": {
+        "asset_id": 137486186,
+        "url": "https://swordmasters.io/files/assets/137486186/1/shield11.png",
+        "hash": "ada03d59671c4901db490113e35f3190",
+        "filename": "snowfall_defender.png"
+      },
+      "Arctic Ward": {
+        "asset_id": 137486184,
+        "url": "https://swordmasters.io/files/assets/137486184/1/shield12.png",
+        "hash": "46910dc5861a5317afc7d4b9204c76c4",
+        "filename": "arctic_ward.png"
+      },
+      "Icy Rampart": {
+        "asset_id": 137486185,
+        "url": "https://swordmasters.io/files/assets/137486185/1/shield13.png",
+        "hash": "493ac02cc1a129f5cc718d9d279dbfa5",
+        "filename": "icy_rampart.png"
+      },
+      "Frozen Fortress": {
+        "asset_id": 137486187,
+        "url": "https://swordmasters.io/files/assets/137486187/1/shield14.png",
+        "hash": "15b76037402830ae5d54011f661915f4",
+        "filename": "frozen_fortress.png"
+      },
+      "Winter's Wrathguard": {
+        "asset_id": 137486188,
+        "url": "https://swordmasters.io/files/assets/137486188/1/shield15.png",
+        "hash": "7e5453f3a3c36e87d20e5cd8c8c2bdf0",
+        "filename": "winters_wrathguard.png"
+      },
+      "Sunshield": {
+        "asset_id": 138423136,
+        "url": "https://swordmasters.io/files/assets/138423136/1/shield16.png",
+        "hash": "1f351d21ae6abed9d48c8443ca238c6e",
+        "filename": "sunshield.png"
+      },
+      "Barbed Sunward": {
+        "asset_id": 138423133,
+        "url": "https://swordmasters.io/files/assets/138423133/1/shield17.png",
+        "hash": "bdc3e9b47d548fdbcfd8334e808765e2",
+        "filename": "barbed_sunward.png"
+      },
+      "Sunshroud": {
+        "asset_id": 138423130,
+        "url": "https://swordmasters.io/files/assets/138423130/1/shield18.png",
+        "hash": "23f52176a4223b79488784d7957e63b5",
+        "filename": "sunshroud.png"
+      },
+      "Sandstone Shield": {
+        "asset_id": 138423135,
+        "url": "https://swordmasters.io/files/assets/138423135/1/shield19.png",
+        "hash": "650f7242588ad4a10841bc21af200d52",
+        "filename": "sandstone_shield.png"
+      },
+      "Emberwraith Shield": {
+        "asset_id": 138423134,
+        "url": "https://swordmasters.io/files/assets/138423134/1/shield20.png",
+        "hash": "03a6231f3c5edefa995877237bc215a4",
+        "filename": "emberwraith_shield.png"
+      },
+      "Hell Shield": {
+        "asset_id": 140963031,
+        "url": "https://swordmasters.io/files/assets/140963031/1/shield21.png",
+        "hash": "43c716fbe06094d5aac9d6c18b141381",
+        "filename": "hell_shield.png"
+      },
+      "Shield of Fire": {
+        "asset_id": 140963028,
+        "url": "https://swordmasters.io/files/assets/140963028/1/shield22.png",
+        "hash": "464352aa841fea242573d82cf28f5a54",
+        "filename": "shield_of_fire.png"
+      },
+      "Fire Rampart": {
+        "asset_id": 140963030,
+        "url": "https://swordmasters.io/files/assets/140963030/1/shield23.png",
+        "hash": "be08c6a6ae5c2a442e3c42e3ce445257",
+        "filename": "fire_rampart.png"
+      },
+      "Infernal Protection": {
+        "asset_id": 140963029,
+        "url": "https://swordmasters.io/files/assets/140963029/1/shield24.png",
+        "hash": "fb7769d781c5a5181f863d1751cf235d",
+        "filename": "infernal_protection.png"
+      },
+      "Lord of Hell": {
+        "asset_id": 140963032,
+        "url": "https://swordmasters.io/files/assets/140963032/1/shield25.png",
+        "hash": "11a5e79ac07705a25300929b6342a3ed",
+        "filename": "lord_of_hell.png"
+      },
+      "Steel Shield": {
+        "asset_id": 167963803,
+        "url": "https://swordmasters.io/files/assets/167963803/1/shield26.png",
+        "hash": "6140d82193d4a294613363b67109f790",
+        "filename": "steel_shield.png"
+      },
+      "Hardened Moss": {
+        "asset_id": 167963806,
+        "url": "https://swordmasters.io/files/assets/167963806/1/shield27.png",
+        "hash": "778819ae414d71f5b8a649690a74c142",
+        "filename": "hardened_moss.png"
+      },
+      "Guardian's Protection": {
+        "asset_id": 167963810,
+        "url": "https://swordmasters.io/files/assets/167963810/1/shield28.png",
+        "hash": "15551439ac4c21044925234b98553b2e",
+        "filename": "guardians_protection.png"
+      },
+      "Dragon's Shell": {
+        "asset_id": 171267623,
+        "url": "https://swordmasters.io/files/assets/171267623/1/shield29.png",
+        "hash": "97e9e6403c75e68cbea37bf11f34ced8",
+        "filename": "dragons_shell.png"
+      },
+      "Dragon's Anger": {
+        "asset_id": 171267634,
+        "url": "https://swordmasters.io/files/assets/171267634/1/shield30.png",
+        "hash": "4f3a0c124d125fa3d1e225fce2f3c543",
+        "filename": "dragons_anger.png"
+      },
+      "Nebula Shield": {
+        "asset_id": 171773414,
+        "url": "https://swordmasters.io/files/assets/171773414/1/shield31.png",
+        "hash": "58b763f7226e5dffab77747d4122063d",
+        "filename": "nebula_shield.png"
+      },
+      "Starburst Shield": {
+        "asset_id": 171773413,
+        "url": "https://swordmasters.io/files/assets/171773413/1/shield32.png",
+        "hash": "84c1f314b561ae3944db5e5f9dca4fad",
+        "filename": "starburst_shield.png"
+      },
+      "Lunar Shield": {
+        "asset_id": 171773415,
+        "url": "https://swordmasters.io/files/assets/171773415/1/shield33.png",
+        "hash": "ed8a443336c34c62c7226537bc360344",
+        "filename": "lunar_shield.png"
+      },
+      "Death's Shield": {
+        "asset_id": 203408362,
+        "url": "https://swordmasters.io/files/assets/203408362/1/shield34.png",
+        "hash": "b2e80c497039148f0b3a31096821cc89",
+        "filename": "deaths_shield.png"
+      },
+      "Dragon's Soul": {
+        "asset_id": 203408361,
+        "url": "https://swordmasters.io/files/assets/203408361/1/shield35.png",
+        "hash": "949b67be54b332946e0d638f6202b0c4",
+        "filename": "dragons_soul.png"
+      },
+      "Einherjar's Guard": {
+        "asset_id": 256878203,
+        "url": "https://swordmasters.io/files/assets/256878203/1/shield36.png",
+        "hash": "15595896128803c34d232d66a01c0d0e",
+        "filename": "einherjars_guard.png"
+      },
+      "Runeguard": {
+        "asset_id": 256878201,
+        "url": "https://swordmasters.io/files/assets/256878201/1/shield37.png",
+        "hash": "fee8734bf517f78f5f7d29bf06bceae0",
+        "filename": "runeguard.png"
+      },
+      "Sunward Bulwark": {
+        "asset_id": 256878202,
+        "url": "https://swordmasters.io/files/assets/256878202/1/shield38.png",
+        "hash": "8d540a0e4994083f66be7bd319587dfd",
+        "filename": "sunward_bulwark.png"
+      },
+      "Asgardian Aegis": {
+        "asset_id": 256878204,
+        "url": "https://swordmasters.io/files/assets/256878204/1/shield39.png",
+        "hash": "027d9f67cfc373290ffc4bee8af9d924",
+        "filename": "asgardian_aegis.png"
+      },
+      "Crackshield": {
+        "asset_id": 293183928,
+        "url": "https://swordmasters.io/files/assets/293183928/1/shield40.png",
+        "hash": "98b952eb5312742f7b9472e5dd59e9f2",
+        "filename": "crackshield.png"
+      },
+      "Tombplate": {
+        "asset_id": 293183929,
+        "url": "https://swordmasters.io/files/assets/293183929/1/shield41.png",
+        "hash": "cd8152760bcb5cd50fd2f8698abf7264",
+        "filename": "tombplate.png"
+      },
+      "Sealguard": {
+        "asset_id": 293183930,
+        "url": "https://swordmasters.io/files/assets/293183930/1/shield42.png",
+        "hash": "bab97a58e840bcac412ec77153531767",
+        "filename": "sealguard.png"
+      },
+      "Final Bastion": {
+        "asset_id": 293183931,
+        "url": "https://swordmasters.io/files/assets/293183931/1/shield43.png",
+        "hash": "0dd27591d25e414bfe36bee1952ca6b2",
+        "filename": "final_bastion.png"
+      }
+    },
+    "pets": {
+      "Piggie": {
+        "asset_id": 141521157,
+        "url": "https://swordmasters.io/files/assets/141521157/1/pet0.png",
+        "hash": "c69994d1f1df884f1851d72b0f83e52c",
+        "filename": "piggie.png"
+      },
+      "Chicko": {
+        "asset_id": 141521156,
+        "url": "https://swordmasters.io/files/assets/141521156/1/pet1.png",
+        "hash": "2c08ca1707a2f9e01bf588a99125446d",
+        "filename": "chicko.png"
+      },
+      "Peppy": {
+        "asset_id": 141521158,
+        "url": "https://swordmasters.io/files/assets/141521158/1/pet2.png",
+        "hash": "0a79de76d5c681564e7bbff7e6584c2f",
+        "filename": "peppy.png"
+      },
+      "Gumbear": {
+        "asset_id": 142112397,
+        "url": "https://swordmasters.io/files/assets/142112397/1/pet3.png",
+        "hash": "231e67544bdb15ab99c6633c5e72f9ca",
+        "filename": "gumbear.png"
+      },
+      "Croco": {
+        "asset_id": 142112399,
+        "url": "https://swordmasters.io/files/assets/142112399/1/pet4.png",
+        "hash": "ab09e5011441f9acfee22f53a4effc5d",
+        "filename": "croco.png"
+      },
+      "Blue Axolotl": {
+        "asset_id": 142112398,
+        "url": "https://swordmasters.io/files/assets/142112398/1/pet5.png",
+        "hash": "abc6d49a85a41c4239d4e1780e1c9bc8",
+        "filename": "blue_axolotl.png"
+      },
+      "Fluffy": {
+        "asset_id": 142120620,
+        "url": "https://swordmasters.io/files/assets/142120620/1/pet6.png",
+        "hash": "dcb5f162150b90ebd639e482f89f9bc0",
+        "filename": "fluffy.png"
+      },
+      "Sandy": {
+        "asset_id": 142120621,
+        "url": "https://swordmasters.io/files/assets/142120621/1/pet7.png",
+        "hash": "27b57f3f18e4b7a6b71d37c7c1eb0289",
+        "filename": "sandy.png"
+      },
+      "Pengoo": {
+        "asset_id": 142120622,
+        "url": "https://swordmasters.io/files/assets/142120622/1/pet8.png",
+        "hash": "32e33a694bb8faac27495dd2121f66dc",
+        "filename": "pengoo.png"
+      },
+      "Scorp": {
+        "asset_id": 142126409,
+        "url": "https://swordmasters.io/files/assets/142126409/1/pet9.png",
+        "hash": "289c0c456cfbce11a50df89c81c8759f",
+        "filename": "scorp.png"
+      },
+      "Kamel": {
+        "asset_id": 142126411,
+        "url": "https://swordmasters.io/files/assets/142126411/1/pet10.png",
+        "hash": "0ec0c861b6b44e62a7ea4f99594eea84",
+        "filename": "kamel.png"
+      },
+      "Leo": {
+        "asset_id": 142126410,
+        "url": "https://swordmasters.io/files/assets/142126410/1/pet11.png",
+        "hash": "9b0ec2762f0f20bf482076963b1bc81e",
+        "filename": "leo.png"
+      },
+      "Lava Slime": {
+        "asset_id": 142126892,
+        "url": "https://swordmasters.io/files/assets/142126892/1/pet12.png",
+        "hash": "eb48682fad2a23f97b34ab70e8359d7b",
+        "filename": "lava_slime.png"
+      },
+      "Firebat": {
+        "asset_id": 142126893,
+        "url": "https://swordmasters.io/files/assets/142126893/1/pet13.png",
+        "hash": "5315eacfadd2d988c5dda648bfe10a8a",
+        "filename": "firebat.png"
+      },
+      "Phoenix": {
+        "asset_id": 142126894,
+        "url": "https://swordmasters.io/files/assets/142126894/1/pet14.png",
+        "hash": "e08c1a315391e30bebcea3e89e605aec",
+        "filename": "phoenix.png"
+      },
+      "Nemo": {
+        "asset_id": 167924930,
+        "url": "https://swordmasters.io/files/assets/167924930/1/pet15.png",
+        "hash": "385b3e4526f450465410b8cf6cf14e2a",
+        "filename": "nemo.png"
+      },
+      "Sharkie": {
+        "asset_id": 167924932,
+        "url": "https://swordmasters.io/files/assets/167924932/1/pet16.png",
+        "hash": "7ee0ab458115648f2a8242725a47bc57",
+        "filename": "sharkie.png"
+      },
+      "Octoo": {
+        "asset_id": 167924931,
+        "url": "https://swordmasters.io/files/assets/167924931/1/pet17.png",
+        "hash": "576dabc63b68722487b60793424bfecc",
+        "filename": "octoo.png"
+      },
+      "Fogo": {
+        "asset_id": 172035943,
+        "url": "https://swordmasters.io/files/assets/172035943/1/pet18.png",
+        "hash": "8cc163c50585fdf57d58f48690c1939f",
+        "filename": "fogo.png"
+      },
+      "Purr": {
+        "asset_id": 172036162,
+        "url": "https://swordmasters.io/files/assets/172036162/1/pet19.png",
+        "hash": "dc2e1ce2828fbb35f07dfd6679f3a64c",
+        "filename": "purr.png"
+      },
+      "Xen": {
+        "asset_id": 172036305,
+        "url": "https://swordmasters.io/files/assets/172036305/1/pet20.png",
+        "hash": "b34ff3c6a8a9fdc73da0159803a2d5c2",
+        "filename": "xen.png"
+      },
+      "XPeppy": {
+        "asset_id": 208001203,
+        "url": "https://swordmasters.io/files/assets/208001203/1/pet21.png",
+        "hash": "ab49692a886d5747919f9e1f93bb7b03",
+        "filename": "xpeppy.png"
+      },
+      "XAxolotl": {
+        "asset_id": 208001201,
+        "url": "https://swordmasters.io/files/assets/208001201/1/pet22.png",
+        "hash": "5c71c36e324998ab72efe30748a4eba1",
+        "filename": "xaxolotl.png"
+      },
+      "XPengoo": {
+        "asset_id": 207945466,
+        "url": "https://swordmasters.io/files/assets/207945466/1/pet23.png",
+        "hash": "493fe21cffeed48126263f546a43d9f3",
+        "filename": "xpengoo.png"
+      },
+      "XLeo": {
+        "asset_id": 208001204,
+        "url": "https://swordmasters.io/files/assets/208001204/1/pet24.png",
+        "hash": "4ccf17ca4a99ad6b77047fc574657c40",
+        "filename": "xleo.png"
+      },
+      "XPhoenix": {
+        "asset_id": 208001205,
+        "url": "https://swordmasters.io/files/assets/208001205/1/pet25.png",
+        "hash": "68df5e2a7d0c3cf25c1969f7ee568082",
+        "filename": "xphoenix.png"
+      },
+      "XOctoo": {
+        "asset_id": 208001202,
+        "url": "https://swordmasters.io/files/assets/208001202/1/pet26.png",
+        "hash": "1061764492e24de1dba3cca555f2ee37",
+        "filename": "xoctoo.png"
+      },
+      "XXen": {
+        "asset_id": 208001206,
+        "url": "https://swordmasters.io/files/assets/208001206/1/pet27.png",
+        "hash": "11dfb0e293e1bd482f56d8719c1567ab",
+        "filename": "xxen.png"
+      },
+      "Mimic": {
+        "asset_id": 257155742,
+        "url": "https://swordmasters.io/files/assets/257155742/1/pet28.png",
+        "hash": "73d42ded864fc97aa6a9a35ebfe4a17e",
+        "filename": "mimic.png"
+      },
+      "Triwulf": {
+        "asset_id": 257155744,
+        "url": "https://swordmasters.io/files/assets/257155744/1/pet29.png",
+        "hash": "48b77632f43e1bd3856fb34e8d3115ef",
+        "filename": "triwulf.png"
+      },
+      "Inferno": {
+        "asset_id": 257155745,
+        "url": "https://swordmasters.io/files/assets/257155745/1/pet30.png",
+        "hash": "d096ea32f712a340e3383ebbf18eed34",
+        "filename": "inferno.png"
+      },
+      "XInferno": {
+        "asset_id": 257155743,
+        "url": "https://swordmasters.io/files/assets/257155743/1/pet31.png",
+        "hash": "c83d6b07bbae1002e9b2445559270ef7",
+        "filename": "xinferno.png"
+      },
+      "Ponyo": {
+        "asset_id": 293423080,
+        "url": "https://swordmasters.io/files/assets/293423080/1/pet32.png",
+        "hash": "e03e7e08fcd44a32a9ef0f2dc63e9c40",
+        "filename": "ponyo.png"
+      },
+      "Chandy": {
+        "asset_id": 293423078,
+        "url": "https://swordmasters.io/files/assets/293423078/1/pet33.png",
+        "hash": "2f7cb04f146c65a557ffb9d54566b425",
+        "filename": "chandy.png"
+      },
+      "Runix": {
+        "asset_id": 293423079,
+        "url": "https://swordmasters.io/files/assets/293423079/1/pet34.png",
+        "hash": "91dc0ace9ad3a9858c8becd68cf93a62",
+        "filename": "runix.png"
+      },
+      "XRunix": {
+        "asset_id": 293423077,
+        "url": "https://swordmasters.io/files/assets/293423077/1/pet35.png",
+        "hash": "e228746852c7414da7b0dc141d2db769",
+        "filename": "xrunix.png"
+      }
+    }
+  }
+}

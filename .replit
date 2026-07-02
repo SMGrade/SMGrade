@@ -1,4 +1,6 @@
 modules = ["nodejs-24"]
+run = "PORT=8080 npx pnpm --filter @workspace/api-server run dev & npx pnpm --filter @workspace/smgrade run dev"
+
 
 [deployment]
 router = "application"

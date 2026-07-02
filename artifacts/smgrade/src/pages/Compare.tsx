@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import { parsePlayerData } from "@/lib/parser";
 import { scorePlayer } from "@/lib/scorer";
 import { getSwordData, getShieldData, scaledSwordDamage, scaledShieldDM } from "@/lib/gearDatabase";
 import { formatNumber } from "@/lib/numberParser";
+import { calculateDamageStats } from "@/lib/damageCalc";
+import { ParticleBackground } from "./Home";
 
 interface ComparedPlayer {
   username: string;
@@ -26,12 +29,12 @@ interface ComparedPlayer {
 }
 
 const GRADE_COLOR: Record<string, string> = {
-  "S+": "#FFD700",
-  S: "#FFD700",
-  "A+": "#c9a84c",
-  A: "#c9a84c",
-  "B+": "#8ab4c9",
-  B: "#8ab4c9",
+  "S+": "#00f0ff",
+  S: "#00f0ff",
+  "A+": "#3b82f6",
+  A: "#3b82f6",
+  "B+": "#a855f7",
+  B: "#a855f7",
   "C+": "#888",
   C: "#888",
   D: "#e05a5a",
@@ -70,19 +73,29 @@ export default function Compare() {
     const sc1 = scorePlayer(data1);
     const sc2 = scorePlayer(data2);
 
-    // Compute player 1 combat stats
     const sw1 = getSwordData(data1.sword);
     const sh1 = getShieldData(data1.shield);
     const ds1 = sw1 ? scaledSwordDamage(sw1.baseDamage, data1.swordLevel) * 1e9 : 0;
     const ms1 = sh1 ? scaledShieldDM(sh1.baseDM, data1.shieldLevel) : 0;
-    const dmg1 = (ds1 + 2 * Math.sqrt(Math.max(data1.powerRaw, 0)) + 1) * (1 + ms1);
+    const dmgStats1 = calculateDamageStats({
+      ds: ds1,
+      swordDamageMultiplier: ms1,
+      power: data1.powerRaw,
+      petPowerBonus: 0
+    });
+    const dmg1 = dmgStats1.damagePerHit;
 
-    // Compute player 2 combat stats
     const sw2 = getSwordData(data2.sword);
     const sh2 = getShieldData(data2.shield);
     const ds2 = sw2 ? scaledSwordDamage(sw2.baseDamage, data2.swordLevel) * 1e9 : 0;
     const ms2 = sh2 ? scaledShieldDM(sh2.baseDM, data2.shieldLevel) : 0;
-    const dmg2 = (ds2 + 2 * Math.sqrt(Math.max(data2.powerRaw, 0)) + 1) * (1 + ms2);
+    const dmgStats2 = calculateDamageStats({
+      ds: ds2,
+      swordDamageMultiplier: ms2,
+      power: data2.powerRaw,
+      petPowerBonus: 0
+    });
+    const dmg2 = dmgStats2.damagePerHit;
 
     setPlayer1({
       username: data1.username,
@@ -137,204 +150,227 @@ export default function Compare() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080808] text-white flex flex-col">
+    <div className="min-h-screen text-white flex flex-col relative overflow-hidden font-sans bg-[#03050b]">
+      <ParticleBackground />
+      {/* Background neon aura glow */}
+      <div className="absolute top-[-10%] left-[50%] translate-x-[-50%] w-[800px] h-[300px] rounded-full bg-amber-500/3 blur-[140px] pointer-events-none" />
+
       {/* Header */}
-      <header className="border-b border-[#111] px-6 py-4 flex items-center justify-between sticky top-0 z-10 bg-[#080808cc] backdrop-filter blur-md">
+      <motion.header 
+        initial={{ opacity: 0, y: -15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="border-b border-white/[0.04] px-6 py-4 flex items-center justify-between sticky top-0 z-20 bg-[#070b13]/80 backdrop-blur-md"
+      >
         <div className="flex items-center gap-2">
-          <span className="font-black text-xl" style={{
-            background: "linear-gradient(135deg, #c9a84c 0%, #f0d080 50%, #c9a84c 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}>SM</span>
-          <span className="text-white font-black text-xl">Compare</span>
+          <span className="font-black text-lg tracking-wider px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/25 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.1)] font-display">
+            SM
+          </span>
+          <span className="text-white font-extrabold text-lg tracking-tight font-display">Compare</span>
         </div>
-        <Link href="/" className="text-[#444] text-sm hover:text-[#777] transition-colors">
+        <Link href="/" className="text-white/40 hover:text-amber-400 text-xs font-bold uppercase tracking-widest transition-colors">
           ← Back to grading
         </Link>
-      </header>
+      </motion.header>
 
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8 space-y-6">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-10 space-y-6 z-10 relative">
         
-        {/* Paste Panels */}
-        {!player1 && (
-          <div className="space-y-4">
-            <div className="text-center space-y-2 mb-4">
-              <h1 className="text-2xl font-extrabold text-white">Compare Two Accounts</h1>
-              <p className="text-[#555] text-xs">Paste the full stats logs of two separate players to compare side-by-side.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Player 1 input */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-[#555] uppercase tracking-wider block">Player 1 Stats</label>
-                <textarea
-                  className="w-full bg-[#0d0d0d] border border-[#1e1e1e] focus:border-[#c9a84c44] text-[#ddd] text-xs font-mono rounded-lg p-3 resize-none outline-none min-h-[180px] leading-relaxed transition-all"
-                  placeholder="Paste Player 1 /stats output here..."
-                  value={pasted1}
-                  onChange={(e) => setPasted1(e.target.value)}
-                  spellCheck={false}
-                />
-              </div>
-
-              {/* Player 2 input */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-[#555] uppercase tracking-wider block">Player 2 Stats</label>
-                <textarea
-                  className="w-full bg-[#0d0d0d] border border-[#1e1e1e] focus:border-[#c9a84c44] text-[#ddd] text-xs font-mono rounded-lg p-3 resize-none outline-none min-h-[180px] leading-relaxed transition-all"
-                  placeholder="Paste Player 2 /stats output here..."
-                  value={pasted2}
-                  onChange={(e) => setPasted2(e.target.value)}
-                  spellCheck={false}
-                />
-              </div>
-            </div>
-
-            {error && (
-              <p className="text-red-400 text-xs border border-red-900/50 bg-red-950/20 px-3 py-2 rounded-lg text-center">
-                {error}
-              </p>
-            )}
-
-            <button
-              onClick={handleCompare}
-              className="w-full font-bold py-3 px-6 rounded-lg transition-all duration-200 text-sm tracking-wide bg-[#c9a84c] text-black hover:bg-[#d4b55e] shadow-lg shadow-gold"
+        <AnimatePresence mode="wait">
+          {!player1 && (
+            <motion.div 
+              key="inputs"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-6"
             >
-              Compare Accounts
-            </button>
-          </div>
-        )}
-
-        {/* Results Panels */}
-        {player1 && player2 && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Compare Names & Grades */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Player 1 Grade Card */}
-              <div className="border border-[#1e1e1e] rounded-xl p-4 bg-[#0c0c0c] text-center space-y-2 relative"
-                style={{
-                  borderWidth: player1.overallScore > player2.overallScore ? "2px" : "1px",
-                  borderColor: player1.overallScore > player2.overallScore ? "#c9a84c" : "#1e1e1e"
-                }}
-              >
-                {player1.overallScore > player2.overallScore && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#c9a84c] text-black text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">Winner</span>
-                )}
-                <h3 className="text-lg font-bold text-white truncate">{player1.username}</h3>
-                <div className="text-5xl font-black font-mono leading-none tracking-tight" style={{ color: GRADE_COLOR[player1.overallGrade] }}>
-                  {player1.overallGrade}
-                </div>
-                <div className="text-[#555] text-[10px] uppercase font-mono">Score: {player1.overallScore}/100</div>
+              <div className="text-center space-y-2 mb-6">
+                <h1 className="text-4xl font-black text-white font-display tracking-tight">Compare Accounts</h1>
+                <p className="text-white/30 text-xs max-w-sm mx-auto leading-relaxed">Paste the bot output for two separate players to compare side-by-side.</p>
               </div>
 
-              {/* Player 2 Grade Card */}
-              <div className="border border-[#1e1e1e] rounded-xl p-4 bg-[#0c0c0c] text-center space-y-2 relative"
-                style={{
-                  borderWidth: player2.overallScore > player1.overallScore ? "2px" : "1px",
-                  borderColor: player2.overallScore > player1.overallScore ? "#c9a84c" : "#1e1e1e"
-                }}
-              >
-                {player2.overallScore > player1.overallScore && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#c9a84c] text-black text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">Winner</span>
-                )}
-                <h3 className="text-lg font-bold text-white truncate">{player2.username}</h3>
-                <div className="text-5xl font-black font-mono leading-none tracking-tight" style={{ color: GRADE_COLOR[player2.overallGrade] }}>
-                  {player2.overallGrade}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Player 1 input */}
+                <div className="space-y-2.5">
+                  <label className="text-[9px] font-black text-white/35 uppercase tracking-widest pl-1 block">Player 1 Stats</label>
+                  <textarea
+                    className="w-full bg-white/[0.01] border border-white/[0.04] focus:border-amber-500/30 text-white/80 text-xs font-mono rounded-xl p-4 resize-none outline-none min-h-[200px] leading-relaxed transition-all glass-panel"
+                    placeholder="Paste Player 1 stats log here..."
+                    value={pasted1}
+                    onChange={(e) => setPasted1(e.target.value)}
+                    spellCheck={false}
+                  />
                 </div>
-                <div className="text-[#555] text-[10px] uppercase font-mono">Score: {player2.overallScore}/100</div>
+
+                {/* Player 2 input */}
+                <div className="space-y-2.5">
+                  <label className="text-[9px] font-black text-white/35 uppercase tracking-widest pl-1 block">Player 2 Stats</label>
+                  <textarea
+                    className="w-full bg-white/[0.01] border border-white/[0.04] focus:border-amber-500/30 text-white/80 text-xs font-mono rounded-xl p-4 resize-none outline-none min-h-[200px] leading-relaxed transition-all glass-panel"
+                    placeholder="Paste Player 2 stats log here..."
+                    value={pasted2}
+                    onChange={(e) => setPasted2(e.target.value)}
+                    spellCheck={false}
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Comparison Matrix Table */}
-            <div className="border border-[#1a1a1a] rounded-xl bg-[#0c0c0c] overflow-hidden">
-              {/* Header */}
-              <div className="grid grid-cols-3 px-4 py-2.5 bg-[#0f0f0f] border-b border-[#151515] text-[9px] uppercase tracking-wider font-semibold text-[#555]">
-                <span>Stat</span>
-                <span className="text-center">{player1.username}</span>
-                <span className="text-center">{player2.username}</span>
-              </div>
-              
-              {/* Rows */}
-              <div className="divide-y divide-[#131313] text-xs font-mono">
-                
-                {/* Level */}
-                <div className="grid grid-cols-3 px-4 py-3 items-center">
-                  <span className="text-[#555] font-sans">Level</span>
-                  <span className={`text-center font-bold ${player1.level > player2.level ? "text-[#c9a84c]" : "text-[#888]"}`}>{player1.level.toLocaleString()}</span>
-                  <span className={`text-center font-bold ${player2.level > player1.level ? "text-[#c9a84c]" : "text-[#888]"}`}>{player2.level.toLocaleString()}</span>
-                </div>
+              {error && (
+                <motion.p 
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-red-400 text-xs border border-red-950/60 bg-red-950/20 px-4 py-3 rounded-lg text-center font-semibold"
+                >
+                  ⚠️ {error}
+                </motion.p>
+              )}
 
-                {/* Power */}
-                <div className="grid grid-cols-3 px-4 py-3 items-center">
-                  <span className="text-[#555] font-sans">Power</span>
-                  <span className={`text-center font-bold ${player1.powerRaw > player2.powerRaw ? "text-[#c9a84c]" : "text-[#888]"}`}>{player1.power}</span>
-                  <span className={`text-center font-bold ${player2.powerRaw > player1.powerRaw ? "text-[#c9a84c]" : "text-[#888]"}`}>{player2.power}</span>
-                </div>
-
-                {/* Damage / Hit */}
-                <div className="grid grid-cols-3 px-4 py-3 items-center">
-                  <span className="text-[#555] font-sans">Damage / Hit</span>
-                  <span className={`text-center font-bold ${player1.damagePerHit > player2.damagePerHit ? "text-[#c9a84c]" : "text-[#888]"}`}>{fmtBig(player1.damagePerHit)}</span>
-                  <span className={`text-center font-bold ${player2.damagePerHit > player1.damagePerHit ? "text-[#c9a84c]" : "text-[#888]"}`}>{fmtBig(player2.damagePerHit)}</span>
-                </div>
-
-                {/* DPS */}
-                <div className="grid grid-cols-3 px-4 py-3 items-center">
-                  <span className="text-[#555] font-sans">DPS</span>
-                  <span className={`text-center font-bold ${player1.dps > player2.dps ? "text-[#c9a84c]" : "text-[#888]"}`}>{fmtBig(player1.dps)}</span>
-                  <span className={`text-center font-bold ${player2.dps > player1.dps ? "text-[#c9a84c]" : "text-[#888]"}`}>{fmtBig(player2.dps)}</span>
-                </div>
-
-                {/* Sword */}
-                <div className="grid grid-cols-3 px-4 py-3 items-center">
-                  <span className="text-[#555] font-sans">Sword</span>
-                  <span className="text-center text-[#ddd] text-[11px] font-sans truncate">{player1.sword} <span className="font-mono text-[#555] text-[10px]">Lv{player1.swordLevel}</span></span>
-                  <span className="text-center text-[#ddd] text-[11px] font-sans truncate">{player2.sword} <span className="font-mono text-[#555] text-[10px]">Lv{player2.swordLevel}</span></span>
-                </div>
-
-                {/* Shield */}
-                <div className="grid grid-cols-3 px-4 py-3 items-center">
-                  <span className="text-[#555] font-sans">Shield</span>
-                  <span className="text-center text-[#ddd] text-[11px] font-sans truncate">{player1.shield} <span className="font-mono text-[#555] text-[10px]">Lv{player1.shieldLevel}</span></span>
-                  <span className="text-center text-[#ddd] text-[11px] font-sans truncate">{player2.shield} <span className="font-mono text-[#555] text-[10px]">Lv{player2.shieldLevel}</span></span>
-                </div>
-
-                {/* Gear Score */}
-                <div className="grid grid-cols-3 px-4 py-3 items-center">
-                  <span className="text-[#555] font-sans">Gear Score</span>
-                  <span className={`text-center font-bold ${player1.gearScore > player2.gearScore ? "text-[#c9a84c]" : "text-[#888]"}`}>{player1.gearScore}</span>
-                  <span className={`text-center font-bold ${player2.gearScore > player1.gearScore ? "text-[#c9a84c]" : "text-[#888]"}`}>{player2.gearScore}</span>
-                </div>
-
-                {/* PvP Kills */}
-                <div className="grid grid-cols-3 px-4 py-3 items-center">
-                  <span className="text-[#555] font-sans">PvP Kills</span>
-                  <span className={`text-center font-bold ${player1.pvpKills > player2.pvpKills ? "text-[#c9a84c]" : "text-[#888]"}`}>{player1.pvpKills.toLocaleString()}</span>
-                  <span className={`text-center font-bold ${player2.pvpKills > player1.pvpKills ? "text-[#c9a84c]" : "text-[#888]"}`}>{player2.pvpKills.toLocaleString()}</span>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Back CTA */}
-            <div className="flex gap-3 justify-center pt-2">
               <button
-                onClick={() => {
-                  setPlayer1(null);
-                  setPlayer2(null);
-                  setPasted1("");
-                  setPasted2("");
-                }}
-                className="bg-[#111] hover:bg-[#1a1a1a] text-white border border-[#222] font-semibold text-xs py-2 px-5 rounded-lg transition-colors"
+                onClick={handleCompare}
+                className="w-full py-4 rounded-lg button-gold text-xs font-black tracking-widest cursor-pointer"
               >
-                Compare New Accounts
+                Compare Profiles
               </button>
-              <Link href="/" className="bg-[#c9a84c] text-black font-semibold text-xs py-2 px-5 rounded-lg hover:bg-[#d4b55e] transition-colors">
-                Back to Home
-              </Link>
-            </div>
+            </motion.div>
+          )}
 
-          </div>
-        )}
+          {player1 && player2 && (
+            <motion.div 
+              key="results"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-6"
+            >
+              {/* Compare Grades Cards */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Player 1 Card */}
+                <div className="border rounded-xl p-5 bg-white/[0.01] glass-panel text-center space-y-2.5 relative transition-all duration-300"
+                  style={{
+                    borderColor: player1.overallScore > player2.overallScore ? "rgba(245, 158, 11, 0.3)" : "rgba(255, 255, 255, 0.04)",
+                    boxShadow: player1.overallScore > player2.overallScore ? "0 4px 30px rgba(245, 158, 11, 0.05)" : "none"
+                  }}
+                >
+                  {player1.overallScore > player2.overallScore && (
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-orange-500 text-black text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-md border border-amber-500/20">Winner</span>
+                  )}
+                  <h3 className="text-lg font-black text-white truncate font-display">{player1.username}</h3>
+                  <div className="text-6xl font-black font-display leading-none tracking-tight filter drop-shadow-md" style={{ color: GRADE_COLOR[player1.overallGrade] }}>
+                    {player1.overallGrade}
+                  </div>
+                  <div className="text-white/20 text-[9px] uppercase font-mono tracking-wider font-bold">Score: {player1.overallScore}/100</div>
+                </div>
+
+                {/* Player 2 Card */}
+                <div className="border rounded-xl p-5 bg-white/[0.01] glass-panel text-center space-y-2.5 relative transition-all duration-300"
+                  style={{
+                    borderColor: player2.overallScore > player1.overallScore ? "rgba(245, 158, 11, 0.3)" : "rgba(255, 255, 255, 0.04)",
+                    boxShadow: player2.overallScore > player1.overallScore ? "0 4px 30px rgba(245, 158, 11, 0.05)" : "none"
+                  }}
+                >
+                  {player2.overallScore > player1.overallScore && (
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-orange-500 text-black text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-md border border-amber-500/20">Winner</span>
+                  )}
+                  <h3 className="text-lg font-black text-white truncate font-display">{player2.username}</h3>
+                  <div className="text-6xl font-black font-display leading-none tracking-tight filter drop-shadow-md" style={{ color: GRADE_COLOR[player2.overallGrade] }}>
+                    {player2.overallGrade}
+                  </div>
+                  <div className="text-white/20 text-[9px] uppercase font-mono tracking-wider font-bold">Score: {player2.overallScore}/100</div>
+                </div>
+              </div>
+
+              {/* Comparison Matrix Table */}
+              <div className="border border-white/[0.04] rounded-xl bg-white/[0.01] glass-panel overflow-hidden">
+                {/* Header */}
+                <div className="grid grid-cols-3 px-5 py-3.5 bg-white/[0.01] border-b border-white/[0.04] text-[9px] uppercase tracking-widest font-black text-white/30">
+                  <span>Combat Metric</span>
+                  <span className="text-center">{player1.username}</span>
+                  <span className="text-center">{player2.username}</span>
+                </div>
+                
+                {/* Rows */}
+                <div className="divide-y divide-white/[0.02] text-xs font-mono font-bold">
+                  
+                  {/* Level */}
+                  <div className="grid grid-cols-3 px-5 py-3.5 items-center">
+                    <span className="text-white/40 font-sans text-xs font-semibold">Level</span>
+                    <span className={`text-center ${player1.level > player2.level ? "text-amber-400 font-black" : "text-white/70"}`}>{player1.level.toLocaleString()}</span>
+                    <span className={`text-center ${player2.level > player1.level ? "text-amber-400 font-black" : "text-white/70"}`}>{player2.level.toLocaleString()}</span>
+                  </div>
+
+                  {/* Power */}
+                  <div className="grid grid-cols-3 px-5 py-3.5 items-center">
+                    <span className="text-white/40 font-sans text-xs font-semibold">Power</span>
+                    <span className={`text-center ${player1.powerRaw > player2.powerRaw ? "text-amber-400 font-black" : "text-white/70"}`}>{player1.power}</span>
+                    <span className={`text-center ${player2.powerRaw > player1.powerRaw ? "text-amber-400 font-black" : "text-white/70"}`}>{player2.power}</span>
+                  </div>
+
+                  {/* Damage / Hit */}
+                  <div className="grid grid-cols-3 px-5 py-3.5 items-center">
+                    <span className="text-white/40 font-sans text-xs font-semibold">Damage / Hit</span>
+                    <span className={`text-center ${player1.damagePerHit > player2.damagePerHit ? "text-amber-400 font-black" : "text-white/70"}`}>{fmtBig(player1.damagePerHit)}</span>
+                    <span className={`text-center ${player2.damagePerHit > player1.damagePerHit ? "text-amber-400 font-black" : "text-white/70"}`}>{fmtBig(player2.damagePerHit)}</span>
+                  </div>
+
+                  {/* DPS */}
+                  <div className="grid grid-cols-3 px-5 py-3.5 items-center">
+                    <span className="text-white/40 font-sans text-xs font-semibold">DPS</span>
+                    <span className={`text-center ${player1.dps > player2.dps ? "text-amber-400 font-black" : "text-white/70"}`}>{fmtBig(player1.dps)}</span>
+                    <span className={`text-center ${player2.dps > player1.dps ? "text-amber-400 font-black" : "text-white/70"}`}>{fmtBig(player2.dps)}</span>
+                  </div>
+
+                  {/* Sword */}
+                  <div className="grid grid-cols-3 px-5 py-3.5 items-center">
+                    <span className="text-white/40 font-sans text-xs font-semibold">Sword</span>
+                    <span className="text-center text-white/80 font-sans truncate px-1 text-[11px]">{player1.sword} <span className="font-mono text-white/20 text-[9px]">Lv{player1.swordLevel}</span></span>
+                    <span className="text-center text-white/80 font-sans truncate px-1 text-[11px]">{player2.sword} <span className="font-mono text-white/20 text-[9px]">Lv{player2.swordLevel}</span></span>
+                  </div>
+
+                  {/* Shield */}
+                  <div className="grid grid-cols-3 px-5 py-3.5 items-center">
+                    <span className="text-white/40 font-sans text-xs font-semibold">Shield</span>
+                    <span className="text-center text-white/80 font-sans truncate px-1 text-[11px]">{player1.shield} <span className="font-mono text-white/20 text-[9px]">Lv{player1.shieldLevel}</span></span>
+                    <span className="text-center text-white/80 font-sans truncate px-1 text-[11px]">{player2.shield} <span className="font-mono text-white/20 text-[9px]">Lv{player2.shieldLevel}</span></span>
+                  </div>
+
+                  {/* Gear Score */}
+                  <div className="grid grid-cols-3 px-5 py-3.5 items-center">
+                    <span className="text-white/40 font-sans text-xs font-semibold">Gear Score</span>
+                    <span className={`text-center ${player1.gearScore > player2.gearScore ? "text-amber-400 font-black" : "text-white/70"}`}>{player1.gearScore}</span>
+                    <span className={`text-center ${player2.gearScore > player1.gearScore ? "text-amber-400 font-black" : "text-white/70"}`}>{player2.gearScore}</span>
+                  </div>
+
+                  {/* PvP Kills */}
+                  <div className="grid grid-cols-3 px-5 py-3.5 items-center">
+                    <span className="text-white/40 font-sans text-xs font-semibold">PvP Kills</span>
+                    <span className={`text-center ${player1.pvpKills > player2.pvpKills ? "text-amber-400 font-black" : "text-white/70"}`}>{player1.pvpKills.toLocaleString()}</span>
+                    <span className={`text-center ${player2.pvpKills > player1.pvpKills ? "text-amber-400 font-black" : "text-white/70"}`}>{player2.pvpKills.toLocaleString()}</span>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Action CTAs */}
+              <div className="flex gap-3 justify-center pt-2">
+                <button
+                  onClick={() => {
+                    setPlayer1(null);
+                    setPlayer2(null);
+                    setPasted1("");
+                    setPasted2("");
+                  }}
+                  className="bg-white/[0.01] hover:bg-white/[0.04] border border-white/[0.04] text-white/60 font-bold text-xs py-3 px-6 rounded-lg transition-colors cursor-pointer"
+                >
+                  New Comparison
+                </button>
+                <Link href="/" className="bg-amber-500 text-black font-black text-xs py-3 px-6 rounded-lg hover:bg-amber-400 transition-colors inline-block text-center cursor-pointer shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                  Back to Grading
+                </Link>
+              </div>
+
+            </motion.div>
+          )}
+        </AnimatePresence>
 
       </main>
     </div>

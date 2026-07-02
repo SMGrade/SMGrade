@@ -22,6 +22,10 @@ export interface ParsedPlayer {
   role?: string;
   status?: string;
   killedEnemies: Record<string, number>;
+  pet?: string;
+  petLevel?: number;
+  relic?: string;
+  relicLevel?: number;
 }
 
 function cleanText(input: string): string {
@@ -143,9 +147,13 @@ export function parsePlayerData(rawInput: string): ParsedPlayer | null {
 
   const swordRaw = extractField(relevantLines, "Sword");
   const shieldRaw = extractField(relevantLines, "Shield");
+  const petRaw = extractField(relevantLines, "Pet");
+  const relicRaw = extractField(relevantLines, "Relic");
 
   const swordParsed = parseGearString(swordRaw);
   const shieldParsed = parseGearString(shieldRaw);
+  const petParsed = petRaw ? parseGearString(petRaw) : null;
+  const relicParsed = relicRaw ? parseGearString(relicRaw) : null;
 
   // Find killed enemies section
   let killedIdx = -1;
@@ -179,5 +187,9 @@ export function parsePlayerData(rawInput: string): ParsedPlayer | null {
     role,
     status,
     killedEnemies,
+    pet: petParsed ? petParsed.name : undefined,
+    petLevel: petParsed ? petParsed.level : undefined,
+    relic: relicParsed ? relicParsed.name : undefined,
+    relicLevel: relicParsed ? relicParsed.level : undefined,
   };
 }

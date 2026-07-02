@@ -1,175 +1,450 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
-import { parsePlayerData } from "@/lib/parser";
+import { motion, AnimatePresence } from "framer-motion";
 import { scorePlayer } from "@/lib/scorer";
+import { fetchLivePlayerInfo, normalizeLivePlayer } from "@/lib/liveLookupEngine";
+import authStore, { type UserProfile } from "@/lib/authStore";
+import CompanionDrawer from "@/components/CompanionDrawer";
+
+export function ParticleBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    const particles: Array<{
+      x: number;
+      y: number;
+      size: number;
+      speedY: number;
+      speedX: number;
+      opacity: number;
+      fadeSpeed: number;
+    }> = [];
+
+    const createParticle = () => {
+      return {
+        x: Math.random() * width,
+        y: height + Math.random() * 20,
+        size: Math.random() * 1.2 + 0.4,
+        speedY: -Math.random() * 0.35 - 0.05,
+        speedX: (Math.random() - 0.5) * 0.15,
+        opacity: Math.random() * 0.4 + 0.1,
+        fadeSpeed: Math.random() * 0.0015 + 0.0005,
+      };
+    };
+
+    for (let i = 0; i < 35; i++) {
+      const p = createParticle();
+      p.y = Math.random() * height;
+      particles.push(p);
+    }
+
+    const handleResize = () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.y += p.speedY;
+        p.x += p.speedX;
+        p.opacity -= p.fadeSpeed;
+
+        if (p.opacity <= 0 || p.y < 0) {
+          particles[i] = createParticle();
+        } else {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(245, 158, 11, ${p.opacity})`;
+          ctx.fill();
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-40" />;
+}
 
 export default function Home() {
   const [, navigate] = useLocation();
-  const [pasteText, setPasteText] = useState("");
+  const [lookupUsername, setLookupUsername] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState("");
   const [error, setError] = useState("");
   const [focused, setFocused] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const analyze = useCallback(() => {
+  // Companion Auth states
+  const [companionOpen, setCompanionOpen] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    if (authStore.isLoggedIn()) {
+      authStore.fetchMe().then((p) => setProfile(p));
+    }
+  }, []);
+
+  const refreshProfile = useCallback(() => {
+    if (authStore.isLoggedIn()) {
+      authStore.fetchMe().then((p) => setProfile(p));
+    } else {
+      setProfile(null);
+    }
+  }, []);
+
+  const analyzeLiveCharacter = async () => {
     setError("");
-    const text = pasteText.trim();
-    if (!text) {
-      setError("Paste your SwordMasters stats first.");
+    const userToFind = lookupUsername.trim();
+    if (!userToFind) {
+      setError("Please enter a player username.");
       return;
     }
-    const player = parsePlayerData(text);
-    if (!player || player.level === 0) {
-      setError("Could not parse player data. Make sure you paste the full bot output.");
-      return;
+
+    setLookupLoading(true);
+    setConnectionStatus("Initializing...");
+
+    const startTime = Date.now();
+
+    try {
+      const rawPayload = await fetchLivePlayerInfo(userToFind, (status) => {
+        setConnectionStatus(status.message);
+      });
+
+      setConnectionStatus("Running grade formulas...");
+      const player = normalizeLivePlayer(rawPayload);
+
+      // Attach raw game response on the player payload so the Result page can read full quests and active pets directly
+      const normalizedPlayer = {
+        ...player,
+        rawPayload
+      };
+
+      const scores = scorePlayer(normalizedPlayer);
+      const encoded = encodeURIComponent(JSON.stringify({ player: normalizedPlayer, scores }));
+
+      const duration = Date.now() - startTime;
+      let sessionId = sessionStorage.getItem("smg_session_id");
+      if (!sessionId) {
+        sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        sessionStorage.setItem("smg_session_id", sessionId);
+      }
+
+      fetch("/api/master/log-lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          usernameSearched: userToFind,
+          sessionId,
+          userAccount: profile?.username || null,
+          userType: profile ? "Registered" : "Guest",
+          status: "Success",
+          responseTimeMs: duration,
+          grade: scores.overallGrade,
+          gearScore: scores.gearScore,
+          wealthScore: scores.wealthScore,
+          powerScore: scores.powerScore,
+          progressionScore: scores.progressScore,
+          recommendedUpgrade: scores.upgradeAdvice.immediate ? `${scores.upgradeAdvice.immediate.name} Lv${scores.upgradeAdvice.immediate.level}` : "None",
+          playerLevel: normalizedPlayer.level,
+          playerPower: normalizedPlayer.powerRaw,
+          playerGold: normalizedPlayer.goldRaw,
+          equippedSword: normalizedPlayer.sword || "Unknown",
+          equippedShield: normalizedPlayer.shield || "Unknown",
+          worldNumber: 1
+        })
+      }).catch(e => console.error("Error logging player lookup:", e));
+
+      setLookupLoading(false);
+      setDrawerOpen(false);
+      navigate(`/result?d=${encoded}`);
+    } catch (err: any) {
+      console.error(err);
+      const duration = Date.now() - startTime;
+      let sessionId = sessionStorage.getItem("smg_session_id");
+      if (!sessionId) {
+        sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        sessionStorage.setItem("smg_session_id", sessionId);
+      }
+
+      fetch("/api/master/log-lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          usernameSearched: userToFind,
+          sessionId,
+          userAccount: profile?.username || null,
+          userType: profile ? "Registered" : "Guest",
+          status: "Failed",
+          responseTimeMs: duration,
+          grade: "—",
+          gearScore: 0,
+          wealthScore: 0,
+          powerScore: 0,
+          progressionScore: 0,
+          recommendedUpgrade: "None",
+          playerLevel: 0,
+          playerPower: 0,
+          playerGold: 0,
+          equippedSword: "Unknown",
+          equippedShield: "Unknown",
+          worldNumber: 1
+        })
+      }).catch(e => console.error("Error logging player lookup:", e));
+
+      setError(err.message || "Failed to retrieve live player. Please verify connection/username.");
+      setLookupLoading(false);
     }
-    const scores = scorePlayer(player);
-    const encoded = encodeURIComponent(JSON.stringify({ player, scores }));
-    navigate(`/result?d=${encoded}`);
-  }, [pasteText, navigate]);
+  };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col relative overflow-hidden">
-      {/* Background neon aura glow */}
-      <div className="absolute top-[-10%] left-[50%] translate-x-[-50%] w-[600px] h-[300px] rounded-full bg-[#c9a84c]/5 blur-[120px] pointer-events-none" />
+    <div className="min-h-screen text-white flex flex-col relative overflow-hidden font-sans bg-[#03050b]">
+      <ParticleBackground />
 
-      {/* Header */}
-      <header className="border-b border-[#131313] bg-[#080808]/80 backdrop-blur-md px-6 py-4 flex items-center justify-between z-10">
-        <div className="flex items-center gap-3">
-          <span className="font-black text-xl tracking-wider px-2 py-0.5 rounded bg-gradient-to-r from-[#c9a84c]/20 to-[#f0d080]/10 border border-[#c9a84c]/20 text-[#c9a84c] shadow-[0_0_15px_rgba(201,168,76,0.1)]">
+      {/* Decorative gradients */}
+      <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-amber-950/10 blur-[130px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-[#1e293b]/5 blur-[130px] pointer-events-none" />
+
+      {/* Top Navbar */}
+      <header className="border-b border-white/[0.04] bg-[#070b13]/60 backdrop-blur-xl px-6 py-4 flex items-center justify-between z-20 sticky top-0">
+        <div className="flex items-center gap-2">
+          <span className="font-black text-xs tracking-wider px-2 py-0.5 rounded bg-amber-500/25 border border-amber-500/35 text-amber-400">
             SM
           </span>
-          <span className="text-white font-extrabold text-xl tracking-tight">Grade</span>
-          <span className="hidden sm:block text-[#444] text-xs font-semibold ml-2 border-l border-[#222] pl-3">
-            SwordMasters Account Grader
-          </span>
+          <span className="text-white font-extrabold text-sm tracking-tight font-display">Grade</span>
         </div>
-        <div className="flex items-center gap-5">
-          <Link href="/compare" className="text-xs text-[#777] hover:text-[#c9a84c] transition-colors font-bold uppercase tracking-wider">
-            Compare Accounts
+        
+        <div className="flex items-center gap-6">
+          <Link href="/compare" className="text-[10px] text-white/50 hover:text-amber-400 transition-colors font-black uppercase tracking-widest">
+            Compare
           </Link>
-          <a
-            href="/admin"
-            className="text-[#333] hover:text-[#c9a84c] hover:rotate-45 transition-all duration-300 text-sm select-none"
-            tabIndex={-1}
-          >
-            ⚙
-          </a>
+          <Link href="/admin" className="text-[10px] text-white/50 hover:text-amber-400 transition-colors font-black uppercase tracking-widest">
+            Admin Panel
+          </Link>
+          
+          {profile ? (
+            <button 
+              onClick={() => setCompanionOpen(true)}
+              className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/25 rounded-lg px-2.5 py-1 text-xs text-amber-400 font-bold hover:bg-amber-500/15 transition-all cursor-pointer font-display"
+            >
+              <img src={profile.profilePic} alt="avatar" className="w-5 h-5 rounded bg-[#03050b] border border-white/5" />
+              <span className="max-w-[70px] truncate">{profile.username}</span>
+            </button>
+          ) : (
+            <button 
+              onClick={() => setCompanionOpen(true)}
+              className="text-[10px] text-white/55 hover:text-amber-400 transition-colors font-black uppercase tracking-widest cursor-pointer"
+            >
+              Log In
+            </button>
+          )}
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-16 max-w-2xl mx-auto w-full z-10 relative">
-        {/* Hero */}
-        <div className="text-center mb-12 space-y-5">
-          {/* Logo mark with premium glow */}
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl border border-[#c9a84c]/25 mb-2 transition-all duration-500 hover:scale-105 hover:border-[#c9a84c]/50 hover:shadow-[0_0_40px_rgba(201,168,76,0.2)] group"
-            style={{ background: "radial-gradient(circle at 50% 40%, #1c1500 0%, #080808 100%)" }}>
-            <span className="text-5xl filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)] group-hover:animate-bounce">⚔️</span>
-          </div>
-          
-          <div className="space-y-2.5">
-            <h1 className="text-6xl font-black tracking-tight leading-none">
-              <span style={{
-                background: "linear-gradient(135deg, #c9a84c 0%, #f5db9a 50%, #c9a84c 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }} className="drop-shadow-[0_2px_15px_rgba(201,168,76,0.2)]">SM</span><span className="text-white">Grade</span>
-            </h1>
-            <p className="text-[#c9a84c] text-xs font-black uppercase tracking-widest bg-[#c9a84c]/5 border border-[#c9a84c]/10 px-4.5 py-1.5 rounded-full inline-block">
-              The Ultimate SwordMasters Account Analyzer
-            </p>
-          </div>
-
-          <p className="text-[#666] text-sm md:text-base leading-relaxed max-w-md mx-auto">
-            Paste your SwordMasters <span className="text-[#888] font-mono bg-[#111] px-1.5 py-0.5 rounded border border-[#222]">/stats</span> output.<br />
-            Get an instant grade compared to real competitive players.
-          </p>
-        </div>
-
-        {/* Paste Box */}
-        <div className="w-full space-y-5">
-          <label className="text-[10px] font-black text-[#555] uppercase tracking-widest block pl-1">
-            Paste Bot Output
-          </label>
-          <div
-            className="relative rounded-xl overflow-hidden transition-all duration-300 border bg-[#0b0b0b]"
-            style={{
-              borderColor: focused ? "#c9a84c44" : "#181818",
-              boxShadow: focused
-                ? "0 0 30px rgba(201,168,76,0.06), inset 0 0 15px rgba(201,168,76,0.02)"
-                : "none",
-            }}
-          >
-            <textarea
-              className="w-full bg-transparent text-[#ddd] text-sm font-mono p-5 resize-none outline-none placeholder-[#252525] min-h-[240px] leading-relaxed animate-none"
-              placeholder={`Paste your /stats bot output here...\n\nExample:\nYAMxARF Stats\nLevel\n12586\nGold\n 1.04QT\nPower\n 9.95QT\nSword\nSolbrand, Level 4  1%\nShield\nSunward Bulwark, Level 4  1%`}
-              value={pasteText}
-              onChange={(e) => { setPasteText(e.target.value); setError(""); }}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              spellCheck={false}
-            />
-          </div>
-
-          {error && (
-            <p className="text-red-400 text-xs font-semibold border border-red-950/60 bg-red-950/20 px-4 py-3 rounded-lg animate-pulse">
-              ⚠️ {error}
-            </p>
-          )}
-
-          <button
-            onClick={analyze}
-            className="w-full font-extrabold py-4 px-6 rounded-lg transition-all duration-300 text-xs uppercase tracking-widest text-black hover:scale-[1.01] active:scale-[0.99]"
-            style={{
-              background: "linear-gradient(135deg, #c9a84c 0%, #f0d080 100%)",
-              boxShadow: "0 4px 20px rgba(201,168,76,0.25), inset 0 -2px 0 rgba(0,0,0,0.2)",
-            }}
-            onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 25px rgba(201,168,76,0.4), inset 0 -2px 0 rgba(0,0,0,0.2)")}
-            onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 4px 20px rgba(201,168,76,0.25), inset 0 -2px 0 rgba(0,0,0,0.2)")}
-          >
-            Analyze Account
-          </button>
-
-          <p className="text-center text-[#444] text-[10px] uppercase tracking-wider font-semibold">
-            Copy the full bot response from Discord and paste it above
-          </p>
-        </div>
-
-        {/* How it works */}
-        <div className="mt-20 w-full border-t border-[#111] pt-12">
-          <p className="text-[#444] text-[10px] uppercase tracking-widest text-center mb-8 font-black">How it works</p>
-          <div className="grid grid-cols-3 gap-6 text-center">
-            {[
-              { step: "01", title: "Paste Stats", desc: "Copy your /stats bot output from Discord" },
-              { step: "02", title: "Instant Score", desc: "Deterministic engine compares you to real players" },
-              { step: "03", title: "AI Coach", desc: "Get your grade, gear tips, and personalized advice" },
-            ].map((item) => (
-              <div key={item.step} className="space-y-2 group">
-                <div className="text-[#c9a84c] text-xs font-mono font-bold transition-all duration-300 group-hover:scale-110">{item.step}</div>
-                <div className="text-[#ccc] text-xs sm:text-sm font-semibold">{item.title}</div>
-                <div className="text-[#444] text-[11px] leading-relaxed px-1">{item.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Grade examples */}
-        <div className="mt-12 flex items-center gap-3.5 flex-wrap justify-center">
-          {[
-            { g: "S+", c: "#FFD700" }, { g: "A+", c: "#c9a84c" },
-            { g: "B", c: "#8ab4c9" }, { g: "C", c: "#888" }, { g: "D", c: "#e05a5a" },
-          ].map(({ g, c }) => (
-            <div
-              key={g}
-              className="w-10 h-10 rounded-xl border flex items-center justify-center font-black text-sm transition-all duration-300 hover:scale-110 cursor-default"
-              style={{ color: c, borderColor: c + "22", background: c + "05" }}
-            >
-              {g}
+      {/* Hero / Landing Grid */}
+      <main className="flex-1 z-10 relative">
+        
+        <section className="max-w-6xl mx-auto px-6 py-20 lg:py-32 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          {/* Left Hero Text */}
+          <div className="space-y-8 text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.04] bg-white/[0.01] text-[9px] uppercase tracking-widest text-amber-400 font-black font-display">
+              ⚔️ Version 3.4 Active
             </div>
-          ))}
-        </div>
+            
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-none font-display text-white">
+              Definitive <br />
+              <span className="glow-text-gold">Companion</span>
+            </h1>
+
+            <p className="text-white/40 text-sm md:text-base leading-relaxed max-w-lg font-medium">
+              Unlock real-time metrics, gear score card grades, deterministic leader comparisons, and intelligent tactics with the official companion engine.
+            </p>
+
+            <div className="flex gap-4">
+              <button 
+                onClick={() => {
+                  if (!authStore.isLoggedIn() && !authStore.isGuest()) {
+                    setCompanionOpen(true);
+                  } else {
+                    setDrawerOpen(true);
+                  }
+                }}
+                className="px-8 py-4 rounded-xl button-gold text-xs font-black tracking-widest cursor-pointer shadow-[0_0_30px_rgba(245,158,11,0.15)]"
+              >
+                Analyze stats
+              </button>
+              <Link 
+                href="/compare"
+                className="px-8 py-4 rounded-xl border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.03] text-xs font-black tracking-widest uppercase text-white/80 transition-all flex items-center justify-center cursor-pointer"
+              >
+                Compare accounts
+              </Link>
+            </div>
+          </div>
+
+          {/* Right Floating Weapons Visual */}
+          <div className="relative h-[300px] sm:h-[450px] flex items-center justify-center">
+            {/* Center golden circle glow */}
+            <div className="absolute w-64 h-64 rounded-full bg-amber-500/5 blur-[70px]" />
+            
+            {/* Left float card */}
+            <motion.div 
+              animate={{ y: [0, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+              className="absolute left-4 sm:left-12 top-6 p-5 w-44 rounded-2xl border border-white/[0.03] bg-[#0c1020] shadow-[0_8px_30px_rgba(0,0,0,0.6)] z-10 glass-panel"
+            >
+              <div className="text-amber-400 text-[8px] font-black uppercase tracking-widest">Legendary Weapon</div>
+              <div className="text-white font-extrabold text-xs mt-1">Horizon</div>
+              <div className="text-white/30 text-[9px] font-mono mt-0.5">Lv10 · 39.0B DMG</div>
+              <div className="w-full bg-amber-500/10 h-1 rounded-full mt-4 overflow-hidden">
+                <div className="w-full h-full bg-amber-500" />
+              </div>
+            </motion.div>
+
+            {/* Right float card */}
+            <motion.div 
+              animate={{ y: [0, 10, 0] }}
+              transition={{ repeat: Infinity, duration: 6, ease: "easeInOut", delay: 1 }}
+              className="absolute right-4 sm:right-12 bottom-6 p-5 w-44 rounded-2xl border border-white/[0.03] bg-[#0c1020] shadow-[0_8px_30px_rgba(0,0,0,0.6)] z-10 glass-panel"
+            >
+              <div className="text-amber-500 text-[8px] font-black uppercase tracking-widest">Epic Shield</div>
+              <div className="text-white font-extrabold text-xs mt-1">Sunward Bulwark</div>
+              <div className="text-white/30 text-[9px] font-mono mt-0.5">Lv4 · 1.0x MULT</div>
+              <div className="w-full bg-[#ffd700]/10 h-1 rounded-full mt-4 overflow-hidden">
+                <div className="w-[40%] h-full bg-[#ffd700]" />
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Feature Highlights section */}
+        <section className="border-t border-white/[0.03] bg-[#070b13]/25 py-20 px-6">
+          <div className="max-w-6xl mx-auto space-y-12">
+            <div className="text-center space-y-2">
+              <span className="text-amber-450 text-[9px] font-black tracking-widest uppercase font-display">System Core</span>
+              <h2 className="text-3xl font-black tracking-tight text-white font-display">Built for Champions</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                { title: "Tactical Analyzer", desc: "Grade stats instantly with fully deterministic algorithm scoring, checking items and weapon levels." },
+                { title: "Simulated Sandboxes", desc: "Test item changes dynamically. See exactly how stats will shift before investing resources." },
+                { title: "Interactive Timelines", desc: "Save logs history profiles locally to plot DPS progression growth curves over time." },
+              ].map((feat, idx) => (
+                <div key={idx} className="p-6 rounded-xl border border-white/[0.03] bg-[#070b13]/40 glass-panel">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/5 border border-amber-500/15 flex items-center justify-center text-xs text-amber-400 mb-4">
+                    ✦
+                  </div>
+                  <h3 className="text-sm font-black text-white font-display mb-1">{feat.title}</h3>
+                  <p className="text-white/40 text-xs leading-relaxed font-medium">{feat.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer className="border-t border-[#101010] bg-[#050505] px-6 py-5 text-center text-[#333] text-[10px] font-bold uppercase tracking-wider z-10">
-        SMGrade — not affiliated with SwordMasters
+      {/* Drawer Overlay for Stats Input */}
+      <AnimatePresence>
+        {drawerOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-end">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !lookupLoading && setDrawerOpen(false)}
+              className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            />
+            
+            {/* Content Drawer */}
+            <motion.div 
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 250 }}
+              className="relative w-full max-w-lg h-full bg-[#070b13] border-l border-white/[0.04] p-8 flex flex-col justify-between overflow-y-auto"
+            >
+              <div className="space-y-6">
+                <div className="flex items-center justify-between border-b border-white/[0.04] pb-4">
+                  <div>
+                    <h3 className="text-lg font-black text-white font-display">Character Analyzer</h3>
+                    <p className="text-white/35 text-[10px] uppercase font-bold mt-0.5">Live character fetch</p>
+                  </div>
+                  <button onClick={() => !lookupLoading && setDrawerOpen(false)} className="text-white/40 hover:text-white text-xs select-none cursor-pointer" disabled={lookupLoading}>
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-5">
+                  <label className="text-[9px] uppercase tracking-widest text-[#ffd700] font-black font-display block">SwordMasters Username</label>
+                  <input
+                    type="text"
+                    disabled={lookupLoading}
+                    className="w-full bg-[#03050b] border border-white/[0.08] focus:border-amber-500/30 text-white text-sm px-4 py-3.5 rounded-xl outline-none transition-colors"
+                    placeholder="Enter character name (e.g. Harrison)"
+                    value={lookupUsername}
+                    onChange={(e) => setLookupUsername(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && analyzeLiveCharacter()}
+                  />
+                  {error && <p className="text-red-400 text-xs font-semibold">⚠️ {error}</p>}
+
+                  {lookupLoading && (
+                    <div className="flex flex-col items-center justify-center p-8 bg-white/[0.01] border border-amber-500/10 rounded-xl space-y-4">
+                      <div className="w-8 h-8 rounded-full border-2 border-amber-500/10 border-t-amber-400 animate-spin" />
+                      <p className="text-[#ffd700] text-xs font-bold uppercase tracking-wider animate-pulse">{connectionStatus}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-6 border-t border-white/[0.04]">
+                <button 
+                  onClick={analyzeLiveCharacter}
+                  disabled={lookupLoading}
+                  className="w-full py-4 rounded-xl button-gold text-xs font-black tracking-widest disabled:opacity-20 cursor-pointer shadow-[0_0_20px_rgba(245,158,11,0.1)]"
+                >
+                  {lookupLoading ? "Connecting..." : "Fetch and Analyze"}
+                </button>
+                <p className="text-center text-white/25 text-[8.5px] uppercase font-bold tracking-wider">
+                  Handshakes directly with SwordMasters load balancer.
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <CompanionDrawer 
+        isOpen={companionOpen} 
+        onClose={() => setCompanionOpen(false)} 
+        onLoginStateChange={refreshProfile}
+        onAuthSuccess={() => setDrawerOpen(true)}
+      />
+
+      <footer className="border-t border-white/[0.03] bg-[#070b13]/60 px-6 py-5 text-center text-white/20 text-[9px] font-bold uppercase tracking-widest z-10">
+        Companion App — built for SwordMasters
       </footer>
     </div>
   );

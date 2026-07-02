@@ -1,40 +1,141 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import { useExplainGrade } from "@workspace/api-client-react";
 import type { ParsedPlayer } from "@/lib/parser";
 import type { ScoreResult, GearSlotGrade } from "@/lib/scorer";
-import { formatNumber } from "@/lib/numberParser";
-import { getSwordRarity, getShieldRarity } from "@/lib/benchmark";
+import { formatNumber, parseNumber } from "@/lib/numberParser";
+import { getSwordRarity, getShieldRarity, getInterpolatedBenchmark } from "@/lib/benchmark";
 import { downloadShareCard } from "@/lib/shareCard";
-import { getSwordData, getShieldData, scaledSwordDamage, scaledShieldDM } from "@/lib/gearDatabase";
+import { getSwordData, getShieldData, scaledSwordDamage, scaledShieldDM, loadItems, resolveItemByGameType, getNextSwordUpgrade, getNextShieldUpgrade, swordUpgradeGain, shieldUpgradeGain } from "@/lib/gearDatabase";
+import { getPriceRaw } from "@/lib/marketDatabase";
 import Simulator from "@/components/Simulator";
 import HistoryTracker from "@/components/HistoryTracker";
+import { ParticleBackground } from "./Home";
+import authStore, { type UserProfile } from "@/lib/authStore";
+import CompanionDrawer from "@/components/CompanionDrawer";
+import { ensurePricesLoaded, calculateNetWorth, lookupItemPrice, type NetWorthResult } from "@/lib/priceProvider";
+import { scorePlayer } from "@/lib/scorer";
+import { calculateDamageStats } from "@/lib/damageCalc";
 
 interface ResultData {
   player: ParsedPlayer;
   scores: ScoreResult;
 }
 
+export function GradeParticles({ color }: { color: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    const width = (canvas.width = 400);
+    const height = (canvas.height = 400);
+
+    const particles: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      size: number;
+      alpha: number;
+      decay: number;
+    }> = [];
+
+    for (let i = 0; i < 70; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 3 + 1.2;
+      particles.push({
+        x: width / 2,
+        y: height / 2,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: Math.random() * 1.5 + 0.8,
+        alpha: 1,
+        decay: Math.random() * 0.015 + 0.012,
+      });
+    }
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      particles.forEach((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vx *= 0.97;
+        p.vy *= 0.97;
+        p.alpha -= p.decay;
+
+        if (p.alpha > 0) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.shadowBlur = 4;
+          ctx.shadowColor = color;
+          ctx.globalAlpha = p.alpha;
+          ctx.fill();
+        }
+      });
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [color]);
+
+  return <canvas ref={canvasRef} className="absolute w-[400px] h-[400px] pointer-events-none z-0 opacity-80" />;
+}
+
 const GRADE_COLOR: Record<string, string> = {
-  "S+": "#FFD700",
-  S: "#FFD700",
-  "A+": "#c9a84c",
-  A: "#c9a84c",
-  "B+": "#8ab4c9",
-  B: "#8ab4c9",
+  "S+": "#ffd700",
+  S: "#ffd700",
+  "A+": "#3b82f6",
+  A: "#3b82f6",
+  "B+": "#a855f7",
+  B: "#a855f7",
   "C+": "#888",
   C: "#888",
   D: "#e05a5a",
 };
 
 const STANDING_COLOR: Record<string, string> = {
-  Elite: "#FFD700",
-  "Above Average": "#c9a84c",
-  Average: "#8ab4c9",
+  Elite: "#ffd700",
+  "Above Average": "#3b82f6",
+  Average: "#a855f7",
   "Below Average": "#888",
   Weak: "#e05a5a",
 };
+
+function getPlayerInsights(scores: ScoreResult, player: ParsedPlayer): string[] {
+  const insights: string[] = [];
+  
+  const percentile = estimatePercentile(scores.overallScore);
+  if (percentile.top) {
+    insights.push(`You rank in the ${percentile.label} of active accounts globally.`);
+  } else {
+    insights.push(`Your account rating outperforms approximately ${100 - parseInt(percentile.label.match(/\d+/)?.[0] ?? "50")}% of players.`);
+  }
+
+  if (scores.gearScore >= 85) {
+    insights.push("Your weapon and shield levels are highly optimized for this tier.");
+  } else if (scores.gearScore < 50) {
+    insights.push("Your gear levels are below average. Focus on upgrading weapons.");
+  }
+
+  if (scores.powerScore >= 80) {
+    insights.push("Your raw power contribution is exceptionally high.");
+  } else if (scores.powerScore < 55) {
+    insights.push("Your power is lagging. Grind gold or quests to buy stats.");
+  }
+
+  return insights.slice(0, 3);
+}
 
 function estimatePercentile(overallScore: number): { label: string; top: boolean } {
   if (overallScore >= 93) return { label: "Top 3%", top: true };
@@ -42,245 +143,150 @@ function estimatePercentile(overallScore: number): { label: string; top: boolean
   if (overallScore >= 75) return { label: "Top 20%", top: true };
   if (overallScore >= 65) return { label: "Top 35%", top: true };
   if (overallScore >= 55) return { label: "Top 50%", top: false };
-  if (overallScore >= 45) return { label: "Bottom 40%", top: false };
-  if (overallScore >= 35) return { label: "Bottom 25%", top: false };
-  return { label: "Bottom 10%", top: false };
+  if (overallScore >= 45) return { label: "Top 65%", top: false };
+  if (overallScore >= 35) return { label: "Top 80%", top: false };
+  return { label: "Top 95%", top: false };
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 mb-4">
-      <span className="text-[10px] uppercase tracking-widest text-[#444] font-semibold whitespace-nowrap">{children}</span>
-      <div className="flex-1 h-px bg-[#151515]" />
-    </div>
+    <h3 className="text-[10px] tracking-widest uppercase font-black text-white/35 font-display mb-3">
+      {children}
+    </h3>
   );
 }
 
-function ScoreBar({ label, score, color }: { label: string; score: number; color: string }) {
-  return (
-    <div className="space-y-1.5">
-      <div className="flex justify-between text-xs">
-        <span className="text-[#666]">{label}</span>
-        <span style={{ color }} className="font-mono font-bold tabular-nums">{score}</span>
-      </div>
-      <div className="h-1.5 bg-[#111] rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${score}%`, background: `linear-gradient(90deg, ${color}99, ${color})` }}
-        />
-      </div>
-    </div>
-  );
+function getRarityStyles(rarity: string) {
+  if (rarity === "Legendary") {
+    return {
+      gradient: "from-[#00171a] via-[#050505] to-[#00171a]",
+      border: "border-amber-500/25 hover:border-amber-500/50",
+      glow: "rgba(0,240,255,0.03)",
+      textColor: "text-amber-400"
+    };
+  }
+  if (rarity === "Epic") {
+    return {
+      gradient: "from-[#14021a] via-[#050505] to-[#14021a]",
+      border: "border-purple-500/25 hover:border-purple-500/50",
+      glow: "rgba(168,85,247,0.03)",
+      textColor: "text-purple-400"
+    };
+  }
+  return {
+    gradient: "from-[#111622] via-[#050505] to-[#111622]",
+    border: "border-white/10 hover:border-amber-500/30",
+    glow: "rgba(255,215,0,0.01)",
+    textColor: "text-white/60"
+  };
 }
 
-function StatRow({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="flex justify-between py-2 border-b border-[#111] last:border-0">
-      <span className="text-[#555] text-sm">{label}</span>
-      <span className="text-[#ccc] text-sm font-mono">{value}</span>
-    </div>
-  );
+function clamp(val: number, min = 0, max = 100): number {
+  return Math.max(min, Math.min(max, val));
 }
 
 function SlotGradeCard({ slot, index }: { slot: GearSlotGrade; index: number }) {
   const gradeColor = GRADE_COLOR[slot.grade] ?? "#888";
-  const isOptimal = !slot.tip;
   const tip = slot.tip;
 
-  const isKeepLeveling = !!tip?.switchWorthwhileAtLevel;
-  const isAffordable = tip?.affordable !== false;
-  const isSwitchNow = tip && !isKeepLeveling;
-
+  const lvlMatch = slot.itemName.match(/Lv(\d+)/i);
+  const currentLevel = lvlMatch ? parseInt(lvlMatch[1]) : 0;
+  
+  const rarity = slot.slotName === "Sword" ? getSwordRarity(slot.itemName) : getShieldRarity(slot.itemName);
+  const rStyles = getRarityStyles(rarity);
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.08, ease: "easeOut" }}
-      className="rounded-xl p-4 space-y-3"
+      transition={{ duration: 0.4, delay: index * 0.1, ease: "easeOut" }}
+      className={`rounded-xl p-5 space-y-4 glass-panel border relative transition-all duration-300 bg-gradient-to-br ${rStyles.gradient} ${rStyles.border} hover:scale-[1.01]`}
       style={{
-        background: "#0c0c0c",
-        border: `1px solid ${gradeColor}18`,
-        boxShadow: `inset 0 0 30px ${gradeColor}05`,
+        boxShadow: `0 8px 30px rgba(0, 0, 0, 0.5), inset 0 0 25px ${rStyles.glow}`,
       }}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[#444] text-[9px] uppercase tracking-widest mb-0.5">{slot.slotName}</div>
-          <div className="text-[#ddd] text-sm font-semibold truncate">{slot.itemName}</div>
-          <div className="text-[#444] text-xs mt-0.5 font-mono">{slot.stat}</div>
+          <div className="text-white/30 text-[9px] uppercase tracking-widest font-black font-display mb-0.5">{slot.slotName} Slot</div>
+          <div className="text-white font-black text-sm truncate font-display">{slot.itemName.split(",")[0]}</div>
+          <div className={`text-[9px] uppercase font-mono font-bold mt-1.5 bg-white/[0.02] px-2 py-0.5 rounded border border-white/5 inline-block ${rStyles.textColor}`}>{rarity}</div>
         </div>
-        <div className="text-right shrink-0">
-          <div
-            className="text-2xl font-black leading-none"
-            style={{ color: gradeColor, textShadow: `0 0 20px ${gradeColor}66` }}
-          >
-            {slot.grade}
-          </div>
-          <div className="text-[#333] text-[10px] mt-0.5">{slot.score}/100</div>
-        </div>
-      </div>
-
-      <div className="h-1 bg-[#111] rounded-full overflow-hidden">
         <div
-          className="h-full rounded-full"
-          style={{ width: `${slot.score}%`, background: `linear-gradient(90deg, ${gradeColor}88, ${gradeColor})` }}
-        />
+          className="w-12 h-12 rounded-xl flex items-center justify-center font-black font-display text-lg filter drop-shadow-md select-none border"
+          style={{
+            color: gradeColor,
+            borderColor: `${gradeColor}33`,
+            background: `radial-gradient(circle, ${gradeColor}15 0%, transparent 100%)`
+          }}
+        >
+          {slot.grade}
+        </div>
       </div>
 
-      {isOptimal ? (
-        <div className="flex items-center gap-1.5">
-          <span className="text-[#4a9e5c]">✓</span>
-          <span className="text-[#4a9e5c] text-xs">Best in slot</span>
-        </div>
-      ) : isKeepLeveling ? (
-        <div className="rounded-lg p-3 space-y-1" style={{ background: "#081208", border: "1px solid #0f2a10" }}>
-          <div className="text-[#5ecb7a] text-[9px] uppercase tracking-widest font-bold">Keep Leveling — Don't Switch Yet</div>
-          <div className="text-[#ccc] text-xs leading-relaxed">
-            Your current item beats{" "}
-            <span className="text-white font-semibold">{tip!.targetName} Lv1</span>.{" "}
-            Switch only when you can get it to{" "}
-            <span className="text-[#c9a84c] font-semibold">Lv{tip!.switchWorthwhileAtLevel}</span>.
+      {currentLevel > 0 && (
+        <div className="space-y-1">
+          <div className="flex justify-between text-[9px] uppercase tracking-wider font-semibold text-white/20">
+            <span>Item Level</span>
+            <span className="font-mono">{currentLevel}/10</span>
           </div>
-          {tip!.marketPriceNote && (
-            <div className="text-[#3a3a3a] text-[10px]">
-              💰 At Lv{tip!.switchWorthwhileAtLevel}: {tip!.marketPriceNote}
-              {!isAffordable && <span className="text-[#8b4a10] ml-2">· Out of budget</span>}
-            </div>
-          )}
-        </div>
-      ) : isSwitchNow && isAffordable ? (
-        <div className="rounded-lg p-3 space-y-1" style={{ background: "#110e00", border: "1px solid #2a2000" }}>
-          <div className="text-[#c9a84c] text-[9px] uppercase tracking-widest font-bold">Upgrade Now</div>
-          <div className="text-[#ccc] text-xs leading-relaxed">
-            Switch to{" "}
-            <span className="text-white font-semibold">{tip!.targetName} Lv{tip!.targetLevel}</span>
-            {tip!.damageGainPct > 0 && (
-              <span className="text-[#5ecb7a]"> (+{tip!.damageGainPct}% boost)</span>
-            )}
+          <div className="flex gap-1">
+            {Array.from({ length: 10 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="h-1.5 flex-1 rounded-sm transition-all duration-500"
+                style={{
+                  backgroundColor: idx < currentLevel ? rStyles.textColor.includes("purple") ? "#c084fc" : "#ffd700" : "rgba(255,255,255,0.03)",
+                  boxShadow: idx < currentLevel ? `0 0 8px ${rStyles.textColor.includes("purple") ? "#a855f7" : "#ffd700"}` : "none",
+                }}
+              />
+            ))}
           </div>
-          {tip!.marketPriceNote && (
-            <div className="text-[#444] text-[10px]">💰 Market: {tip!.marketPriceNote}</div>
-          )}
         </div>
-      ) : isSwitchNow && !isAffordable ? (
-        <div className="rounded-lg p-3 space-y-1" style={{ background: "#110800", border: "1px solid #2a1500" }}>
-          <div className="text-[#b87a30] text-[9px] uppercase tracking-widest font-bold">Long-Term Goal</div>
-          <div className="text-[#aaa] text-xs leading-relaxed">
-            Upgrade path:{" "}
-            <span className="text-[#ddd] font-semibold">{tip!.targetName} Lv{tip!.targetLevel}</span>
-            {tip!.damageGainPct > 0 && <span className="text-[#5ecb7a]"> (+{tip!.damageGainPct}%)</span>}
-            {" "}— but out of budget for now.
+      )}
+
+      {tip ? (
+        <div className="border-t border-white/[0.04] pt-3 mt-1 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] uppercase font-black tracking-wider text-amber-400">Upgrade path</span>
+            <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm border ${
+              tip.affordable ? "bg-[#5ecb7a]/10 border-[#5ecb7a]/20 text-[#5ecb7a]" : "bg-white/[0.02] border-white/5 text-white/35"
+            }`}>
+              {tip.affordable ? "Affordable" : "Not Affordable"}
+            </span>
           </div>
-          {tip!.marketPriceNote && (
-            <div className="text-[#444] text-[10px]">💰 Market: {tip!.marketPriceNote}</div>
-          )}
+          <div className="text-xs text-white/50 leading-relaxed font-medium">
+            Next: Upgrade to <span className="text-white font-bold">{tip.targetName} Lv{tip.targetLevel}</span> for <span className="text-[#5ecb7a] font-bold font-mono">+{tip.damageGainPct}% DMG</span>.
+          </div>
         </div>
-      ) : null}
+      ) : (
+        <div className="border-t border-white/[0.04] pt-3 mt-1 flex items-center justify-between text-xs text-white/35 font-medium">
+          <span>Perfect Stat</span>
+          <span className="text-[#5ecb7a] text-[10px]">✓ Optimized</span>
+        </div>
+      )}
     </motion.div>
   );
 }
 
-function CombatStats({ player }: { player: ParsedPlayer }) {
-  const swordData = getSwordData(player.sword);
-  const shieldData = getShieldData(player.shield);
-  if (!swordData && !shieldData) return null;
-
-  const ds = swordData ? scaledSwordDamage(swordData.baseDamage, player.swordLevel) : 0;
-  const ms = shieldData ? scaledShieldDM(shieldData.baseDM, player.shieldLevel) : 0;
-  const dsRaw = ds * 1e9;
-  const p = Math.max(player.powerRaw, 0);
-  const damagePerHit = dsRaw > 0 || p > 0 ? (dsRaw + 2 * Math.sqrt(p) + 1) * (1 + ms) : 0;
-  const dps = damagePerHit * 2.77;
-
-  function fmtBig(n: number): string {
-    if (n >= 1e24) return (n / 1e24).toFixed(2) + " OCT";
-    if (n >= 1e21) return (n / 1e21).toFixed(2) + " SXT";
-    if (n >= 1e18) return (n / 1e18).toFixed(2) + " QNT";
-    if (n >= 1e15) return (n / 1e15).toFixed(2) + " QT";
-    if (n >= 1e12) return (n / 1e12).toFixed(2) + " T";
-    if (n >= 1e9) return (n / 1e9).toFixed(2) + " B";
-    if (n >= 1e6) return (n / 1e6).toFixed(2) + " M";
-    return n.toFixed(0);
-  }
-
-  const rows = [
-    ...(swordData ? [{ label: "DS (Sword Damage)", value: `${ds.toFixed(2)}B`, sub: `${swordData.name} Lv${player.swordLevel} (Base: ${(swordData.baseDamage / 1e9).toFixed(2)}B)` }] : []),
-    ...(shieldData ? [{ label: "MS (Shield Multiplier)", value: `${ms.toFixed(1)}×`, sub: `${shieldData.name} Lv${player.shieldLevel} (Base: ${shieldData.baseDM}x)` }] : []),
-    { label: "Power Contribution (2√Power)", value: fmtBig(2 * Math.sqrt(p)), sub: `2 × √${formatNumber(p)}` },
-    ...(damagePerHit > 0 ? [
-      { label: "Damage / Hit", value: fmtBig(damagePerHit), sub: `(DS + 2√Power + 1) × (1 + MS) = (${ds.toFixed(2)}B + ${fmtBig(2*Math.sqrt(p))} + 1) × ${(1+ms).toFixed(1)}` },
-      { label: "DPS (Hits/Sec)", value: fmtBig(dps), sub: "Damage/Hit × 2.77 hits per second" },
-    ] : []),
-  ];
-
-  return (
-    <div className="space-y-1">
-      {rows.map(({ label, value, sub }) => (
-        <div key={label} className="flex items-center justify-between py-2.5 border-b border-[#0f0f0f] last:border-0">
-          <div>
-            <div className="text-[#555] text-sm">{label}</div>
-            {sub && <div className="text-[#2a2a2a] text-[10px] font-mono mt-0.5">{sub}</div>}
-          </div>
-          <div className="text-white font-mono font-bold text-sm">{value}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-interface ChatMessage {
-  role: "user" | "coach";
-  text: string;
-}
-
 const EXAMPLE_QUESTIONS = [
-  "Why is my grade this low?",
-  "Should I upgrade my sword first?",
-  "How far am I from S grade?",
-  "Is leveling worth it right now?",
+  "What is the cheapest upgrade for my damage?",
+  "Should I focus on my shield or weapon level?",
+  "Is my power rating optimized for my level?",
 ];
 
-function AiCoachSection({
-  explanation,
-  isPending,
-  isError,
-  player,
-  scores,
-}: {
-  explanation: { summary: string; strengths: string[]; weaknesses: string[]; recommendation: string; reasoning: string } | undefined;
-  isPending: boolean;
-  isError: boolean;
-  player: ParsedPlayer;
-  scores: ScoreResult;
-}) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+function CoachChat({ playerContext, explanation }: { playerContext: string; explanation?: any }) {
+  const [messages, setMessages] = useState<Array<{ role: "user" | "coach"; text: string }>>([]);
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const playerContext = {
-    username: player.username,
-    level: player.level,
-    tier: scores.levelTier,
-    overallGrade: scores.overallGrade,
-    overallScore: scores.overallScore,
-    gearScore: scores.gearScore,
-    powerScore: scores.powerScore,
-    progressScore: scores.progressScore,
-    wealthScore: scores.wealthScore,
-    sword: `${player.sword} Lv${player.swordLevel}`,
-    shield: `${player.shield} Lv${player.shieldLevel}`,
-    power: player.power,
-    gold: player.gold,
-    standing: scores.standing,
-  };
-
-  async function sendQuestion(q: string) {
-    const text = q.trim();
-    if (!text || chatLoading) return;
+  async function sendQuestion(text: string) {
+    if (!text.trim() || chatLoading) return;
     setInput("");
     setMessages((m) => [...m, { role: "user", text }]);
     setChatLoading(true);
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+
     try {
       const res = await fetch("/api/grade/chat", {
         method: "POST",
@@ -298,188 +304,81 @@ function AiCoachSection({
   }
 
   return (
-    <div
-      className="rounded-xl overflow-hidden"
-      style={{ border: "1px solid #1e1a0a", background: "#09080a" }}
-    >
-      {/* Section header */}
-      <div className="flex items-center gap-2 px-5 pt-5 pb-4 border-b border-[#111]">
-        <span className="text-lg">⚔️</span>
-        <span className="text-[#c9a84c] font-bold text-sm tracking-wide">AI COACH</span>
-        {isPending && (
-          <span className="ml-auto text-[#333] text-xs animate-pulse">Analyzing...</span>
-        )}
+    <div className="rounded-xl p-5 border border-white/[0.04] glass-panel space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">💬</span>
+          <span className="text-amber-400 text-xs font-black uppercase tracking-widest font-display">Ask the AI Coach</span>
+        </div>
       </div>
 
-      <div className="p-5 space-y-5">
-        {/* Analysis content */}
-        {isPending && (
-          <div className="space-y-2.5">
-            {[80, 60, 90, 50, 70].map((w, i) => (
-              <div
-                key={i}
-                className="h-3 rounded-full animate-pulse"
-                style={{ width: `${w}%`, background: "#151515" }}
-              />
+      <div className="space-y-4 pt-1">
+        {messages.length === 0 && (
+          <div className="flex flex-wrap gap-2">
+            {EXAMPLE_QUESTIONS.map((q) => (
+              <button
+                key={q}
+                onClick={() => sendQuestion(q)}
+                disabled={chatLoading}
+                className="text-[10px] px-3.5 py-1.5 rounded-full border border-white/[0.04] bg-white/[0.01] text-white/45 hover:text-amber-400 hover:border-amber-500/20 transition-all cursor-pointer font-semibold disabled:opacity-35"
+              >
+                {q}
+              </button>
             ))}
           </div>
         )}
 
-        {isError && !isPending && (
-          <div className="rounded-lg p-4 text-center space-y-1" style={{ background: "#0d0d0d", border: "1px solid #1a1a1a" }}>
-            <div className="text-2xl">🗡️</div>
-            <p className="text-[#555] text-sm">The forge is dark tonight.</p>
-            <p className="text-[#333] text-xs">AI analysis unavailable — your score above is fully accurate.</p>
-          </div>
-        )}
-
-        {explanation && (
-          <div className="space-y-5">
-            {/* Summary quote */}
-            <div className="relative pl-4">
-              <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-full" style={{ background: "linear-gradient(180deg, #c9a84c, #c9a84c44)" }} />
-              <p className="text-[#bbb] text-sm leading-relaxed italic">"{explanation.summary}"</p>
-            </div>
-
-            {/* Strengths & Weaknesses */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="text-[#4a9e5c]">▲</span>
-                  <span className="text-[9px] uppercase tracking-widest text-[#4a9e5c] font-bold">Strengths</span>
-                </div>
-                <ul className="space-y-1.5">
-                  {explanation.strengths.map((s, i) => (
-                    <li key={i} className="text-sm text-[#777] flex gap-2">
-                      <span className="text-[#4a9e5c] shrink-0 mt-0.5">+</span>
-                      <span>{s}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="text-[#c05050]">▼</span>
-                  <span className="text-[9px] uppercase tracking-widest text-[#c05050] font-bold">Weaknesses</span>
-                </div>
-                <ul className="space-y-1.5">
-                  {explanation.weaknesses.map((w, i) => (
-                    <li key={i} className="text-sm text-[#777] flex gap-2">
-                      <span className="text-[#c05050] shrink-0 mt-0.5">−</span>
-                      <span>{w}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* Next upgrade */}
-            <div className="rounded-lg p-3.5 space-y-1" style={{ background: "#0d0b00", border: "1px solid #1e1900" }}>
-              <div className="text-[9px] uppercase tracking-widest text-[#c9a84c] font-bold">Coach's #1 Recommendation</div>
-              <p className="text-[#aaa] text-sm leading-relaxed">{explanation.recommendation}</p>
-            </div>
-
-            {/* Reasoning */}
-            <div className="text-[#333] text-xs leading-relaxed border-t border-[#111] pt-4">
-              <span className="text-[#2a2a2a] uppercase tracking-widest text-[9px] font-semibold">Why this grade: </span>
-              {explanation.reasoning}
-            </div>
-          </div>
-        )}
-
-        {/* Divider */}
-        <div className="border-t border-[#111]" />
-
-        {/* Chat section */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm">💬</span>
-            <span className="text-[#555] text-xs uppercase tracking-widest font-semibold">Ask the Coach</span>
-          </div>
-
-          {/* Example suggestions */}
-          {messages.length === 0 && (
-            <div className="flex flex-wrap gap-2">
-              {EXAMPLE_QUESTIONS.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => sendQuestion(q)}
-                  disabled={chatLoading}
-                  className="text-xs px-3 py-1.5 rounded-full transition-colors disabled:opacity-40"
-                  style={{
-                    background: "#111",
-                    border: "1px solid #1e1e1e",
-                    color: "#666",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#c9a84c44"; e.currentTarget.style.color = "#c9a84c"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#1e1e1e"; e.currentTarget.style.color = "#666"; }}
+        {messages.length > 0 && (
+          <div className="space-y-3.5 max-h-64 overflow-y-auto pr-1">
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                {msg.role === "coach" && (
+                  <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5 bg-[#070b13] border border-amber-500/25">
+                    <span className="text-xs text-amber-400">⚔</span>
+                  </div>
+                )}
+                <div
+                  className="max-w-[80%] rounded-xl px-4 py-2.5 text-xs leading-relaxed border"
+                  style={msg.role === "user"
+                    ? { background: "rgba(245, 158, 11, 0.05)", borderColor: "rgba(245, 158, 11, 0.15)", color: "#ffffff" }
+                    : { background: "rgba(255, 255, 255, 0.01)", borderColor: "rgba(255, 255, 255, 0.03)", color: "rgba(255, 255, 255, 0.75)" }
+                  }
                 >
-                  {q}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Message thread */}
-          {messages.length > 0 && (
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {messages.map((msg, i) => (
-                <div key={i} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  {msg.role === "coach" && (
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                      style={{ background: "#1a1500", border: "1px solid #c9a84c33" }}>
-                      <span className="text-xs">⚔</span>
-                    </div>
-                  )}
-                  <div
-                    className="max-w-[80%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed"
-                    style={msg.role === "user"
-                      ? { background: "#1a1400", border: "1px solid #2a2000", color: "#ddd" }
-                      : { background: "#101010", border: "1px solid #1a1a1a", color: "#aaa" }
-                    }
-                  >
-                    {msg.text}
-                  </div>
+                  {msg.text}
                 </div>
-              ))}
-              {chatLoading && (
-                <div className="flex gap-2.5 justify-start">
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
-                    style={{ background: "#1a1500", border: "1px solid #c9a84c33" }}>
-                    <span className="text-xs">⚔</span>
-                  </div>
-                  <div className="rounded-xl px-3.5 py-2.5 text-sm" style={{ background: "#101010", border: "1px solid #1a1a1a" }}>
-                    <span className="text-[#333] animate-pulse">Thinking...</span>
-                  </div>
+              </div>
+            ))}
+            {chatLoading && (
+              <div className="flex gap-3 justify-start">
+                <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5 bg-[#070b13] border border-amber-500/25">
+                  <span className="text-xs text-amber-400">⚔</span>
                 </div>
-              )}
-              <div ref={chatEndRef} />
-            </div>
-          )}
-
-          {/* Input */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendQuestion(input)}
-              placeholder="Ask anything about your account..."
-              disabled={chatLoading}
-              className="flex-1 bg-[#0d0d0d] text-[#ccc] text-sm rounded-lg px-4 py-2.5 outline-none placeholder-[#333] disabled:opacity-50"
-              style={{ border: "1px solid #1e1e1e" }}
-              onFocus={e => (e.currentTarget.style.borderColor = "#c9a84c33")}
-              onBlur={e => (e.currentTarget.style.borderColor = "#1e1e1e")}
-            />
-            <button
-              onClick={() => sendQuestion(input)}
-              disabled={!input.trim() || chatLoading}
-              className="px-4 py-2.5 rounded-lg font-bold text-sm transition-opacity disabled:opacity-30"
-              style={{ background: "#c9a84c", color: "#000" }}
-            >
-              →
-            </button>
+                <div className="rounded-xl px-4 py-2.5 text-xs border bg-white/[0.01] border-white/[0.03] text-white/35 animate-pulse">
+                  Thinking...
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
           </div>
+        )}
+
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendQuestion(input)}
+            placeholder="Ask anything about your account..."
+            disabled={chatLoading}
+            className="flex-1 bg-white/[0.01] text-white/80 text-xs rounded-lg px-4 py-3 outline-none placeholder-white/10 border border-white/[0.04] focus:border-amber-500/30 disabled:opacity-40"
+          />
+          <button
+            onClick={() => sendQuestion(input)}
+            disabled={!input.trim() || chatLoading}
+            className="px-4 py-3 rounded-lg button-gold text-xs font-black disabled:opacity-20 cursor-pointer"
+          >
+            Send
+          </button>
         </div>
       </div>
     </div>
@@ -489,34 +388,149 @@ function AiCoachSection({
 export default function Result() {
   const [, navigate] = useLocation();
   const [data, setData] = useState<ResultData | null>(null);
+  const scores = useMemo(() => {
+    if (!data) return null;
+    return data.scores || scorePlayer(data.player);
+  }, [data]);
   const [parseError, setParseError] = useState(false);
   const [copied, setCopied] = useState(false);
-  const hasExplained = useRef(false);
+  const [isRevealing, setIsRevealing] = useState(true);
+  const [activeTab, setActiveTab] = useState<"overview" | "combat" | "upgrades" | "benchmarks" | "simulator" | "coach">("overview");
 
-  function copyLink() {
-    navigator.clipboard.writeText(window.location.href).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  // Collapsible accordion section states
+  const [questsExpanded, setQuestsExpanded] = useState(false);
+  const [enemiesExpanded, setEnemiesExpanded] = useState(false);
+  const [dailyExpanded, setDailyExpanded] = useState(false);
+  const [socialExpanded, setSocialExpanded] = useState(false);
+
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [companionOpen, setCompanionOpen] = useState(false);
+
+  // Computed stats calculator
+  const computedStats = useMemo(() => {
+    if (!data) return null;
+    const { player } = data;
+    const rawPayload = (player as any).rawPayload || {};
+    const inv = rawPayload.inv || {};
+    const activePets = inv.activePets || [];
+
+    // Resolve weapon data
+    const curSword = getSwordData(player.sword);
+    const curShield = getShieldData(player.shield);
+
+    const ds = curSword ? scaledSwordDamage(curSword.baseDamage, player.swordLevel) * 1e9 : 0;
+    const ms = curShield ? scaledShieldDM(curShield.baseDM, player.shieldLevel) : 0;
+
+    const powerRaw = player.powerRaw;
+
+    // Speed and multipliers from pets (ignored for central combat formulas)
+    const speedBoost = 0;
+    const finalAttackSpeed = 2.77;
+    
+    const goldMulti = activePets.reduce((acc: number, p: any) => {
+      const petItem = resolveItemByGameType(p.type, "pet");
+      return acc + (petItem?.metadata?.goldMulti || 0);
+    }, 1.0);
+
+    const powerMulti = 1.0;
+
+    const getProtRaw = (protStr?: string) => {
+      if (!protStr || protStr === "-") return 0;
+      return parseNumber(protStr);
+    };
+    const baseProt = curSword ? getProtRaw(curSword.protection) : 0;
+    const baseShProt = curShield ? getProtRaw(curShield.protection) : 0;
+    const totalBaseProt = baseProt + baseShProt;
+    const protection = totalBaseProt * (1 + 0.25 * (Math.max(player.swordLevel, player.shieldLevel, 1) - 1));
+
+    const petPowerBonus = 0;
+    const damageStats = calculateDamageStats({
+      ds,
+      swordDamageMultiplier: ms,
+      power: powerRaw,
+      petPowerBonus: 0,
+      armorPowerBonus: 0,
+      attackSpeed: 2.77
     });
-  }
+
+    return {
+      ds,
+      ms,
+      dph: damageStats.damagePerHit,
+      speedBoost,
+      finalAttackSpeed,
+      dps: damageStats.damagePerSecond,
+      pph: damageStats.powerPerHit,
+      pps: damageStats.powerPerSecond,
+      goldMulti,
+      powerMulti,
+      protection,
+    };
+  }, [data]);
+
+  useEffect(() => {
+    if (authStore.isLoggedIn()) {
+      authStore.fetchMe().then((p) => setProfile(p));
+    }
+  }, []);
+
+  const refreshProfile = useCallback(() => {
+    if (authStore.isLoggedIn()) {
+      authStore.fetchMe().then((p) => setProfile(p));
+    } else {
+      setProfile(null);
+    }
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const raw = params.get("d");
-    if (!raw) { setParseError(true); return; }
+    const d = params.get("d");
+    if (!d) {
+      setParseError(true);
+      return;
+    }
     try {
-      const parsed = JSON.parse(raw);
-      setData(parsed);
+      const decoded = JSON.parse(d) as ResultData;
+      if (decoded && decoded.player && decoded.scores) {
+        setData(decoded);
+        
+        // Auto-save progression result to backend profile history if logged in
+        if (authStore.isLoggedIn()) {
+          const sw = getSwordData(decoded.player.sword);
+          const sh = getShieldData(decoded.player.shield);
+          const ds = sw ? scaledSwordDamage(sw.baseDamage, decoded.player.swordLevel) * 1e9 : 0;
+          const ms = sh ? scaledShieldDM(sh.baseDM, decoded.player.shieldLevel) : 0;
+          const dmg = (ds + 2 * Math.sqrt(Math.max(decoded.player.powerRaw, 0)) + 1) * (1 + ms);
+          const dps = dmg * 2.77;
+
+          authStore.addHistory(
+            decoded.player.level,
+            decoded.scores.overallGrade,
+            decoded.scores.overallScore,
+            decoded.player.power,
+            dps
+          );
+        }
+      } else {
+        setParseError(true);
+      }
     } catch {
       setParseError(true);
     }
   }, []);
 
+  const itemsContextStr = (() => {
+    try {
+      return JSON.stringify(loadItems());
+    } catch {
+      return "";
+    }
+  })();
+
   const explainMutation = useExplainGrade();
 
   useEffect(() => {
-    if (!data || hasExplained.current) return;
-    hasExplained.current = true;
+    if (!data) return;
     const { player, scores } = data;
     explainMutation.mutate({
       data: {
@@ -532,335 +546,925 @@ export default function Result() {
         swordLevel: player.swordLevel,
         shield: player.shield,
         shieldLevel: player.shieldLevel,
-        powerRaw: player.power,
-        goldRaw: player.gold,
+        powerRaw: player.powerRaw,
+        goldRaw: player.goldRaw,
         levelTier: scores.levelTier,
         standing: scores.standing,
         pvpKills: player.pvpKillCount ?? null,
-      },
+        itemsContext: itemsContextStr,
+      } as any,
     });
+  }, [data]);
+
+  useEffect(() => {
+    if (!data) return;
+    const timer = setTimeout(() => {
+      setIsRevealing(false);
+    }, 2200);
+    return () => clearTimeout(timer);
   }, [data]);
 
   if (parseError) {
     return (
-      <div className="min-h-screen bg-[#080808] text-white flex flex-col items-center justify-center gap-4">
-        <p className="text-[#555]">Invalid result data.</p>
-        <Link href="/" className="text-[#c9a84c] text-sm underline">Go back</Link>
+      <div className="min-h-screen text-white flex flex-col items-center justify-center gap-4 relative overflow-hidden bg-[#03050b]">
+        <div className="absolute inset-0 bg-radial-gradient from-red-500/5 via-transparent to-transparent pointer-events-none" />
+        <p className="text-white/40 text-sm font-semibold">Invalid result data.</p>
+        <Link href="/" className="text-amber-400 text-xs font-bold uppercase tracking-widest bg-white/[0.02] border border-amber-500/20 px-4 py-2 rounded-lg hover:bg-amber-500/10 transition-all">
+          Go back to Home
+        </Link>
       </div>
     );
   }
 
-  if (!data) {
+  if (!data || !scores) {
     return (
-      <div className="min-h-screen bg-[#080808] text-white flex items-center justify-center">
-        <p className="text-[#333]">Loading...</p>
+      <div className="min-h-screen text-white flex items-center justify-center relative overflow-hidden bg-[#03050b]">
+        <div className="w-6 h-6 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin" />
       </div>
     );
   }
 
-  const { player, scores } = data;
+  const player = data.player;
   const gradeColor = GRADE_COLOR[scores.overallGrade] ?? "#888";
   const standingColor = STANDING_COLOR[scores.standing] ?? "#888";
   const percentile = estimatePercentile(scores.overallScore);
   const explanation = explainMutation.data;
 
-  const topEnemies = Object.entries(player.killedEnemies)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 5);
+  if (isRevealing) {
+    return (
+      <div className="min-h-screen text-white flex flex-col items-center justify-center relative overflow-hidden font-sans bg-[#070b13]">
+        <div className="absolute inset-0 bg-radial-gradient from-amber-500/5 via-transparent to-transparent pointer-events-none" />
+        
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6 }}
+          className="text-center space-y-6 z-10"
+        >
+          <p className="text-white/20 text-[10px] font-black uppercase tracking-widest font-display">Analyzing Profile</p>
+          <h2 className="text-3xl font-black font-display text-white tracking-tight">{player.username}</h2>
+          
+          <div className="relative flex items-center justify-center py-10">
+            <GradeParticles color={gradeColor} />
+            <motion.div
+              initial={{ scale: 0, rotate: -25, opacity: 0 }}
+              animate={{ scale: [0, 1.25, 1], rotate: 0, opacity: 1 }}
+              transition={{ duration: 0.9, ease: "easeOut", delay: 0.4 }}
+              style={{ color: gradeColor }}
+              className="text-8xl font-black font-display drop-shadow-[0_0_40px_rgba(0,240,255,0.35)] select-none cursor-default"
+            >
+              {scores.overallGrade}
+            </motion.div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.1, duration: 0.4 }}
+            className="text-amber-400/80 text-[10px] font-bold font-mono tracking-widest uppercase bg-amber-500/5 px-4 py-1.5 rounded-full border border-amber-500/10 inline-block"
+          >
+            Analysis Complete
+          </motion.div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#080808] text-white flex flex-col">
-      {/* Header */}
-      <header className="border-b border-[#111] px-6 py-4 flex items-center justify-between sticky top-0 z-10" style={{ background: "#080808cc", backdropFilter: "blur(8px)" }}>
+    <div className="min-h-screen text-white flex flex-col font-sans relative overflow-hidden bg-[#03050b]">
+      <ParticleBackground />
+      
+      {/* Navbar */}
+      <header className="border-b border-white/[0.04] px-6 py-4 flex items-center justify-between sticky top-0 z-20 bg-[#070b13]/80 backdrop-blur-md">
         <div className="flex items-center gap-2">
-          <span className="font-black text-xl" style={{
-            background: "linear-gradient(135deg, #c9a84c 0%, #f0d080 50%, #c9a84c 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}>SM</span>
-          <span className="text-white font-black text-xl">Grade</span>
+          <span className="font-black text-lg tracking-wider px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/25 text-amber-400 shadow-[0_0_15px_rgba(0,240,255,0.1)] font-display">
+            SM
+          </span>
+          <span className="text-white font-extrabold text-lg tracking-tight font-display">Grade</span>
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/compare" className="text-xs text-[#555] hover:text-[#c9a84c] transition-colors font-semibold">
-            Compare Accounts
+          <Link href="/" className="text-white/40 hover:text-amber-400 text-xs font-bold uppercase tracking-widest transition-colors">
+            ← Grade Another
           </Link>
-          <Link href="/" className="text-[#444] text-sm hover:text-[#777] transition-colors">
-            ← Grade another
-          </Link>
+          {profile ? (
+            <button 
+              onClick={() => setCompanionOpen(true)}
+              className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/25 rounded-lg px-2.5 py-1 text-xs text-amber-400 font-bold hover:bg-amber-500/15 transition-all cursor-pointer font-display"
+            >
+              <img src={profile.profilePic} alt="avatar" className="w-5 h-5 rounded bg-[#070b13] border border-white/5" />
+              <span className="max-w-[70px] truncate">{profile.username}</span>
+            </button>
+          ) : (
+            <button 
+              onClick={() => setCompanionOpen(true)}
+              className="text-[10px] text-white/55 hover:text-amber-400 transition-colors font-black uppercase tracking-widest cursor-pointer"
+            >
+              Log In
+            </button>
+          )}
         </div>
       </header>
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-10 space-y-6">
-        {/* Hero grade block */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="rounded-xl p-6 space-y-5"
-          style={{
-            background: "#0c0c0c",
-            border: `1px solid ${gradeColor}20`,
-            boxShadow: `0 0 40px ${gradeColor}08, inset 0 0 40px ${gradeColor}03`,
-          }}
-        >
-          <div className="flex items-start justify-between gap-4 flex-wrap">
+      {/* Cyber HUD Terminal Layout */}
+      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8 space-y-8 z-10 relative">
+        
+        {/* Top HUD Banner Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* HUD Module 1: Player Identity */}
+          <div 
+            className="rounded-tl-2xl rounded-br-2xl border p-5 bg-gradient-to-br from-[#070b13]/80 via-black/90 to-[#070b13]/80 glass-panel flex flex-col justify-between gap-4 shadow-[0_4px_30px_rgba(0,0,0,0.5)]"
+            style={{ borderColor: `${gradeColor}25` }}
+          >
             <div>
-              <h2 className="text-2xl font-black text-white">{player.username}</h2>
-              <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
-                <span className="text-[#555] text-sm">Level {player.level.toLocaleString()}</span>
-                <span className="text-[#222]">·</span>
-                <span className="text-[#555] text-sm">{scores.levelTier} Tier</span>
-                {player.clan && (
-                  <>
-                    <span className="text-[#222]">·</span>
-                    <span className="text-[#555] text-sm">Clan: {player.clan}</span>
-                  </>
-                )}
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                <span className="text-[8px] uppercase tracking-widest text-amber-500 font-bold">Terminal Connected</span>
               </div>
+              <h2 className="text-2xl font-black font-display tracking-tight text-white">{player.username}</h2>
+              <p className="text-[10px] text-white/40 font-semibold mt-1">Lvl {player.level.toLocaleString()} • {scores.levelTier} Player</p>
             </div>
-            <div className="text-right">
-              <div
-                className="text-6xl font-black leading-none"
-                style={{ color: gradeColor, textShadow: `0 0 40px ${gradeColor}66, 0 0 80px ${gradeColor}22` }}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => downloadShareCard(player, scores)}
+                className="flex-1 py-2 rounded-lg button-gold text-[10px] font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-[0_0_15px_rgba(255,215,0,0.1)]"
+              >
+                📥 Share HUD
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className={`flex-1 py-2 rounded-lg border text-[10px] font-bold transition-all cursor-pointer ${
+                  copied 
+                    ? "bg-[#5ecb7a]/10 border-[#5ecb7a]/30 text-[#5ecb7a]" 
+                    : "border-white/5 bg-white/[0.01] hover:bg-white/[0.04] text-white/60"
+                }`}
+              >
+                {copied ? "✓ Copied" : "🔗 Copy Link"}
+              </button>
+            </div>
+          </div>
+
+          {/* HUD Module 2: Grader Analysis */}
+          <div 
+            className="rounded-tl-2xl rounded-br-2xl border p-5 bg-gradient-to-br from-[#070b13]/80 via-black/90 to-[#070b13]/80 glass-panel flex items-center justify-between gap-6 shadow-[0_4px_30px_rgba(0,0,0,0.5)]"
+            style={{ borderColor: `${gradeColor}25` }}
+          >
+            <div className="space-y-2.5 flex-1">
+              <span className="text-[9px] uppercase font-black tracking-widest text-white/30 block">Analysis Index</span>
+              <div>
+                <span className="text-sm font-bold font-mono text-white">{scores.overallScore}%</span>
+                <span className="text-white/20 text-[9px] uppercase font-bold tracking-wider ml-1">Overall</span>
+              </div>
+              <div className="h-1 bg-white/[0.03] border border-white/[0.02] rounded-full overflow-hidden w-full">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${scores.overallScore}%`, backgroundColor: gradeColor }}
+                />
+              </div>
+              <p className="text-[10px] font-semibold" style={{ color: standingColor }}>
+                {scores.standing}
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center justify-center shrink-0">
+              <div 
+                className="text-6xl font-black font-display leading-none select-none drop-shadow-[0_0_15px_rgba(255,215,0,0.2)]"
+                style={{ color: gradeColor }}
               >
                 {scores.overallGrade}
               </div>
-              <div className="text-[#333] text-xs mt-1">Overall Grade</div>
+              <span className="text-[8px] text-white/30 uppercase tracking-widest font-black font-mono mt-1.5">Rating</span>
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs">
-              <span className="text-[#444]">Overall Score</span>
-              <span className="font-mono font-bold tabular-nums" style={{ color: gradeColor }}>
-                {scores.overallScore}/100
+          {/* HUD Module 3: Micro-Stats Grid */}
+          <div 
+            className="rounded-tl-2xl rounded-br-2xl border border-white/[0.04] p-4 bg-gradient-to-br from-[#070b13]/80 via-black/90 to-[#070b13]/80 glass-panel grid grid-cols-2 gap-2 shadow-[0_4px_30px_rgba(0,0,0,0.5)]"
+          >
+            <div className="bg-white/[0.01] border border-white/[0.02] rounded p-2 flex flex-col justify-between">
+              <span className="text-[8px] uppercase tracking-wider text-white/30 font-bold">Power</span>
+              <span className="text-xs font-black font-mono text-white truncate" title={player.power}>{player.power}</span>
+            </div>
+            <div className="bg-white/[0.01] border border-white/[0.02] rounded p-2 flex flex-col justify-between">
+              <span className="text-[8px] uppercase tracking-wider text-white/30 font-bold">Gold Pool</span>
+              <span className="text-xs font-black font-mono text-[#5ecb7a] truncate" title={player.gold}>{player.gold}</span>
+            </div>
+            <div className="bg-white/[0.01] border border-white/[0.02] rounded p-2 flex flex-col justify-between col-span-2">
+              <span className="text-[8px] uppercase tracking-wider text-white/30 font-bold">Equipped Armaments</span>
+              <span className="text-[10px] font-black text-amber-400 truncate animate-pulse" title={`${player.sword} / ${player.shield}`}>
+                ⚔️ {player.sword.split(",")[0]}
               </span>
             </div>
-            <div className="h-2 bg-[#111] rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{
-                  width: `${scores.overallScore}%`,
-                  background: `linear-gradient(90deg, ${gradeColor}88, ${gradeColor})`,
-                }}
-              />
-            </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[#444] text-xs">Standing:</span>
-            <span
-              className="text-xs font-semibold px-2.5 py-0.5 rounded-full border"
-              style={{ color: standingColor, borderColor: standingColor + "44", background: standingColor + "11" }}
-            >
-              {scores.standing}
-            </span>
-            <span className="text-[#333] text-xs">vs {scores.levelTier} tier players</span>
-            <span className="text-[#222]">·</span>
-            <span
-              className="text-xs font-semibold px-2.5 py-0.5 rounded-full border"
-              style={{
-                color: percentile.top ? "#5ecb7a" : "#555",
-                borderColor: percentile.top ? "#5ecb7a44" : "#22222288",
-                background: percentile.top ? "#5ecb7a0d" : "#11111188",
-              }}
-            >
-              {percentile.label}
-            </span>
-          </div>
-        </motion.div>
-
-        {/* Gear Report Card */}
-        <div>
-          <SectionLabel>Gear Report Card</SectionLabel>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {scores.slotGrades.map((slot, index) => (
-              <SlotGradeCard key={slot.slotName} slot={slot} index={index} />
+        {/* Horizontal Capsule Tab Bar Navigation */}
+        <div className="flex justify-center">
+          <div className="inline-flex gap-1.5 bg-[#070b13]/90 p-1.5 rounded-xl border border-white/[0.04] overflow-x-auto max-w-full no-scrollbar shadow-inner">
+            {[
+              { id: "overview", label: "Overview" },
+              { id: "combat", label: "Combat & Calc" },
+              { id: "upgrades", label: "Upgrades & Gold" },
+              { id: "benchmarks", label: "Benchmarks" },
+              { id: "simulator", label: "Sandbox Sim" },
+              { id: "coach", label: "AI Coach" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`py-2 px-3.5 rounded-lg font-black text-[9px] uppercase tracking-widest font-display transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? "bg-amber-500/10 border border-amber-500/20 text-amber-400 font-black shadow-[0_0_10px_rgba(255,215,0,0.05)]"
+                    : "border border-transparent text-white/40 hover:text-white"
+                }`}
+              >
+                {tab.label}
+              </button>
             ))}
           </div>
         </div>
 
-        {/* Progression Upgrade Path */}
-        <div className="border border-[#1e1e1e] rounded-xl overflow-hidden bg-[#0c0c0c] text-white">
-          <div className="px-5 py-4 border-b border-[#151515] bg-[#0f0f0f] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">⭐</span>
-              <span className="text-[#c9a84c] font-bold text-sm tracking-wide">UPGRADE PATH RECOMMENDATIONS</span>
-            </div>
-          </div>
-          
-          <div className="p-5 space-y-4">
-            {/* Immediate Goal */}
-            {scores.upgradeAdvice.immediate && (
-              <div className="rounded-lg p-4 space-y-2 border border-[#2a2200] bg-[#110e00]">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase font-black text-[#c9a84c] tracking-widest">Immediate Goal</span>
-                  <span className="text-xs px-2 py-0.5 rounded-sm font-bold bg-[#4a9e5c]/10 text-[#4a9e5c]">Affordable Now</span>
-                </div>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-sm font-bold text-white">
-                      {scores.upgradeAdvice.immediate.name}
-                      {scores.upgradeAdvice.immediate.level > 0 && ` Lv${scores.upgradeAdvice.immediate.level}`}
-                    </h4>
-                    <p className="text-xs text-[#aaa] mt-1">{scores.upgradeAdvice.immediate.reason}</p>
-                  </div>
-                  {scores.upgradeAdvice.immediate.damageGainPct > 0 && (
-                    <div className="text-right shrink-0">
-                      <span className="text-[#4a9e5c] text-xs font-bold font-mono">+{scores.upgradeAdvice.immediate.damageGainPct}% DMG</span>
-                    </div>
-                  )}
-                </div>
-                {scores.upgradeAdvice.immediate.marketPriceNote && (
-                  <div className="text-[10px] text-[#555] font-mono border-t border-[#222]/30 pt-2 mt-2">
-                    💰 Estimated Cost: {scores.upgradeAdvice.immediate.marketPriceNote}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Long Term Goal */}
-            {scores.upgradeAdvice.longTerm && (
-              <div className="rounded-lg p-4 space-y-2 border border-[#1a1a1a] bg-[#0d0d0d]">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase font-black text-[#555] tracking-widest">Long-Term Goal</span>
-                  <span className="text-xs px-2 py-0.5 rounded-sm font-bold bg-[#888]/10 text-[#888]">Not Yet Affordable</span>
-                </div>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-sm font-bold text-[#ddd]">
-                      {scores.upgradeAdvice.longTerm.name}
-                      {scores.upgradeAdvice.longTerm.level > 0 && ` Lv${scores.upgradeAdvice.longTerm.level}`}
-                    </h4>
-                    <p className="text-xs text-[#888] mt-1">{scores.upgradeAdvice.longTerm.reason}</p>
-                  </div>
-                  {scores.upgradeAdvice.longTerm.damageGainPct > 0 && (
-                    <div className="text-right shrink-0">
-                      <span className="text-[#888] text-xs font-bold font-mono">+{scores.upgradeAdvice.longTerm.damageGainPct}% DMG</span>
-                    </div>
-                  )}
-                </div>
-                {(scores.upgradeAdvice.longTerm.marketPriceNote || scores.upgradeAdvice.longTerm.estimatedRequirements) && (
-                  <div className="text-[10px] text-[#444] font-mono border-t border-[#151515] pt-2 mt-2 space-y-1">
-                    {scores.upgradeAdvice.longTerm.marketPriceNote && <div>💰 Estimated Cost: {scores.upgradeAdvice.longTerm.marketPriceNote}</div>}
-                    {scores.upgradeAdvice.longTerm.estimatedRequirements && <div>📈 Requirements: {scores.upgradeAdvice.longTerm.estimatedRequirements}</div>}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Score Breakdown */}
-        <div className="rounded-xl p-5 space-y-4" style={{ background: "#0c0c0c", border: "1px solid #131313" }}>
-          <SectionLabel>Score Breakdown</SectionLabel>
-          <div className="space-y-3">
-            <ScoreBar label="Gear Score" score={scores.gearScore} color="#c9a84c" />
-            <ScoreBar label="Power Score" score={scores.powerScore} color="#8ab4c9" />
-            <ScoreBar label="Progress Score" score={scores.progressScore} color="#5ecb7a" />
-            <ScoreBar label="Wealth Score" score={scores.wealthScore} color="#b89fce" />
-          </div>
-        </div>
-
-        {/* Combat Stats */}
-        <div className="rounded-xl p-5" style={{ background: "#0c0c0c", border: "1px solid #131313" }}>
-          <SectionLabel>Combat Stats</SectionLabel>
-          <CombatStats player={player} />
-        </div>
-
-        {/* Upgrade Simulator */}
-        <Simulator currentPlayer={player} currentScores={scores} />
-
-        {/* Progression Tracker */}
-        <HistoryTracker player={player} scores={scores} />
-
-        {/* Player info */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="rounded-xl p-5" style={{ background: "#0c0c0c", border: "1px solid #131313" }}>
-            <SectionLabel>Gear</SectionLabel>
-            <StatRow label="Sword" value={player.sword} />
-            <StatRow label="Sword Level" value={player.swordLevel} />
-            <StatRow label="Sword Rarity" value={getSwordRarity(player.sword)} />
-            <StatRow label="Shield" value={player.shield} />
-            <StatRow label="Shield Level" value={player.shieldLevel} />
-            <StatRow label="Shield Rarity" value={getShieldRarity(player.shield)} />
-          </div>
-
-          <div className="rounded-xl p-5" style={{ background: "#0c0c0c", border: "1px solid #131313" }}>
-            <SectionLabel>Stats</SectionLabel>
-            <StatRow label="Power" value={player.power} />
-            <StatRow label="Gold" value={player.gold} />
-            <StatRow label="Health" value={player.health} />
-            <StatRow label="PvP Kills" value={player.pvpKillCount.toLocaleString()} />
-            <StatRow label="PvP Loot" value={player.pvpLoot || "—"} />
-            {player.registerDate && <StatRow label="Registered" value={player.registerDate} />}
-          </div>
-        </div>
-
-        {/* Top Enemies */}
-        {topEnemies.length > 0 && (
-          <div className="rounded-xl p-5" style={{ background: "#0c0c0c", border: "1px solid #131313" }}>
-            <SectionLabel>Most Killed</SectionLabel>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {topEnemies.map(([enemy, count]) => (
-                <div
-                  key={enemy}
-                  className="rounded-lg px-3 py-2"
-                  style={{ background: "#0a0a0a", border: "1px solid #111" }}
+        {/* Tab Panel contents */}
+        <div className="space-y-6">
+            {activeTab === "overview" && (
+              <div className="space-y-8">
+                {/* 1. HERO SM GRADE BANNER */}
+                <div 
+                  className="border border-amber-500/20 rounded-2xl p-6 bg-gradient-to-r from-[#070b13]/80 via-black to-[#070b13]/80 glass-panel shadow-[0_8px_32px_rgba(255,215,0,0.1)] relative overflow-hidden flex flex-col md:flex-row items-center gap-8 md:gap-12"
                 >
-                  <div className="text-[#555] text-xs">{enemy}</div>
-                  <div className="text-white text-sm font-mono font-bold">{count.toLocaleString()}</div>
+                  {/* Decorative glowing background accent */}
+                  <div className="absolute -top-[50%] -left-[20%] w-[300px] h-[300px] rounded-full bg-amber-500/5 blur-[100px] pointer-events-none" />
+
+                  {/* Circular Shield-Style Grade Hero display */}
+                  <div className="relative shrink-0 flex items-center justify-center w-48 h-48 sm:w-56 sm:h-56">
+                    {/* Rotating outer dashboard rings */}
+                    <div className="absolute inset-0 rounded-full border-2 border-dashed border-amber-500/20 animate-[spin_40s_linear_infinite]" />
+                    <div className="absolute inset-2 rounded-full border border-double border-amber-500/10 animate-[spin_20s_linear_infinite_reverse]" />
+                    <div className="absolute inset-4 rounded-full border border-white/5 bg-[#05050f]/80" />
+                    
+                    {/* Inner glowing pulse */}
+                    <div 
+                      className="absolute inset-6 rounded-full opacity-10 animate-pulse"
+                      style={{ backgroundColor: gradeColor, filter: "blur(8px)" }}
+                    />
+
+                    {/* Grade Text */}
+                    <div className="relative z-10 flex flex-col items-center justify-center">
+                      <span 
+                        className="text-7xl sm:text-8xl font-black font-display tracking-tighter leading-none select-none drop-shadow-[0_0_20px_rgba(255,215,0,0.3)] animate-pulse"
+                        style={{ color: gradeColor }}
+                      >
+                        {scores.overallGrade}
+                      </span>
+                      <span className="text-[9px] text-white/30 uppercase tracking-widest font-black font-mono mt-1">SM GRADE</span>
+                    </div>
+                  </div>
+
+                  {/* Summary Dashboard Info (Next to Grade Hero) */}
+                  <div className="flex-1 space-y-4 text-center md:text-left w-full">
+                    <div>
+                      <span className="text-[10px] text-amber-500 font-black uppercase tracking-widest bg-amber-500/5 border border-amber-500/15 px-3 py-1 rounded-full inline-block font-display mb-2">
+                        {scores.overallGrade} RATED CHAMPION
+                      </span>
+                      <h3 className="text-2xl font-black text-white tracking-tight">Performance Summary</h3>
+                      <p className="text-xs text-white/50 font-semibold mt-1">
+                        Grader Index score is <span className="text-white font-black font-mono">{scores.overallScore}%</span>. Standing: <span className="font-bold" style={{ color: standingColor }}>{scores.standing}</span>
+                      </p>
+                    </div>
+
+                    {/* Progress Bar towards perfect score */}
+                    <div className="space-y-1.5 max-w-lg mx-auto md:mx-0">
+                      <div className="flex justify-between text-[10px] uppercase font-bold text-white/30">
+                        <span>Grader Score Tracker</span>
+                        <span className="font-mono text-white">{scores.overallScore}/100</span>
+                      </div>
+                      <div className="h-2 bg-white/[0.03] border border-white/[0.02] rounded-full overflow-hidden relative">
+                        <div
+                          className="h-full rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(255,215,0,0.3)]"
+                          style={{ width: `${scores.overallScore}%`, backgroundColor: gradeColor }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Recommended Upgrade Summary in Hero Banner */}
+                    <div className="bg-[#05050f]/80 border border-white/[0.04] p-3.5 rounded-xl inline-block text-left w-full max-w-lg">
+                      <span className="text-[8px] text-amber-400 uppercase font-black tracking-widest block mb-1">Recommended Next Upgrade</span>
+                      {scores.upgradeAdvice.immediate ? (
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">⚡</span>
+                          <div>
+                            <p className="text-xs font-black text-white">
+                              {scores.upgradeAdvice.immediate.name} {scores.upgradeAdvice.immediate.level > 0 ? `Lv${scores.upgradeAdvice.immediate.level}` : ""}
+                            </p>
+                            <p className="text-[10px] text-white/40 font-semibold mt-0.5">{scores.upgradeAdvice.immediate.reason}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-white/50 italic">Farming & grind. No immediate upgrades available.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* AI Coach */}
-        <AiCoachSection
-          explanation={explanation}
-          isPending={explainMutation.isPending}
-          isError={explainMutation.isError}
-          player={player}
-          scores={scores}
-        />
+                {/* 2. SUB-SCORES GRID (Secondary Elements) */}
+                <div>
+                  <SectionLabel>Component Performance Indices</SectionLabel>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {[
+                      { label: "Power Score", score: scores.powerScore },
+                      { label: "Gear Score", score: scores.gearScore },
+                      { label: "Progression Score", score: scores.progressScore },
+                      { label: "Wealth Score", score: scores.wealthScore },
+                    ].map((card, idx) => {
+                      const getScoreGrade = (s: number) => {
+                        if (s >= 95) return "S+";
+                        if (s >= 90) return "S";
+                        if (s >= 85) return "A+";
+                        if (s >= 80) return "A";
+                        if (s >= 70) return "B+";
+                        if (s >= 60) return "B";
+                        if (s >= 50) return "C+";
+                        if (s >= 40) return "C";
+                        return "D";
+                      };
+                      const cardGrade = getScoreGrade(card.score);
+                      const gradeColor = GRADE_COLOR[cardGrade] ?? "#ffd700";
+                      const delays = ["delay-75", "delay-100", "delay-150", "delay-200"];
+                      const delayClass = delays[idx] || "";
+                      return (
+                        <div
+                          key={card.label}
+                          className={`border border-white/[0.03] rounded-xl p-3.5 bg-[#070b13]/60 glass-panel flex flex-col justify-between hover-glow-card animate-fade-in ${delayClass} shadow-[0_4px_15px_rgba(0,0,0,0.2)]`}
+                        >
+                          <span className="text-[9px] uppercase font-black text-white/20 tracking-wider block mb-1">
+                            {card.label}
+                          </span>
+                          
+                          <div className="flex items-baseline justify-between mt-0.5">
+                            <span className="text-xl font-black text-white font-mono">{card.score}%</span>
+                            <span
+                              className="text-[9px] font-black px-1.5 py-0.5 rounded border"
+                              style={{
+                                color: gradeColor,
+                                borderColor: `${gradeColor}22`,
+                                backgroundColor: `${gradeColor}05`
+                              }}
+                            >
+                              {cardGrade}
+                            </span>
+                          </div>
 
-        {/* CTA */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pb-4">
-          <button
-            onClick={() => downloadShareCard(player, scores)}
-            className="inline-flex items-center gap-2 font-bold text-sm px-6 py-2.5 rounded-lg transition-all"
-            style={{ background: "linear-gradient(135deg, #c9a84c, #d4b55e)", color: "#000" }}
-          >
-            <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
-              <path d="M7.5 1v9m0 0L4.5 7m3 3 3-3M1 11v1.5A1.5 1.5 0 0 0 2.5 14h10A1.5 1.5 0 0 0 14 12.5V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Save Grade Card
-          </button>
-          <button
-            onClick={copyLink}
-            className={`inline-flex items-center gap-2 border text-sm px-6 py-2.5 rounded-lg transition-all ${
-              copied ? "border-[#5ecb7a] text-[#5ecb7a]" : "border-[#1e1e1e] hover:border-[#333] text-[#666] hover:text-[#aaa]"
-            }`}
-          >
-            {copied ? (
-              <><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> Link Copied!</>
-            ) : (
-              <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy Result Link</>
+                          <div className="h-1 bg-white/[0.02] border border-white/[0.01] rounded-full overflow-hidden mt-2 relative">
+                            <div
+                              className="h-full rounded-full animate-grow-width"
+                              style={{
+                                width: `${card.score}%`,
+                                backgroundColor: gradeColor
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Armament Slots & Insights / Strengths / Weaknesses Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Loot Slots (7 Columns) */}
+                  <div className="lg:col-span-7 space-y-4">
+                    <SectionLabel>Loot Inventory Slots</SectionLabel>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {scores.slotGrades.map((slot, index) => (
+                        <SlotGradeCard key={slot.slotName} slot={slot} index={index} />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Insights & Strengths & Weaknesses (5 Columns) */}
+                  <div className="lg:col-span-5 space-y-6">
+                    {/* Strengths & Weaknesses Panel */}
+                    <div className="space-y-4">
+                      <SectionLabel>Performance Diagnostics</SectionLabel>
+                      <div className="border border-white/[0.04] rounded-xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
+                        {(() => {
+                          const getPlayerStrengthsAndWeaknesses = (sc: any) => {
+                            const strengths: string[] = [];
+                            const weaknesses: string[] = [];
+
+                            if (sc.gearScore >= 75) strengths.push("High-tier equipped armaments");
+                            else weaknesses.push("Equipped sword/shield levels need upgrading");
+
+                            if (sc.powerScore >= 75) strengths.push("Strong raw power base contribution");
+                            else weaknesses.push("Raw power level below average for your tier");
+
+                            if (sc.wealthScore >= 75) strengths.push("High gold reserves & vault net worth");
+                            else weaknesses.push("Low vault valuation; grind gold and items");
+
+                            if (sc.progressScore >= 75) strengths.push("Excellent level progression and quest index");
+                            else weaknesses.push("Quest completions are lagging; focus on quest log");
+
+                            if (sc.combatScore >= 75) strengths.push("Devastating Damage and DPS combat rating");
+                            else weaknesses.push("DPS contribution is low; upgrade weapon level");
+
+                            if (strengths.length < 2) strengths.push("Consistent daily combat activity", "Solid gear durability scaling");
+                            if (weaknesses.length < 2) weaknesses.push("Unoptimized enchants on offhand shield", "Farming speed can be increased");
+
+                            return { strengths: strengths.slice(0, 3), weaknesses: weaknesses.slice(0, 3) };
+                          };
+                          const diag = getPlayerStrengthsAndWeaknesses(scores);
+                          return (
+                            <div className="space-y-4 text-xs">
+                              {/* Strengths */}
+                              <div className="space-y-2">
+                                <span className="text-[9px] uppercase tracking-widest text-[#5ecb7a] font-black block">✓ Key Strengths</span>
+                                <ul className="space-y-1.5 font-semibold text-white/70">
+                                  {diag.strengths.map((str, idx) => (
+                                    <li key={idx} className="flex items-center gap-2">
+                                      <span className="text-[#5ecb7a] text-xs">✦</span>
+                                      <span>{str}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              {/* Weaknesses */}
+                              <div className="space-y-2 border-t border-white/[0.02] pt-3.5">
+                                <span className="text-[9px] uppercase tracking-widest text-amber-500 font-black block">⚠ Optimization Areas</span>
+                                <ul className="space-y-1.5 font-semibold text-white/50">
+                                  {diag.weaknesses.map((weak, idx) => (
+                                    <li key={idx} className="flex items-center gap-2">
+                                      <span className="text-amber-500 text-xs">✦</span>
+                                      <span>{weak}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Tactical Insights */}
+                    <div className="space-y-4">
+                      <SectionLabel>Tactical Insights</SectionLabel>
+                      <div className="border border-white/[0.04] rounded-xl p-5 bg-[#070b13]/60 glass-panel space-y-3">
+                        {getPlayerInsights(scores, player).map((insight, idx) => (
+                          <div key={idx} className="flex gap-2 text-xs leading-relaxed text-white/50 font-medium">
+                            <span className="text-amber-400 select-none shrink-0 font-bold">✦</span>
+                            <span>{insight}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
-          </button>
-          <Link
-            href="/"
-            className="inline-block border border-[#1e1e1e] hover:border-[#c9a84c33] text-[#555] hover:text-[#c9a84c] text-sm px-6 py-2.5 rounded-lg transition-all"
-          >
-            Grade another account
-          </Link>
-        </div>
+
+            {activeTab === "combat" && computedStats && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-3">
+                    <div className="text-[10px] text-amber-400 uppercase font-black tracking-wider">Damage Per Hit (DPH)</div>
+                    <div className="text-3xl font-black font-display text-white">{formatNumber(computedStats.dph)}</div>
+                    <p className="text-[10px] text-white/30 leading-relaxed font-semibold">
+                      Based on standard formula:<br />
+                      <code className="text-amber-400/90 font-mono font-bold">DPH = (DS + 2 * sqrt(Power) + 1) * (1 + MS)</code>
+                    </p>
+                  </div>
+
+                  <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-3">
+                    <div className="text-[10px] text-purple-400 uppercase font-black tracking-wider">Damage Per Second (DPS)</div>
+                    <div className="text-3xl font-black font-display text-white">{formatNumber(computedStats.dps)}</div>
+                    <p className="text-[10px] text-white/30 leading-relaxed font-semibold">
+                      Calculated from DPH and attack speed:<br />
+                      <code className="text-purple-400/90 font-mono font-bold">DPS = DPH * {computedStats.finalAttackSpeed.toFixed(2)} hits/sec</code>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-4">
+                  <SectionLabel>Combat Variable Breakdown</SectionLabel>
+                  <div className="space-y-3.5 text-xs font-semibold">
+                    <div className="flex justify-between border-b border-white/[0.02] pb-2">
+                      <span className="text-white/40">Weapon Stat contribution (DS)</span>
+                      <span className="font-mono text-amber-400">+{formatNumber(computedStats.ds)} DMG</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/[0.02] pb-2">
+                      <span className="text-white/40">Power Stat contribution (2 * sqrt(P))</span>
+                      <span className="font-mono text-amber-400">+{formatNumber(2 * Math.sqrt(Math.max(player.powerRaw, 0)))} DMG</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/[0.02] pb-2">
+                      <span className="text-white/40">Shield Multiplier contribution (1 + MS)</span>
+                      <span className="font-mono text-amber-400">x{(1 + computedStats.ms).toFixed(1)} Multiplier</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/[0.02] pb-2">
+                      <span className="text-white/40">Base Attack Speed</span>
+                      <span className="font-mono">2.77 hits/sec</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white/40">Equipped Pets Speed Boost</span>
+                      <span className="font-mono text-purple-400">+{Math.round(computedStats.speedBoost * 100)}% Speed</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Debug Calculator panel */}
+                <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-4">
+                  <div className="flex items-center justify-between border-b border-white/[0.04] pb-2">
+                    <SectionLabel>Debug Calculation Panel</SectionLabel>
+                    <span className="text-[9px] text-[#ffd700] font-bold uppercase tracking-widest border border-amber-400/30 px-2 py-0.5 rounded bg-amber-400/5">SMGrade v2.0 Engine</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Base Damage (DS)</span>
+                      <span className="text-white font-bold">{formatNumber(computedStats.ds)}</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Sword Multiplier (MS)</span>
+                      <span className="text-white font-bold">x{computedStats.ms.toFixed(2)}</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Protection</span>
+                      <span className="text-white font-bold">{formatNumber(computedStats.protection)}</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Health Multiplier</span>
+                      <span className="text-white font-bold">x{(player as any).rawPayload?.inv?.healthMultiplier || 1.0}</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Gold Multiplier</span>
+                      <span className="text-white font-bold">x{computedStats.goldMulti.toFixed(2)}</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Power (P)</span>
+                      <span className="text-white font-bold">{formatNumber(player.powerRaw)}</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">sqrt(Power)</span>
+                      <span className="text-white font-bold">{Math.sqrt(Math.max(player.powerRaw, 0)).toFixed(2)}</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Pet Power Bonus</span>
+                      <span className="text-white font-bold">+{((computedStats.powerMulti - 1) * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Armor Power Bonus</span>
+                      <span className="text-white font-bold">+0%</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Attack Speed</span>
+                      <span className="text-white font-bold">{computedStats.finalAttackSpeed.toFixed(2)} swings/sec</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Damage / Hit</span>
+                      <span className="text-[#ffd700] font-bold">{formatNumber(computedStats.dph)}</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Power / Hit</span>
+                      <span className="text-[#ffd700] font-bold">{formatNumber(computedStats.pph)}</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Damage / sec</span>
+                      <span className="text-purple-400 font-bold">{formatNumber(computedStats.dps)}</span>
+                    </div>
+                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
+                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Power / sec</span>
+                      <span className="text-purple-400 font-bold">{formatNumber(computedStats.pps)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "upgrades" && computedStats && (
+              <div className="space-y-6">
+                <div className="border border-white/[0.04] rounded-xl overflow-hidden glass-panel text-white">
+                  <div className="px-5 py-4 border-b border-white/[0.04] bg-white/[0.01] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-400 font-black text-xs tracking-widest uppercase font-display">Progression Upgrade Advisor</span>
+                    </div>
+                  </div>
+                  
+                  <div className="p-5 space-y-4">
+                    {scores.upgradeAdvice.recommendations && scores.upgradeAdvice.recommendations.length > 0 ? (
+                      scores.upgradeAdvice.recommendations.map((rec, index) => {
+                        const rankLabels = ["#1 Best Combat Upgrade", "#2 Second Best Upgrade", "#3 Third Best Upgrade"];
+                        const label = rankLabels[index] || `Upgrade #${index + 1}`;
+                        
+                        return (
+                          <div key={index} className="rounded-lg p-4 border border-white/[0.04] bg-white/[0.01] space-y-2">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <div className="text-[8px] uppercase tracking-widest text-amber-400 font-black">{label}</div>
+                                <div className="text-white font-extrabold text-sm mt-0.5">{rec.name} {rec.level > 0 ? `Lv${rec.level}` : ""}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-[8px] uppercase tracking-widest text-white/30 font-black">Combat Boost</div>
+                                <div className="text-amber-400 font-bold text-xs">+{rec.damageGainPct}%</div>
+                              </div>
+                            </div>
+                            <p className="text-white/50 text-xs leading-relaxed">
+                              {rec.reason}
+                            </p>
+                            <div className="flex justify-between border-t border-white/[0.03] pt-2 text-[10px] font-bold">
+                              <span className="text-white/35">Market Price: <span className="text-white">{rec.marketPriceNote || "Unknown"}</span></span>
+                              <span className={rec.affordable ? "text-[#5ecb7a]" : "text-white/40 font-semibold"}>
+                                {rec.affordable ? "✓ Affordable Now" : "⏳ Long-term goal"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-xs font-semibold text-white/40 text-center py-4 border border-white/[0.03] rounded-lg bg-white/[0.01]">
+                        No upgrade currently recommended.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Gold Planner block */}
+                <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-4">
+                  <SectionLabel>Gold & Budget Planner</SectionLabel>
+                  <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
+                    <div className="bg-white/[0.01] p-3 rounded-lg border border-white/5 space-y-1">
+                      <div className="text-white/30 text-[9px] uppercase tracking-wider">Current Account Balance</div>
+                      <div className="text-white font-bold font-mono">{player.gold} Gold</div>
+                    </div>
+                    
+                    {(() => {
+                      const nextSword = getNextSwordUpgrade(player.sword, player.swordLevel);
+                      const cost = nextSword ? (getPriceRaw(nextSword.name, 1) || 1e12) : 0;
+                      const isAffordable = player.goldRaw >= cost;
+                      const diff = Math.max(cost - player.goldRaw, 0);
+                      
+                      return (
+                        <div className="bg-white/[0.01] p-3 rounded-lg border border-white/5 space-y-1">
+                          <div className="text-white/30 text-[9px] uppercase tracking-wider">Next Sword Budget</div>
+                          <div className={isAffordable ? "text-[#5ecb7a] font-bold" : "text-red-400 font-bold"}>
+                            {isAffordable ? "Affordable Now" : `Short ${formatNumber(diff)} Gold`}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "benchmarks" && (
+              <div className="space-y-6">
+                {(() => {
+                  const bmark = getInterpolatedBenchmark(player.level);
+                  const powerRatio = bmark.avgPower > 0 ? (player.powerRaw / bmark.avgPower) * 100 : 100;
+                  const goldRatio = bmark.avgGold > 0 ? (player.goldRaw / bmark.avgGold) * 100 : 100;
+                  
+                  return (
+                    <div className="space-y-6">
+                      <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-4">
+                        <SectionLabel>Benchmark Peer Comparison</SectionLabel>
+                        <div className="space-y-4 text-xs font-semibold">
+                          <div className="flex justify-between items-center border-b border-white/[0.02] pb-3.5">
+                            <div>
+                              <span className="text-white block">Power benchmark</span>
+                              <span className="text-[10px] text-white/35">Target: {formatNumber(bmark.avgPower)}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-mono block text-amber-400">{player.power}</span>
+                              <span className={`text-[10px] font-bold ${powerRatio >= 100 ? "text-[#5ecb7a]" : "text-red-400"}`}>
+                                {powerRatio >= 100 ? `+${Math.round(powerRatio - 100)}% ahead` : `${Math.round(100 - powerRatio)}% behind`}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center border-b border-white/[0.02] pb-3.5">
+                            <div>
+                              <span className="text-white block">Gold benchmark</span>
+                              <span className="text-[10px] text-white/35">Target: {formatNumber(bmark.avgGold)}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-mono block text-amber-400">{player.gold}</span>
+                              <span className={`text-[10px] font-bold ${goldRatio >= 100 ? "text-[#5ecb7a]" : "text-red-400"}`}>
+                                {goldRatio >= 100 ? `+${Math.round(goldRatio - 100)}% ahead` : `${Math.round(100 - goldRatio)}% behind`}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <span className="text-white block">Progression Percentile</span>
+                              <span className="text-[10px] text-white/35">Estimated standing</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-white font-bold block">{percentile.label}</span>
+                              <span className="text-[10px] text-amber-400 font-bold">{scores.standing} rating</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+
+            {activeTab === "simulator" && (
+              <div className="space-y-6">
+                <Simulator currentPlayer={player} currentScores={scores} />
+              </div>
+            )}
+
+            {activeTab === "coach" && (
+              <div className="space-y-6">
+                {explanation && (
+                  <div className="rounded-xl p-5 border border-white/[0.04] glass-panel space-y-4">
+                    <SectionLabel>Analysis Dossier</SectionLabel>
+                    <p className="text-white/70 text-xs leading-relaxed font-semibold">{explanation.summary}</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white/[0.01] p-3 rounded-lg border border-[#5ecb7a]/5 text-xs">
+                        <div className="text-[#5ecb7a] font-black uppercase text-[8px] mb-2">Strengths</div>
+                        <ul className="space-y-1 text-white/40">
+                          {explanation.strengths.map((s: string, i: number) => (
+                            <li key={i}>+ {s}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="bg-white/[0.01] p-3 rounded-lg border border-red-500/5 text-xs">
+                        <div className="text-red-400 font-black uppercase text-[8px] mb-2">Weaknesses</div>
+                        <ul className="space-y-1 text-white/40">
+                          {explanation.weaknesses.map((w: string, i: number) => (
+                            <li key={i}>− {w}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <CoachChat playerContext={JSON.stringify(player)} explanation={explanation} />
+              </div>
+            )}
+          </div>
+
       </main>
 
-      <footer className="border-t border-[#0f0f0f] px-6 py-4 text-center text-[#1e1e1e] text-xs">
-        SMGrade — not affiliated with SwordMasters
+      <footer className="border-t border-white/[0.03] bg-[#070b13]/60 px-6 py-5 text-center text-white/20 text-[9px] font-bold uppercase tracking-widest z-10">
+        Companion App — built for SwordMasters
       </footer>
+      <CompanionDrawer 
+        isOpen={companionOpen} 
+        onClose={() => setCompanionOpen(false)} 
+        onLoginStateChange={refreshProfile}
+      />
+    </div>
+  );
+}
+
+function NetWorthPanel({ player }: { player: any }) {
+  const [loading, setLoading] = useState(true);
+  const [netWorth, setNetWorth] = useState<NetWorthResult | null>(null);
+
+  useEffect(() => {
+    ensurePricesLoaded().then(() => {
+      const nw = calculateNetWorth(player);
+      setNetWorth(nw);
+      setLoading(false);
+    });
+  }, [player]);
+
+  if (loading || !netWorth) {
+    return (
+      <div className="rounded-xl border border-white/[0.04] bg-[#05050f]/60 backdrop-blur-lg p-8 text-center space-y-4">
+        <div className="animate-spin inline-block w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full" />
+        <p className="text-xs text-white/40 uppercase font-black tracking-widest">Evaluating account value from market logs...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Overview Card */}
+      <div className="rounded-xl border border-white/[0.04] bg-[#05050f]/60 backdrop-blur-lg p-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-6 text-[100px] text-white/[0.01] select-none font-bold pointer-events-none">
+          $
+        </div>
+        <SectionLabel>Account Value & Net Worth</SectionLabel>
+        <p className="text-white/40 text-xs mb-6 max-w-xl">
+          We cross-referenced your equipped gear and vault storage against the public SwordMasters market trading logs (11.5M+ public trades analyzed).
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white/[0.01] border border-white/[0.03] p-4 rounded-lg space-y-1">
+            <span className="text-[10px] text-white/30 uppercase font-bold tracking-widest block">Equipped Value</span>
+            <span className="text-2xl font-black text-white font-mono">{netWorth.equippedFormatted} <span className="text-xs text-[#ffd700]">Gold</span></span>
+          </div>
+
+          <div className="bg-white/[0.01] border border-white/[0.03] p-4 rounded-lg space-y-1">
+            <span className="text-[10px] text-white/30 uppercase font-bold tracking-widest block">Storage Value</span>
+            <span className="text-2xl font-black text-white font-mono">{netWorth.storageFormatted} <span className="text-xs text-[#ffd700]">Gold</span></span>
+          </div>
+
+          <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-lg space-y-1">
+            <span className="text-[10px] text-amber-400 uppercase font-bold tracking-widest block">Total Net Worth</span>
+            <span className="text-2xl font-black text-[#ffd700] font-mono">{netWorth.totalFormatted} <span className="text-xs text-amber-400">Gold</span></span>
+          </div>
+        </div>
+      </div>
+
+      {/* Valuation Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Equipped Breakdown */}
+        <div className="rounded-xl border border-white/[0.04] bg-[#05050f]/60 backdrop-blur-lg p-5 space-y-4">
+          <SectionLabel>Equipped Items Worth</SectionLabel>
+          <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+            {player.sword && player.sword !== "None" && !player.sword.includes("Unknown") && (
+              <ValuationRow name={player.sword} level={player.swordLevel} type="sword" />
+            )}
+            {player.shield && player.shield !== "None" && !player.shield.includes("Unknown") && (
+              <ValuationRow name={player.shield} level={player.shieldLevel} type="shield" />
+            )}
+            {player.activePets && player.activePets.map((pet: any, idx: number) => {
+              const item = resolveItemByGameType(pet.type, "pet");
+              return item && !item.name.includes("Unknown") ? (
+                <ValuationRow key={idx} name={item.name} level={1} type="pet" />
+              ) : null;
+            })}
+          </div>
+        </div>
+
+        {/* Storage Breakdown */}
+        <div className="rounded-xl border border-white/[0.04] bg-[#05050f]/60 backdrop-blur-lg p-5 space-y-4">
+          <SectionLabel>Storage Items Worth</SectionLabel>
+          <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+            {(() => {
+              const storage = player.rawPayload?.inv?.storage || {};
+              const elements: React.ReactNode[] = [];
+              
+              if (Array.isArray(storage.swords)) {
+                storage.swords.forEach((sw: any, idx: number) => {
+                  const item = resolveItemByGameType(sw.type, "sword");
+                  if (item && !item.name.includes("Unknown")) {
+                    elements.push(<ValuationRow key={`sw-${idx}`} name={item.name} level={sw.level || 1} type="sword" />);
+                  }
+                });
+              }
+
+              if (Array.isArray(storage.shields)) {
+                storage.shields.forEach((sh: any, idx: number) => {
+                  const item = resolveItemByGameType(sh.type, "shield");
+                  if (item && !item.name.includes("Unknown")) {
+                    elements.push(<ValuationRow key={`sh-${idx}`} name={item.name} level={sh.level || 1} type="shield" />);
+                  }
+                });
+              }
+
+              if (Array.isArray(storage.pets)) {
+                storage.pets.forEach((p: any, idx: number) => {
+                  const item = resolveItemByGameType(p.type, "pet");
+                  if (item && !item.name.includes("Unknown")) {
+                    elements.push(<ValuationRow key={`p-${idx}`} name={item.name} level={1} type="pet" />);
+                  }
+                });
+              }
+
+              if (elements.length === 0) {
+                return <p className="text-xs text-white/30 italic text-center py-6">Vault storage is empty or offline.</p>;
+              }
+
+              return elements;
+            })()}
+          </div>
+        </div>
+      </div>
+      
+      <div className="text-center text-[10px] text-white/20 font-bold uppercase tracking-widest">
+        Estimates derived from 11,510,140 analyzed trades.
+      </div>
+    </div>
+  );
+}
+
+function ValuationRow({ name, level, type }: { name: string; level: number; type: "sword" | "shield" | "pet" }) {
+  const price = lookupItemPrice(type, name, level);
+  const formatted = formatNumber(price);
+  
+  return (
+    <div className="flex items-center justify-between p-3 rounded bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+      <div className="flex items-center gap-3">
+        <span className="text-base select-none">{type === "sword" ? "🗡️" : type === "shield" ? "🛡️" : "🐾"}</span>
+        <div>
+          <p className="text-xs text-white font-bold">{name}</p>
+          <p className="text-[10px] text-white/30 font-semibold uppercase">Category: {type} {type !== "pet" && `· Lv ${level}`}</p>
+        </div>
+      </div>
+      <span className="text-xs text-amber-400 font-mono font-bold">{formatted} <span className="text-[10px] text-white/40">Gold</span></span>
     </div>
   );
 }

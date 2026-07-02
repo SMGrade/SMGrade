@@ -4,6 +4,7 @@ import type { ScoreResult } from "@/lib/scorer";
 import { scorePlayer } from "@/lib/scorer";
 import { SWORDS, SHIELDS, getSwordData, getShieldData, scaledSwordDamage, scaledShieldDM } from "@/lib/gearDatabase";
 import { parseNumber, formatNumber } from "@/lib/numberParser";
+import { calculateDamageStats } from "@/lib/damageCalc";
 
 interface SimulatorProps {
   currentPlayer: ParsedPlayer;
@@ -11,12 +12,12 @@ interface SimulatorProps {
 }
 
 const GRADE_COLOR: Record<string, string> = {
-  "S+": "#FFD700",
-  S: "#FFD700",
-  "A+": "#c9a84c",
-  A: "#c9a84c",
-  "B+": "#8ab4c9",
-  B: "#8ab4c9",
+  "S+": "#ffd700",
+  S: "#ffd700",
+  "A+": "#3b82f6",
+  A: "#3b82f6",
+  "B+": "#a855f7",
+  B: "#a855f7",
   "C+": "#888",
   C: "#888",
   D: "#e05a5a",
@@ -59,15 +60,26 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
   const curShield = getShieldData(currentPlayer.shield);
   const curDS = curSword ? scaledSwordDamage(curSword.baseDamage, currentPlayer.swordLevel) * 1e9 : 0;
   const curMS = curShield ? scaledShieldDM(curShield.baseDM, currentPlayer.shieldLevel) : 0;
-  const curDamage = (curDS + 2 * Math.sqrt(Math.max(currentPlayer.powerRaw, 0)) + 1) * (1 + curMS);
-  const curDps = curDamage * 2.77;
+  const curDamageStats = calculateDamageStats({
+    ds: curDS,
+    swordDamageMultiplier: curMS,
+    power: currentPlayer.powerRaw,
+    petPowerBonus: 0
+  });
+  const curDamage = curDamageStats.damagePerHit;
 
   const simSword = getSwordData(selectedSword);
   const simShield = getShieldData(selectedShield);
   const simDS = simSword ? scaledSwordDamage(simSword.baseDamage, swordLevel) * 1e9 : 0;
   const simMS = simShield ? scaledShieldDM(simShield.baseDM, shieldLevel) : 0;
-  const simDamage = (simDS + 2 * Math.sqrt(Math.max(parsedPower, 0)) + 1) * (1 + simMS);
-  const simDps = simDamage * 2.77;
+  const simDamageStats = calculateDamageStats({
+    ds: simDS,
+    swordDamageMultiplier: simMS,
+    power: parsedPower,
+    petPowerBonus: 0
+  });
+  const simDamage = simDamageStats.damagePerHit;
+  const simDps = simDamageStats.damagePerSecond;
 
   // Percentage gains
   const dmgGainPct = curDamage > 0 ? ((simDamage - curDamage) / curDamage) * 100 : 0;
@@ -84,44 +96,44 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
   }
 
   return (
-    <div className="border border-[#1e1e1e] rounded-xl overflow-hidden bg-[#0c0c0c] text-white">
+    <div className="border border-white/[0.04] rounded-xl overflow-hidden glass-panel text-white shadow-[0_4px_30px_rgba(0,0,0,0.4)] bg-[#05050f]/60">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-[#151515] bg-[#0f0f0f] flex items-center justify-between">
+      <div className="px-5 py-4.5 border-b border-white/[0.04] bg-white/[0.01] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-lg">⚙️</span>
-          <span className="text-[#c9a84c] font-bold text-sm tracking-wide">UPGRADE SIMULATOR</span>
+          <span className="text-amber-400 font-black text-xs tracking-widest uppercase font-display">Upgrade Simulator</span>
         </div>
-        <span className="text-[#555] text-[10px] uppercase tracking-widest font-semibold">Test Builds Live</span>
+        <span className="text-white/20 text-[9px] uppercase tracking-widest font-black font-display">Live Sandbox Mode</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#151515]">
+      <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-white/[0.04]">
         {/* Left Side: Controls */}
         <div className="p-5 space-y-4">
-          <div className="text-[10px] uppercase tracking-wider text-[#555] font-bold mb-1">Simulate Stats</div>
+          <div className="text-[9px] uppercase tracking-widest text-white/30 font-black font-display mb-1">Simulate Stats</div>
           
           {/* Sword Selection */}
           <div className="grid grid-cols-3 gap-2">
             <div className="col-span-2">
-              <label className="text-[10px] text-[#555] block mb-1">Sword</label>
+              <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Sword</label>
               <select
-                className="w-full bg-[#080808] border border-[#222] text-[#ccc] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#c9a84c] transition-colors"
+                className="w-full bg-[#070b13] border border-white/[0.04] focus:border-amber-500/30 text-white/70 rounded-lg px-3 py-2.5 text-xs outline-none transition-colors cursor-pointer"
                 value={selectedSword}
                 onChange={(e) => setSelectedSword(e.target.value)}
               >
                 {SWORDS.map((s) => (
-                  <option key={s.name} value={s.name}>{s.name}</option>
+                  <option key={s.name} value={s.name} className="bg-[#070b13]">{s.name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-[10px] text-[#555] block mb-1">Level</label>
+              <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Level</label>
               <select
-                className="w-full bg-[#080808] border border-[#222] text-[#ccc] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#c9a84c] transition-colors"
+                className="w-full bg-[#070b13] border border-white/[0.04] focus:border-amber-500/30 text-white/70 rounded-lg px-3 py-2.5 text-xs outline-none transition-colors cursor-pointer"
                 value={swordLevel}
                 onChange={(e) => setSwordLevel(parseInt(e.target.value))}
               >
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => (
-                  <option key={lvl} value={lvl}>Lv{lvl}</option>
+                  <option key={lvl} value={lvl} className="bg-[#070b13]">Lv{lvl}</option>
                 ))}
               </select>
             </div>
@@ -130,26 +142,26 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
           {/* Shield Selection */}
           <div className="grid grid-cols-3 gap-2">
             <div className="col-span-2">
-              <label className="text-[10px] text-[#555] block mb-1">Shield</label>
+              <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Shield</label>
               <select
-                className="w-full bg-[#080808] border border-[#222] text-[#ccc] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#c9a84c] transition-colors"
+                className="w-full bg-[#070b13] border border-white/[0.04] focus:border-amber-500/30 text-white/70 rounded-lg px-3 py-2.5 text-xs outline-none transition-colors cursor-pointer"
                 value={selectedShield}
                 onChange={(e) => setSelectedShield(e.target.value)}
               >
                 {SHIELDS.map((s) => (
-                  <option key={s.name} value={s.name}>{s.name}</option>
+                  <option key={s.name} value={s.name} className="bg-[#070b13]">{s.name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-[10px] text-[#555] block mb-1">Level</label>
+              <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Level</label>
               <select
-                className="w-full bg-[#080808] border border-[#222] text-[#ccc] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#c9a84c] transition-colors"
+                className="w-full bg-[#070b13] border border-white/[0.04] focus:border-amber-500/30 text-white/70 rounded-lg px-3 py-2.5 text-xs outline-none transition-colors cursor-pointer"
                 value={shieldLevel}
                 onChange={(e) => setShieldLevel(parseInt(e.target.value))}
               >
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => (
-                  <option key={lvl} value={lvl}>Lv{lvl}</option>
+                  <option key={lvl} value={lvl} className="bg-[#070b13]">Lv{lvl}</option>
                 ))}
               </select>
             </div>
@@ -157,10 +169,10 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
 
           {/* Power Input */}
           <div>
-            <label className="text-[10px] text-[#555] block mb-1">Power (e.g. 9.95QT, 2.5SXT)</label>
+            <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Power (e.g. 9.95QT, 2.5SXT)</label>
             <input
               type="text"
-              className="w-full bg-[#080808] border border-[#222] text-[#ccc] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#c9a84c] transition-colors font-mono"
+              className="w-full bg-[#070b13] border border-white/[0.04] focus:border-amber-500/30 text-white/80 rounded-lg px-3 py-2.5 text-xs outline-none transition-colors font-mono"
               value={powerInput}
               onChange={(e) => setPowerInput(e.target.value)}
             />
@@ -168,10 +180,10 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
 
           {/* Gold Input */}
           <div>
-            <label className="text-[10px] text-[#555] block mb-1">Gold</label>
+            <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Gold</label>
             <input
               type="text"
-              className="w-full bg-[#080808] border border-[#222] text-[#ccc] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#c9a84c] transition-colors font-mono"
+              className="w-full bg-[#070b13] border border-white/[0.04] focus:border-amber-500/30 text-white/80 rounded-lg px-3 py-2.5 text-xs outline-none transition-colors font-mono"
               value={goldInput}
               onChange={(e) => setGoldInput(e.target.value)}
             />
@@ -179,30 +191,30 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
         </div>
 
         {/* Right Side: Simulated Results & Comparison */}
-        <div className="p-5 space-y-5 bg-[#0a0a0a]">
-          <div className="text-[10px] uppercase tracking-wider text-[#555] font-bold">Simulated Output</div>
+        <div className="p-5 space-y-5 bg-white/[0.01]">
+          <div className="text-[9px] uppercase tracking-widest text-white/30 font-black font-display">Simulated Output</div>
 
           {/* Grade Comparison */}
-          <div className="flex items-center justify-between border-b border-[#151515] pb-4">
+          <div className="flex items-center justify-between border-b border-white/[0.04] pb-4">
             <div>
-              <span className="text-xs text-[#555] block">Overall Grade</span>
-              <span className="text-2xl font-black font-mono leading-none transition-colors" style={{ color: GRADE_COLOR[simulatedScores.overallGrade] }}>
+              <span className="text-[9px] text-white/30 font-bold uppercase tracking-wider block mb-1">Overall Grade</span>
+              <span className="text-3xl font-black font-display leading-none transition-colors drop-shadow-sm" style={{ color: GRADE_COLOR[simulatedScores.overallGrade] }}>
                 {simulatedScores.overallGrade}
               </span>
-              <span className="text-[10px] text-[#444] block font-mono">Score: {simulatedScores.overallScore}/100</span>
+              <span className="text-[9px] text-amber-400 block font-mono font-bold mt-1">Score: {simulatedScores.overallScore}/100</span>
             </div>
             
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <span className="text-[#444] text-[10px] block">Current</span>
-                <span className="text-sm font-semibold font-mono text-[#888]">
+                <span className="text-white/20 text-[8px] uppercase tracking-wider font-bold block">Current</span>
+                <span className="text-xs font-bold font-mono text-white/40">
                   {currentScores.overallGrade} ({currentScores.overallScore})
                 </span>
               </div>
-              <span className="text-[#333]">→</span>
+              <span className="text-white/20 text-xs">→</span>
               <div className="text-right">
-                <span className="text-[#c9a84c] text-[10px] block">Simulated</span>
-                <span className="text-sm font-semibold font-mono" style={{ color: GRADE_COLOR[simulatedScores.overallGrade] }}>
+                <span className="text-amber-400 text-[8px] uppercase tracking-wider font-bold block">Simulated</span>
+                <span className="text-xs font-bold font-mono" style={{ color: GRADE_COLOR[simulatedScores.overallGrade] }}>
                   {simulatedScores.overallGrade} ({simulatedScores.overallScore})
                 </span>
               </div>
@@ -210,49 +222,51 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
           </div>
 
           {/* Damage Comparison */}
-          <div className="space-y-2 border-b border-[#151515] pb-4">
+          <div className="space-y-2.5 border-b border-white/[0.04] pb-4">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-[#555]">Damage / Hit</span>
-              <span className="font-mono font-bold text-white flex items-center gap-2">
+              <span className="text-white/40 font-semibold">Damage / Hit</span>
+              <span className="font-mono font-black text-white flex items-center gap-2">
                 {fmtBig(simDamage)}
                 {dmgGainPct !== 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-sm font-bold ${dmgGainPct > 0 ? "bg-[#4a9e5c]/10 text-[#4a9e5c]" : "bg-[#e05a5a]/10 text-[#e05a5a]"}`}>
+                  <span className={`text-[8.5px] px-1.5 py-0.5 rounded font-black tracking-wider uppercase ${
+                    dmgGainPct > 0 ? "bg-[#5ecb7a]/15 text-[#5ecb7a] border border-[#5ecb7a]/20" : "bg-red-500/10 text-red-400 border border-red-500/15"
+                  }`}>
                     {dmgGainPct > 0 ? "+" : ""}{dmgGainPct.toFixed(1)}%
                   </span>
                 )}
               </span>
             </div>
             <div className="flex justify-between items-center text-xs">
-              <span className="text-[#555]">DPS</span>
-              <span className="font-mono text-[#aaa]">
+              <span className="text-white/40 font-semibold">Estimated DPS</span>
+              <span className="font-mono text-white/70 font-bold">
                 {fmtBig(simDps)}
               </span>
             </div>
           </div>
 
           {/* Sub-score bars comparison */}
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             {[
-              { label: "Gear Score", cur: currentScores.gearScore, sim: simulatedScores.gearScore, color: "#c9a84c" },
-              { label: "Power Score", cur: currentScores.powerScore, sim: simulatedScores.powerScore, color: "#8ab4c9" },
-              { label: "Progress Score", cur: currentScores.progressScore, sim: simulatedScores.progressScore, color: "#9ecb7a" },
-              { label: "Wealth Score", cur: currentScores.wealthScore, sim: simulatedScores.wealthScore, color: "#b89fce" },
+              { label: "Gear Score", cur: currentScores.gearScore, sim: simulatedScores.gearScore, color: "#ffd700" },
+              { label: "Power Score", cur: currentScores.powerScore, sim: simulatedScores.powerScore, color: "#3b82f6" },
+              { label: "Progress Score", cur: currentScores.progressScore, sim: simulatedScores.progressScore, color: "#5ecb7a" },
+              { label: "Wealth Score", cur: currentScores.wealthScore, sim: simulatedScores.wealthScore, color: "#a855f7" },
             ].map((score) => {
               const diff = score.sim - score.cur;
               return (
-                <div key={score.label} className="space-y-1">
+                <div key={score.label} className="space-y-1.5">
                   <div className="flex justify-between text-xs">
-                    <span className="text-[#555]">{score.label}</span>
-                    <span className="font-mono text-white flex items-center gap-1.5">
-                      <span>{score.sim}</span>
+                    <span className="text-white/40 font-semibold">{score.label}</span>
+                    <span className="font-mono text-white flex items-center gap-1.5 font-bold">
+                      <span>{score.sim}%</span>
                       {diff !== 0 && (
-                        <span className={`text-[9px] font-bold ${diff > 0 ? "text-[#4a9e5c]" : "text-[#e05a5a]"}`}>
+                        <span className={`text-[9px] font-black font-mono ${diff > 0 ? "text-[#5ecb7a]" : "text-red-400"}`}>
                           ({diff > 0 ? "+" : ""}{diff})
                         </span>
                       )}
                     </span>
                   </div>
-                  <div className="h-1 bg-[#151515] rounded-full overflow-hidden relative">
+                  <div className="h-1.5 bg-white/[0.03] border border-white/[0.02] rounded-full overflow-hidden relative">
                     <div
                       className="h-full rounded-full transition-all duration-300 absolute left-0"
                       style={{ width: `${score.sim}%`, backgroundColor: score.color }}

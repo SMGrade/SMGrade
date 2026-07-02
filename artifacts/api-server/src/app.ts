@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -29,6 +30,20 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Unify static file hosting for React client build folder
+const publicPath = path.resolve(__dirname, "../../smgrade/dist/public");
+app.use(express.static(publicPath));
+
 app.use("/api", router);
+
+app.get("*any", (req, res) => {
+  if (!req.path.startsWith("/api")) {
+    res.sendFile(path.join(publicPath, "index.html"), (err) => {
+      if (err) {
+        res.status(404).send("Front-end asset folder not built. Run pnpm run build first.");
+      }
+    });
+  }
+});
 
 export default app;

@@ -44,6 +44,7 @@ router.post("/grade/explain", async (req, res) => {
   }
 
   const d = parsed.data;
+  const itemsContext = req.body.itemsContext || GEAR_CONTEXT;
 
   const prompt = `You are a SwordMasters account analyst. A deterministic scoring engine has already computed the scores — do NOT re-calculate them. Your job is only to write the written analysis.
 
@@ -68,7 +69,7 @@ Stats:
 ${d.pvpKills != null ? `- PvP Kills: ${d.pvpKills}` : ""}
 
 REAL GAME KNOWLEDGE (use this for accurate advice — do NOT suggest non-existent gear or impossible levels):
-${GEAR_CONTEXT}
+${itemsContext}
 
 RULES for recommendation:
 - Only suggest gear that exists in the list above
@@ -80,11 +81,11 @@ RULES for recommendation:
 
 Respond in JSON with exactly this structure (no markdown, no code block):
 {
-  "summary": "2-3 sentence overall summary of the account",
+  "summary": "2-3 sentence overall summary of the account. Mention why the grade was given based on their score breakdown.",
   "strengths": ["strength 1", "strength 2", "strength 3"],
   "weaknesses": ["weakness 1", "weakness 2"],
-  "recommendation": "Single most impactful next upgrade — be specific with item name, target level, and approximate market cost",
-  "reasoning": "1-2 sentences explaining why this specific grade was given"
+  "recommendation": "Cheapest upgrade: <Item name + level + cost>. Best value upgrade: <Item name + level + cost>. Why it is recommended over other options.",
+  "reasoning": "1-2 sentences explaining why this specific grade was given based on their gear and progression stage."
 }
 
 Be concise, specific, and accurate. Reference real game terms. Do not be generic.`;
@@ -113,12 +114,6 @@ Be concise, specific, and accurate. Reference real game terms. Do not be generic
 });
 
 // ── AI Chat ──────────────────────────────────────────────────────────────────
-const CHAT_SYSTEM = `You are the SMGrade AI Coach — a sharp, knowledgeable SwordMasters expert.
-You have access to the player's full stats and grade report below.
-Answer questions concisely (2–5 sentences max). Be direct, game-accurate, and helpful.
-Never make up items. If the question is unrelated to SwordMasters or the player, politely redirect.
-
-${GEAR_CONTEXT}`;
 
 router.post("/grade/chat", async (req, res) => {
   if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.trim() === "" || process.env.GEMINI_API_KEY.includes("missing-key")) {
@@ -128,13 +123,21 @@ router.post("/grade/chat", async (req, res) => {
 
   const { question, playerContext } = req.body as {
     question?: string;
-    playerContext?: Record<string, unknown>;
+    playerContext?: Record<string, unknown> & { itemsContext?: string };
   };
 
   if (!question || typeof question !== "string" || question.trim().length === 0) {
     res.status(400).json({ error: "question is required" });
     return;
   }
+
+  const itemsContext = (playerContext && playerContext.itemsContext) || GEAR_CONTEXT;
+  const chatSystemInstruction = `You are the SMGrade AI Coach — a sharp, knowledgeable SwordMasters expert.
+You have access to the player's full stats and grade report below.
+Answer questions concisely (2–5 sentences max). Be direct, game-accurate, and helpful.
+Never make up items. If the question is unrelated to SwordMasters or the player, politely redirect.
+
+${itemsContext}`;
 
   const ctx = playerContext
     ? `Player context:\n${JSON.stringify(playerContext, null, 2)}`
@@ -145,7 +148,7 @@ router.post("/grade/chat", async (req, res) => {
       model: "gemini-2.5-flash",
       contents: `${ctx}\n\nPlayer question: ${question.trim()}`,
       config: {
-        systemInstruction: CHAT_SYSTEM,
+        systemInstruction: chatSystemInstruction,
       },
     });
     const answer = response.text ?? "I couldn't generate a response. Try again.";
