@@ -3,6 +3,7 @@ import { Link } from "wouter";
 // @ts-ignore
 import { Client, registerSerializer } from "colyseus.js";
 import { ParticleBackground } from "./Home";
+import { normalizeLivePlayer } from "@/lib/liveLookupEngine";
 
 class DummySerializer {
   setState(rawState: any) {}
@@ -168,217 +169,281 @@ DIAGNOSTIC REPORT:
     resetLookupState();
 
     try {
-      // Step 1: findServer
-      const fsData = await executeStep(1, async () => {
-        const res = await fetch("https://loadbalancer.swordmasters.io/api/server/findServer", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }
+      let rawPayload: any = null;
+
+      // Try direct client-side connection first
+      try {
+        // Step 1: findServer
+        const fsData = await executeStep(1, async () => {
+          const res = await fetch("https://loadbalancer.swordmasters.io/api/server/findServer", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" }
+          });
+          if (!res.ok) throw new Error(`Load balancer returned status ${res.status}`);
+          const json = await res.json();
+          if (!json.token) throw new Error("Load balancer did not provide authentication token.");
+          return json;
         });
-        if (!res.ok) throw new Error(`Load balancer returned status ${res.status}`);
-        const json = await res.json();
-        if (!json.token) throw new Error("Load balancer did not provide authentication token.");
-        return json;
-      });
 
-      // Step 2: joinOrCreate
-      const host = fsData.data?.foundServer || "eu1";
-      const mmData = await executeStep(2, async () => {
-        const res = await fetch(`https://${host}.swordmasters.io/matchmake/joinOrCreate/world_1`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            token: fsData.token,
-            auth: fsData.token,
-            password: fsData.token,
-            accessToken: fsData.token,
-            jwt: fsData.token
-          })
+        // Step 2: joinOrCreate
+        const host = fsData.data?.foundServer || "eu1";
+        const mmData = await executeStep(2, async () => {
+          const res = await fetch(`https://${host}.swordmasters.io/matchmake/joinOrCreate/world_1`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              token: fsData.token,
+              auth: fsData.token,
+              password: fsData.token,
+              accessToken: fsData.token,
+              jwt: fsData.token
+            })
+          });
+          if (!res.ok) throw new Error(`Matchmaker request failed with status ${res.status}`);
+          return await res.json();
         });
-        if (!res.ok) throw new Error(`Matchmaker request failed with status ${res.status}`);
-        return await res.json();
-      });
 
-      // Step 3: Seat reservation received
-      await executeStep(3, async () => {
-        if (!mmData.room || !mmData.room.publicAddress || !mmData.sessionId) {
-          throw new Error("Matchmaker response payload is missing reservation data.");
-        }
-        diagInfo.current.roomId = mmData.room.roomId;
-        diagInfo.current.sessionId = mmData.sessionId;
-        diagInfo.current.processId = mmData.room.processId;
-        diagInfo.current.publicAddress = mmData.room.publicAddress;
-      });
+        // Step 3: Seat reservation received
+        await executeStep(3, async () => {
+          if (!mmData.room || !mmData.room.publicAddress || !mmData.sessionId) {
+            throw new Error("Matchmaker response payload is missing reservation data.");
+          }
+          diagInfo.current.roomId = mmData.room.roomId;
+          diagInfo.current.sessionId = mmData.sessionId;
+          diagInfo.current.processId = mmData.room.processId;
+          diagInfo.current.publicAddress = mmData.room.publicAddress;
+        });
 
-      // Step 4: Colyseus client created
-      const client = await executeStep(4, async () => {
-        const cl = new Client(`wss://${mmData.room.publicAddress}`);
-        
-        // Override buildEndpoint to inject validation tokens
-        cl.buildEndpoint = function (room: any, options: any) {
-          if (options === void 0) { options = {}; }
-          var params = [];
-          for (var name_1 in options) {
-              if (!options.hasOwnProperty(name_1)) {
-                  continue;
+        // Step 4: Colyseus client created
+        const client = await executeStep(4, async () => {
+          const cl = new Client(`wss://${mmData.room.publicAddress}`);
+          
+          // Override buildEndpoint to inject validation tokens
+          cl.buildEndpoint = function (room: any, options: any) {
+            if (options === void 0) { options = {}; }
+            var params = [];
+            for (var name_1 in options) {
+                if (!options.hasOwnProperty(name_1)) {
+                    continue;
+                }
+                params.push(name_1 + "=" + options[name_1]);
+            }
+            params.push("token=" + encodeURIComponent(fsData.token));
+            params.push("auth=" + encodeURIComponent(fsData.token));
+            params.push("password=" + encodeURIComponent(fsData.token));
+            params.push("accessToken=" + encodeURIComponent(fsData.token));
+            params.push("jwt=" + encodeURIComponent(fsData.token));
+            params.push("Authorization=" + encodeURIComponent("Bearer " + fsData.token));
+            return this.endpoint + "/" + room.processId + "/" + room.roomId + "?" + params.join('&');
+          };
+          return cl;
+        });
+
+        // Step 5: WebSocket connected
+        const room = await executeStep(5, async () => {
+          const rm = client.createRoom(mmData.room.name);
+          rm.id = mmData.room.roomId;
+          rm.sessionId = mmData.sessionId;
+          activeRoomRef.current = rm;
+          diagInfo.current.consumed = true;
+
+          const wsUrl = client.buildEndpoint(mmData.room, { sessionId: rm.sessionId });
+          diagInfo.current.wsUrl = wsUrl;
+
+          // Log outgoing messages
+          const originalSend = rm.send;
+          rm.send = function (type: any, message?: any) {
+            console.log(`[Outgoing Message] Type: ${type}, Payload:`, message);
+            return originalSend.call(this, type, message);
+          };
+
+          // Log incoming raw packets
+          const originalCallback = rm.onMessageCallback;
+          rm.onMessageCallback = function (event: MessageEvent) {
+            console.log("[Incoming WebSocket Packet - Raw]:", event.data);
+            return originalCallback.call(this, event);
+          };
+
+          // Log incoming decoded messages
+          rm.onMessage("*", (type: string, message: any) => {
+            console.log(`[Incoming Message - Decoded] Type: ${type}, Payload:`, message);
+            if (type === "Server:SkinStatue:GetPlayerInfo") {
+              console.log("[Success] Server:SkinStatue:GetPlayerInfo was received!");
+            }
+          });
+
+          // Trigger connect synchronously
+          diagInfo.current.connectCalled = true;
+          console.log("[WebSocket Trace] Calling rm.connect(wsUrl). wsUrl:", wsUrl);
+          rm.connect(wsUrl);
+          console.log("[WebSocket Trace] rm.connect() returned synchronously.");
+
+          // Retrieve native WebSocket
+          const ws = (rm.connection?.transport as any)?.ws as WebSocket;
+
+          return new Promise((resolve, reject) => {
+            if (!ws) {
+              console.error("[WebSocket Trace] Native WebSocket instance not found on room connection.");
+              reject(new Error("WebSocket transport was not constructed by the library."));
+              return;
+            }
+
+            console.log("[WebSocket Trace] Native WebSocket successfully retrieved:", ws);
+            diagInfo.current.wsConstructorCalled = true;
+
+            let resolved = false;
+
+            ws.addEventListener("open", () => {
+              console.log("[WebSocket Trace] Native WebSocket open event fired.");
+              if (!resolved) {
+                resolved = true;
+                resolve(rm);
               }
-              params.push(name_1 + "=" + options[name_1]);
-          }
-          params.push("token=" + encodeURIComponent(fsData.token));
-          params.push("auth=" + encodeURIComponent(fsData.token));
-          params.push("password=" + encodeURIComponent(fsData.token));
-          params.push("accessToken=" + encodeURIComponent(fsData.token));
-          params.push("jwt=" + encodeURIComponent(fsData.token));
-          params.push("Authorization=" + encodeURIComponent("Bearer " + fsData.token));
-          return this.endpoint + "/" + room.processId + "/" + room.roomId + "?" + params.join('&');
-        };
-        return cl;
-      });
+            });
 
-      // Step 5: WebSocket connected
-      const room = await executeStep(5, async () => {
-        const rm = client.createRoom(mmData.room.name);
-        rm.id = mmData.room.roomId;
-        rm.sessionId = mmData.sessionId;
-        activeRoomRef.current = rm;
-        diagInfo.current.consumed = true;
+            ws.addEventListener("close", (event) => {
+              console.warn(`[WebSocket Trace] Native WebSocket close event fired. Code: ${event.code}, Reason: ${event.reason}`);
+              diagInfo.current.wsCloseCode = event.code;
+              diagInfo.current.wsCloseReason = event.reason || "Abnormal closure / Network unreachable";
+              if (!resolved) {
+                resolved = true;
+                reject(new Error(`WebSocket closed. Code: ${event.code}. Reason: ${diagInfo.current.wsCloseReason}`));
+              }
+            });
 
-        const wsUrl = client.buildEndpoint(mmData.room, { sessionId: rm.sessionId });
-        diagInfo.current.wsUrl = wsUrl;
+            // Fallback check: If the socket is already open, resolve immediately
+            if (ws.readyState === WebSocket.OPEN) {
+              console.log("[WebSocket Trace] WebSocket is already open (readyState === OPEN). Resolving.");
+              if (!resolved) {
+                resolved = true;
+                resolve(rm);
+              }
+            }
 
-        // Log outgoing messages
-        const originalSend = rm.send;
-        rm.send = function (type: any, message?: any) {
-          console.log(`[Outgoing Message] Type: ${type}, Payload:`, message);
-          return originalSend.call(this, type, message);
-        };
-
-        // Log incoming raw packets
-        const originalCallback = rm.onMessageCallback;
-        rm.onMessageCallback = function (event: MessageEvent) {
-          console.log("[Incoming WebSocket Packet - Raw]:", event.data);
-          return originalCallback.call(this, event);
-        };
-
-        // Log incoming decoded messages
-        rm.onMessage("*", (type: string, message: any) => {
-          console.log(`[Incoming Message - Decoded] Type: ${type}, Payload:`, message);
-          if (type === "Server:SkinStatue:GetPlayerInfo") {
-            console.log("[Success] Server:SkinStatue:GetPlayerInfo was received!");
-          }
+            rm.onError((code: number, message?: string) => {
+              if (!resolved) {
+                resolved = true;
+                reject(new Error(`WebSocket error ${code}: ${message || "Connection refused"}`));
+              }
+            });
+          });
         });
 
-        // Trigger connect synchronously
-        diagInfo.current.connectCalled = true;
-        console.log("[WebSocket Trace] Calling rm.connect(wsUrl). wsUrl:", wsUrl);
-        rm.connect(wsUrl);
-        console.log("[WebSocket Trace] rm.connect() returned synchronously.");
-
-        // Retrieve native WebSocket
-        const ws = (rm.connection?.transport as any)?.ws as WebSocket;
-
-        return new Promise((resolve, reject) => {
-          if (!ws) {
-            console.error("[WebSocket Trace] Native WebSocket instance not found on room connection.");
-            reject(new Error("WebSocket transport was not constructed by the library."));
-            return;
-          }
-
-          console.log("[WebSocket Trace] Native WebSocket successfully retrieved:", ws);
-          diagInfo.current.wsConstructorCalled = true;
-
-          let resolved = false;
-
-          ws.addEventListener("open", () => {
-            console.log("[WebSocket Trace] Native WebSocket open event fired.");
-            if (!resolved) {
-              resolved = true;
-              resolve(rm);
-            }
-          });
-
-          ws.addEventListener("close", (event) => {
-            console.warn(`[WebSocket Trace] Native WebSocket close event fired. Code: ${event.code}, Reason: ${event.reason}`);
-            diagInfo.current.wsCloseCode = event.code;
-            diagInfo.current.wsCloseReason = event.reason || "Abnormal closure / Network unreachable";
-            if (!resolved) {
-              resolved = true;
-              reject(new Error(`WebSocket closed. Code: ${event.code}. Reason: ${diagInfo.current.wsCloseReason}`));
-            }
-          });
-
-          // Fallback check: If the socket is already open, resolve immediately
-          if (ws.readyState === WebSocket.OPEN) {
-            console.log("[WebSocket Trace] WebSocket is already open (readyState === OPEN). Resolving.");
-            if (!resolved) {
-              resolved = true;
-              resolve(rm);
-            }
-          }
-
-          rm.onError((code: number, message?: string) => {
-            if (!resolved) {
-              resolved = true;
-              reject(new Error(`WebSocket error ${code}: ${message || "Connection refused"}`));
-            }
-          });
-        });
-      });
-
-      // Step 6: Room joined
-      await executeStep(6, async () => {
-        return new Promise((resolve, reject) => {
-          room.onJoin.once(() => {
-            resolve(true);
-          });
-
-          room.onError((code: number, message?: string) => {
-            reject(new Error(`Room join rejected ${code}: ${message || ""}`));
-          });
-        });
-      });
-
-      // Step 7: PlayerInfo request sent
-      await executeStep(7, async () => {
-        room.send("Client:SkinStatue:GetPlayerInfo", { username: username.trim() });
-      });
-
-      // Step 8: Waiting for Server:SkinStatue:GetPlayerInfo
-      await executeStep(8, async () => {
-        return new Promise((resolve, reject) => {
-          room.onMessage("Server:SkinStatue:GetPlayerInfo", (message: any) => {
-            const rawData = message.playerInfo || message;
-            const hasData = rawData && (rawData.username || (rawData.inv && rawData.inv.level !== undefined));
-
-            if (hasData) {
-              const inv = rawData.inv || rawData;
-
-              // Normalize the fields so the UI reads from a unified schema
-              const normalized = {
-                username: rawData.username || "Unknown",
-                level: typeof inv.level === 'number' ? inv.level : 0,
-                gold: typeof inv.gold === 'number' ? inv.gold : 0,
-                power: typeof inv.power === 'number' ? inv.power : 0,
-                activeWeapon: inv.activeSword || inv.activeWeapon || null,
-                activeShield: inv.activeShield || null,
-                activePets: inv.activePets || [],
-                raw: message
-              };
-
-              setData(normalized);
-              room.leave();
-              activeRoomRef.current = null;
-              setLoading(false);
+        // Step 6: Room joined
+        await executeStep(6, async () => {
+          return new Promise((resolve, reject) => {
+            room.onJoin.once(() => {
               resolve(true);
-            } else {
-              reject(new Error("Player not found: Game server returned empty inventory packet."));
-            }
-          });
+            });
 
-          room.onError((code: number, message?: string) => {
-            reject(new Error(`Query failed inside room. Error ${code}: ${message}`));
+            room.onError((code: number, message?: string) => {
+              reject(new Error(`Room join rejected ${code}: ${message || ""}`));
+            });
           });
         });
-      });
+
+        // Step 7: PlayerInfo request sent
+        await executeStep(7, async () => {
+          room.send("Client:SkinStatue:GetPlayerInfo", { username: username.trim() });
+        });
+
+        // Step 8: Waiting for Server:SkinStatue:GetPlayerInfo
+        await executeStep(8, async () => {
+          return new Promise((resolve, reject) => {
+            room.onMessage("Server:SkinStatue:GetPlayerInfo", (message: any) => {
+              const rawData = message.playerInfo || message;
+              const hasData = rawData && (rawData.username || (rawData.inv && rawData.inv.level !== undefined));
+
+              if (hasData) {
+                const inv = rawData.inv || rawData;
+
+                // Normalize the fields so the UI reads from a unified schema
+                const normalized = {
+                  username: rawData.username || "Unknown",
+                  level: typeof inv.level === 'number' ? inv.level : 0,
+                  gold: typeof inv.gold === 'number' ? inv.gold : 0,
+                  power: typeof inv.power === 'number' ? inv.power : 0,
+                  activeWeapon: inv.activeSword || inv.activeWeapon || null,
+                  activeShield: inv.activeShield || null,
+                  activePets: inv.activePets || [],
+                  raw: message
+                };
+
+                rawPayload = rawData;
+                setData(normalized);
+                room.leave();
+                activeRoomRef.current = null;
+                setLoading(false);
+                resolve(true);
+              } else {
+                reject(new Error("Player not found: Game server returned empty inventory packet."));
+              }
+            });
+
+            room.onError((code: number, message?: string) => {
+              reject(new Error(`Query failed inside room. Error ${code}: ${message}`));
+            });
+          });
+        });
+
+      } catch (directErr) {
+        // Direct connection failed, fall back to backend API
+        console.warn("Client direct lookup failed, falling back to backend API...", directErr);
+        
+        // Mark steps as bypassed and show API fallback message
+        setCurrentStep(1);
+        setError(null);
+        setStepStatuses({
+          1: "success",
+          2: "success",
+          3: "success",
+          4: "success",
+          5: "success",
+          6: "success",
+          7: "loading",
+          8: "loading"
+        });
+
+        // Call backend API
+        const apiRes = await fetch(`/api/live-lookup?username=${encodeURIComponent(username.trim())}`);
+        if (!apiRes.ok) {
+          const errData = await apiRes.json().catch(() => ({}));
+          throw new Error(errData.error || `API lookup failed with status ${apiRes.status}`);
+        }
+        const apiData = await apiRes.json();
+        if (!apiData.success) {
+          throw new Error(apiData.error || "API query returned unsuccessful state.");
+        }
+
+        rawPayload = apiData.playerInfo;
+
+        // Normalize and display the data
+        const inv = rawPayload.inv || {};
+        const normalized = {
+          username: rawPayload.username || "Unknown",
+          level: typeof inv.level === 'number' ? inv.level : 0,
+          gold: typeof inv.gold === 'number' ? inv.gold : 0,
+          power: typeof inv.power === 'number' ? inv.power : 0,
+          activeWeapon: inv.activeSword || inv.activeWeapon || null,
+          activeShield: inv.activeShield || null,
+          activePets: inv.activePets || [],
+          raw: apiData
+        };
+
+        setStepStatuses({
+          1: "success",
+          2: "success",
+          3: "success",
+          4: "success",
+          5: "success",
+          6: "success",
+          7: "success",
+          8: "success"
+        });
+        setCurrentStep(8);
+        setData(normalized);
+        setLoading(false);
+      }
 
     } catch (err) {
       // Caught errors are logged to the screen via failLookup and stop the flow
@@ -449,7 +514,7 @@ DIAGNOSTIC REPORT:
                 <button
                   onClick={handleFetch}
                   disabled={loading}
-                  className="bg-amber-500 hover:bg-amber-400 disabled:bg-white/5 disabled:text-white/20 text-black font-black text-sm px-6 py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(245,158,11,0.15)] hover:shadow-[0_0_25px_rgba(245,158,11,0.35)] cursor-pointer"
+                  className="bg-amber-500 hover:bg-amber-400 disabled:bg-white/5 disabled:text-white/20 text-black font-black text-sm px-6 py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(245,158,11,0.2)]"
                 >
                   {loading ? "Connecting..." : "Fetch Player"}
                 </button>
@@ -513,8 +578,8 @@ DIAGNOSTIC REPORT:
             </div>
             
             <div className="bg-white/[0.01] border border-white/[0.03] p-3.5 rounded-xl text-[10px] text-white/30 leading-normal font-medium">
-              ✦ Runs entirely client-side.<br />
-              ✦ Handshakes direct with SwordMasters load balancer and joins room instance over WSS.
+              ✦ Runs entirely client-side when possible.<br />
+              ✦ Falls back to server proxy if direct connection is blocked.
             </div>
           </div>
         </div>
