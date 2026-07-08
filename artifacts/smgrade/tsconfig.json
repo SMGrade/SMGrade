@@ -5,11 +5,11 @@
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": ".tsbuildinfo",
-    "noEmit": true,
+    "noEmit": false,
     "jsx": "preserve",
     "lib": ["esnext", "dom", "dom.iterable"],
     "resolveJsonModule": true,
-    "allowImportingTsExtensions": true,
+    "allowImportingTsExtensions": false,
     "moduleResolution": "bundler",
     "types": ["node", "vite/client"],
     "paths": {
