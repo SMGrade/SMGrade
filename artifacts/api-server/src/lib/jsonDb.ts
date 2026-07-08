@@ -2,7 +2,22 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 
-const DB_FILE = path.join(process.cwd(), "db_storage.json");
+const isVercel = process.env.VERCEL === "1" || !!process.env.VERCEL;
+const READ_ONLY_DB_FILE = path.join(process.cwd(), "db_storage.json");
+const DB_FILE = isVercel 
+  ? path.join("/tmp", "db_storage.json") 
+  : READ_ONLY_DB_FILE;
+
+// Copy existing database to /tmp on Vercel if needed
+if (isVercel && !fs.existsSync(DB_FILE)) {
+  try {
+    if (fs.existsSync(READ_ONLY_DB_FILE)) {
+      fs.copyFileSync(READ_ONLY_DB_FILE, DB_FILE);
+    }
+  } catch (err) {
+    console.error("Failed to copy db_storage.json to /tmp on Vercel:", err);
+  }
+}
 
 export interface User {
   id: string;

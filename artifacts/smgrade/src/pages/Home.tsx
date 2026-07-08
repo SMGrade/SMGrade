@@ -3,8 +3,6 @@ import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { scorePlayer } from "@/lib/scorer";
 import { fetchLivePlayerInfo, normalizeLivePlayer } from "@/lib/liveLookupEngine";
-import authStore, { type UserProfile } from "@/lib/authStore";
-import CompanionDrawer from "@/components/CompanionDrawer";
 
 export function ParticleBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -96,23 +94,6 @@ export default function Home() {
   const [focused, setFocused] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Companion Auth states
-  const [companionOpen, setCompanionOpen] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-
-  useEffect(() => {
-    if (authStore.isLoggedIn()) {
-      authStore.fetchMe().then((p) => setProfile(p));
-    }
-  }, []);
-
-  const refreshProfile = useCallback(() => {
-    if (authStore.isLoggedIn()) {
-      authStore.fetchMe().then((p) => setProfile(p));
-    } else {
-      setProfile(null);
-    }
-  }, []);
 
   const analyzeLiveCharacter = async () => {
     setError("");
@@ -128,9 +109,26 @@ export default function Home() {
     const startTime = Date.now();
 
     try {
-      const rawPayload = await fetchLivePlayerInfo(userToFind, (status) => {
-        setConnectionStatus(status.message);
-      });
+      let rawPayload: any = null;
+      try {
+        rawPayload = await fetchLivePlayerInfo(userToFind, (status) => {
+          setConnectionStatus(status.message);
+        });
+      } catch (clientErr) {
+        console.warn("Client direct lookup failed, falling back to backend API...", clientErr);
+        setConnectionStatus("CORS/Connection blocked. Routing through API proxy...");
+        
+        const proxyRes = await fetch(`/api/live-lookup?username=${encodeURIComponent(userToFind)}`);
+        if (!proxyRes.ok) {
+          const errData = await proxyRes.json().catch(() => ({}));
+          throw new Error(errData.error || `Proxy lookup failed with status ${proxyRes.status}`);
+        }
+        const proxyData = await proxyRes.json();
+        if (!proxyData.success) {
+          throw new Error(proxyData.error || "Proxy query returned unsuccessful state.");
+        }
+        rawPayload = proxyData.playerInfo;
+      }
 
       setConnectionStatus("Running grade formulas...");
       const player = normalizeLivePlayer(rawPayload);
@@ -157,8 +155,8 @@ export default function Home() {
         body: JSON.stringify({
           usernameSearched: userToFind,
           sessionId,
-          userAccount: profile?.username || null,
-          userType: profile ? "Registered" : "Guest",
+          userAccount: null,
+          userType: "Guest",
           status: "Success",
           responseTimeMs: duration,
           grade: scores.overallGrade,
@@ -194,8 +192,8 @@ export default function Home() {
         body: JSON.stringify({
           usernameSearched: userToFind,
           sessionId,
-          userAccount: profile?.username || null,
-          userType: profile ? "Registered" : "Guest",
+          userAccount: null,
+          userType: "Guest",
           status: "Failed",
           responseTimeMs: duration,
           grade: "—",
@@ -213,7 +211,13 @@ export default function Home() {
         })
       }).catch(e => console.error("Error logging player lookup:", e));
 
-      setError(err.message || "Failed to retrieve live player. Please verify connection/username.");
+      let errMsg = err.message || "Failed to retrieve live player. Please verify connection/username.";
+      if (errMsg.includes("4000")) {
+        errMsg = "Connection rejected by the game server (Code 4000). SwordMasters' anti-cheat blocks unofficial connections. Please copy your stats manually and paste them, or try again later.";
+      } else if (errMsg.toLowerCase().includes("timeout")) {
+        errMsg = "Game server request timed out. The game server did not respond in time. Please try again or copy/paste your stats manually.";
+      }
+      setError(errMsg);
       setLookupLoading(false);
     }
   };
@@ -236,29 +240,15 @@ export default function Home() {
         </div>
         
         <div className="flex items-center gap-6">
+          <Link href="/arcade" className="text-[10px] text-white/50 hover:text-amber-400 transition-colors font-black uppercase tracking-widest">
+            Arcade
+          </Link>
           <Link href="/compare" className="text-[10px] text-white/50 hover:text-amber-400 transition-colors font-black uppercase tracking-widest">
             Compare
           </Link>
           <Link href="/admin" className="text-[10px] text-white/50 hover:text-amber-400 transition-colors font-black uppercase tracking-widest">
             Admin Panel
           </Link>
-          
-          {profile ? (
-            <button 
-              onClick={() => setCompanionOpen(true)}
-              className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/25 rounded-lg px-2.5 py-1 text-xs text-amber-400 font-bold hover:bg-amber-500/15 transition-all cursor-pointer font-display"
-            >
-              <img src={profile.profilePic} alt="avatar" className="w-5 h-5 rounded bg-[#03050b] border border-white/5" />
-              <span className="max-w-[70px] truncate">{profile.username}</span>
-            </button>
-          ) : (
-            <button 
-              onClick={() => setCompanionOpen(true)}
-              className="text-[10px] text-white/55 hover:text-amber-400 transition-colors font-black uppercase tracking-widest cursor-pointer"
-            >
-              Log In
-            </button>
-          )}
         </div>
       </header>
 
@@ -284,11 +274,7 @@ export default function Home() {
             <div className="flex gap-4">
               <button 
                 onClick={() => {
-                  if (!authStore.isLoggedIn() && !authStore.isGuest()) {
-                    setCompanionOpen(true);
-                  } else {
-                    setDrawerOpen(true);
-                  }
+                  setDrawerOpen(true);
                 }}
                 className="px-8 py-4 rounded-xl button-gold text-xs font-black tracking-widest cursor-pointer shadow-[0_0_30px_rgba(245,158,11,0.15)]"
               >
@@ -435,13 +421,6 @@ export default function Home() {
           </div>
         )}
       </AnimatePresence>
-
-      <CompanionDrawer 
-        isOpen={companionOpen} 
-        onClose={() => setCompanionOpen(false)} 
-        onLoginStateChange={refreshProfile}
-        onAuthSuccess={() => setDrawerOpen(true)}
-      />
 
       <footer className="border-t border-white/[0.03] bg-[#070b13]/60 px-6 py-5 text-center text-white/20 text-[9px] font-bold uppercase tracking-widest z-10">
         Companion App — built for SwordMasters

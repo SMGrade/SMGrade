@@ -17,13 +17,12 @@ interface UserAdminInfo {
   createdAt: string;
 }
 
-interface LoginHistoryEntry {
+interface LookupLogEntry {
   id: string;
-  userId: string;
-  username: string;
   timestamp: string;
-  ip: string;
-  userAgent: string;
+  usernameSearched: string;
+  ipAddress: string;
+  status: string;
 }
 
 interface AuditLogEntry {
@@ -61,7 +60,7 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
   const [newRole, setNewRole] = useState<string>("viewer");
 
   // States for logs
-  const [logins, setLogins] = useState<LoginHistoryEntry[]>([]);
+  const [logins, setLogins] = useState<LookupLogEntry[]>([]);
   const [audits, setAudits] = useState<AuditLogEntry[]>([]);
   
   // Backup states
@@ -92,7 +91,7 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
         const res = await fetch(`/api/master/users?q=${encodeURIComponent(searchQuery)}`, { headers });
         if (res.ok) setUsers(await res.json());
       } else if (activeTab === "logins") {
-        const res = await fetch("/api/master/login-history", { headers });
+        const res = await fetch("/api/master/lookup-logs", { headers });
         if (res.ok) setLogins(await res.json());
       } else if (activeTab === "audits") {
         const res = await fetch("/api/master/audit-logs", { headers });
@@ -274,15 +273,15 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between border-b border-white/[0.04] pb-4">
+      <div className="flex items-center justify-between border-b border-white/[0.04] pb-2">
         <div>
-          <h2 className="text-xl font-black text-[#ffd700] font-display">MASTER VAULT CONSOLE</h2>
-          <p className="text-white/35 text-[9px] uppercase font-bold mt-0.5">Owner Security Command Terminal</p>
+          <h2 className="text-base font-black text-[#ffd700] font-display">MASTER VAULT CONSOLE</h2>
+          <p className="text-white/35 text-[8px] uppercase font-bold">Owner Security Command Terminal</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={onLock}
-            className="px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-xs font-bold transition-all cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-[10px] font-bold transition-all cursor-pointer"
           >
             Lock Vault
           </button>
@@ -293,7 +292,7 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
       <div className="flex border-b border-white/[0.04] gap-2 overflow-x-auto pb-1">
         {[
           { id: "users", label: "User Management" },
-          { id: "logins", label: "Login History" },
+          { id: "logins", label: "Player Activity Logs" },
           { id: "audits", label: "System Audits" },
           { id: "backup", label: "Backup & Restore" },
           { id: "health", label: "System Health" },
@@ -428,21 +427,31 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
             {activeTab === "logins" && (
               <div className="border border-white/[0.04] rounded-xl overflow-hidden bg-white/[0.01] glass-panel">
                 <div className="grid grid-cols-4 px-4 py-3 border-b border-white/[0.04] bg-white/[0.01] text-[9px] uppercase tracking-widest font-black text-white/30">
-                  <span>Username</span>
-                  <span className="text-center">Timestamp</span>
-                  <span className="text-center">IP Address</span>
-                  <span className="text-right">User Agent</span>
+                  <span>Time</span>
+                  <span className="text-center">Username</span>
+                  <span className="text-center">Action</span>
+                  <span className="text-right">Status</span>
                 </div>
                 <div className="divide-y divide-white/[0.02] text-xs max-h-[400px] overflow-y-auto pr-1">
                   {logins.length === 0 ? (
-                    <div className="text-center text-white/20 py-8">No login history logged.</div>
+                    <div className="text-center text-white/20 py-8">No player lookup logs recorded.</div>
                   ) : (
                     logins.map((lg) => (
                       <div key={lg.id} className="grid grid-cols-4 px-4 py-3 items-center">
-                        <span className="font-bold text-white">{lg.username}</span>
-                        <span className="text-center text-white/40 font-mono">{new Date(lg.timestamp).toLocaleString()}</span>
-                        <span className="text-center text-amber-400 font-mono">{lg.ip}</span>
-                        <span className="text-right text-white/60 font-sans truncate pl-2" title={lg.userAgent}>{lg.userAgent}</span>
+                        <span className="text-white/40 font-mono">{new Date(lg.timestamp).toLocaleString()}</span>
+                        <span className="text-center font-bold text-amber-400">{lg.usernameSearched}</span>
+                        <span className="text-center">
+                          <span className="inline-block bg-[#8ab4c9]/10 border border-[#8ab4c9]/20 text-[#8ab4c9] px-2 py-0.5 rounded text-[8px] font-black uppercase">
+                            Player Analysis
+                          </span>
+                        </span>
+                        <span className="text-right">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                            lg.status === "Success" ? "bg-[#5ecb7a]/10 border border-[#5ecb7a]/20 text-[#5ecb7a]" : "bg-red-500/10 border border-red-500/20 text-red-400"
+                          }`}>
+                            {lg.status}
+                          </span>
+                        </span>
                       </div>
                     ))
                   )}

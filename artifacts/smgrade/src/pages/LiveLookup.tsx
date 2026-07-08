@@ -6,6 +6,7 @@ import { ParticleBackground } from "./Home";
 
 class DummySerializer {
   setState(rawState: any) {}
+  getState() { return null; }
   patch(patches: any) {}
   teardown() {}
   handshake(bytes: any, it: any) {}
@@ -15,6 +16,7 @@ class DummySerializer {
 registerSerializer("j6CSBEPV_", DummySerializer);
 registerSerializer("CFQ2R9YEZ", DummySerializer);
 registerSerializer("9qPNKmk1V", DummySerializer);
+registerSerializer("none", DummySerializer);
 
 interface StepItem {
   id: number;

@@ -1,6 +1,20 @@
 import { Router, type Request, type Response } from "express";
 // @ts-ignore
-import { Client } from "colyseus.js";
+import { Client, registerSerializer } from "colyseus.js";
+
+class DummySerializer {
+  setState(rawState: any) {}
+  getState() { return null; }
+  patch(patches: any) {}
+  teardown() {}
+  handshake(bytes: any, it: any) {}
+}
+
+// Register dummy fallback serializer signatures for SwordMasters game server changes
+registerSerializer("j6CSBEPV_", DummySerializer);
+registerSerializer("CFQ2R9YEZ", DummySerializer);
+registerSerializer("9qPNKmk1V", DummySerializer);
+registerSerializer("none", DummySerializer);
 
 const router = Router();
 
@@ -108,7 +122,7 @@ router.get("/live-lookup", async (req: Request, res: Response) => {
         isConnecting = false;
         res.status(504).json({ success: false, error: "Player lookup timed out. Game servers did not respond." });
       }
-    }, 12000);
+    }, 6000);
 
     room.onMessage("Server:SkinStatue:GetPlayerInfo", (message: any) => {
       if (!responded) {
@@ -117,15 +131,15 @@ router.get("/live-lookup", async (req: Request, res: Response) => {
         room.leave();
         isConnecting = false;
 
-        // Check if player actually exists in the response
-        if (!message || !message.playerInfo) {
-          res.status(404).json({ success: false, error: "Player not found: Inventory data is empty." });
+        const playerInfo = message?.playerInfo || message;
+        if (!playerInfo || !playerInfo.username || !playerInfo.inv) {
+          res.status(404).json({ success: false, error: "Player not found or inventory data is empty." });
           return;
         }
 
         res.json({
           success: true,
-          playerInfo: message.playerInfo
+          playerInfo: playerInfo
         });
       }
     });

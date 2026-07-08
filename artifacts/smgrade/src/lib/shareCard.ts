@@ -61,6 +61,49 @@ function formatNumber(n: number): string {
   return n.toLocaleString();
 }
 
+function drawCornerBrackets(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, len: number, color: string) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  
+  // Top-Left
+  ctx.beginPath();
+  ctx.moveTo(x, y + len);
+  ctx.lineTo(x, y);
+  ctx.lineTo(x + len, y);
+  ctx.stroke();
+
+  // Top-Right
+  ctx.beginPath();
+  ctx.moveTo(x + w - len, y);
+  ctx.lineTo(x + w, y);
+  ctx.lineTo(x + w, y + len);
+  ctx.stroke();
+
+  // Bottom-Left
+  ctx.beginPath();
+  ctx.moveTo(x, y + h - len);
+  ctx.lineTo(x, y + h);
+  ctx.lineTo(x + len, y + h);
+  ctx.stroke();
+
+  // Bottom-Right
+  ctx.beginPath();
+  ctx.moveTo(x + w - len, y + h);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x + w, y + h - len);
+  ctx.stroke();
+}
+
+function drawBarcode(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string) {
+  ctx.fillStyle = color;
+  let currentX = x;
+  while (currentX < x + w - 3) {
+    const width = Math.floor(Math.random() * 2) + 1; // 1 to 2px
+    ctx.fillRect(currentX, y, width, h);
+    currentX += width + Math.floor(Math.random() * 3) + 1;
+  }
+}
+
 export function generateShareCard(
   player: ParsedPlayer,
   scores: ScoreResult
@@ -69,7 +112,7 @@ export function generateShareCard(
   const H = 540;
 
   const canvas = document.createElement("canvas");
-  canvas.width = W * 2; // retina support
+  canvas.width = W * 2; // retina
   canvas.height = H * 2;
   canvas.style.width = `${W}px`;
   canvas.style.height = `${H}px`;
@@ -79,24 +122,24 @@ export function generateShareCard(
 
   const gradeColor = GRADE_COLOR[scores.overallGrade] ?? "#888";
 
-  // 1. Deep obsidian gradient background matching site variables
+  // 1. Deep space background with a subtle blue/violet aura
   const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-  bgGrad.addColorStop(0, "#03050b");
-  bgGrad.addColorStop(0.5, "#060914");
-  bgGrad.addColorStop(1, "#020308");
+  bgGrad.addColorStop(0, "#020306");
+  bgGrad.addColorStop(0.5, "#070a14");
+  bgGrad.addColorStop(1, "#010204");
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // Subtle tech grid lines
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.007)";
+  // High-tech glowing neon background lines
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.006)";
   ctx.lineWidth = 1;
-  for (let i = 0; i < W; i += 30) {
+  for (let i = 0; i < W; i += 24) {
     ctx.beginPath();
     ctx.moveTo(i, 0);
     ctx.lineTo(i, H);
     ctx.stroke();
   }
-  for (let j = 0; j < H; j += 30) {
+  for (let j = 0; j < H; j += 24) {
     ctx.beginPath();
     ctx.moveTo(0, j);
     ctx.lineTo(W, j);
@@ -111,66 +154,69 @@ export function generateShareCard(
 
   // Grade spotlight radial backdrop glow
   const ringX = leftX + leftW / 2;
-  const ringY = leftY + 185;
-  const r = 70;
+  const ringY = leftY + 180;
+  const r = 74;
 
-  const spotlight = ctx.createRadialGradient(ringX, ringY, 5, ringX, ringY, 150);
-  spotlight.addColorStop(0, `${gradeColor}22`);
+  const spotlight = ctx.createRadialGradient(ringX, ringY, 5, ringX, ringY, 180);
+  spotlight.addColorStop(0, `${gradeColor}28`);
   spotlight.addColorStop(1, "transparent");
   ctx.fillStyle = spotlight;
   ctx.beginPath();
-  ctx.arc(ringX, ringY, 150, 0, Math.PI * 2);
+  ctx.arc(ringX, ringY, 180, 0, Math.PI * 2);
   ctx.fill();
 
-  // Glassmorphic left frame (asymmetrical corner cut)
+  // Glassmorphic left frame
   const leftGrad = ctx.createLinearGradient(leftX, leftY, leftX, leftY + leftH);
-  leftGrad.addColorStop(0, "rgba(10, 15, 30, 0.7)");
-  leftGrad.addColorStop(1, "rgba(3, 5, 11, 0.95)");
+  leftGrad.addColorStop(0, "rgba(8, 12, 24, 0.85)");
+  leftGrad.addColorStop(1, "rgba(2, 4, 8, 0.98)");
   ctx.fillStyle = leftGrad;
   roundRectCut(ctx, leftX, leftY, leftW, leftH, 16);
   ctx.fill();
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.035)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.045)";
   roundRectCut(ctx, leftX, leftY, leftW, leftH, 16);
   ctx.stroke();
 
+  // Corner highlights for extra premium feel
+  drawCornerBrackets(ctx, leftX, leftY, leftW, leftH, 12, `${gradeColor}80`);
+
   // Profile Header
   ctx.fillStyle = "#ffffff";
-  ctx.font = "900 24px system-ui, -apple-system, sans-serif";
+  ctx.font = "900 28px system-ui, -apple-system, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(player.username, leftX + leftW / 2, leftY + 44);
+  ctx.fillText(player.username.toUpperCase(), leftX + leftW / 2, leftY + 44);
 
   ctx.fillStyle = gradeColor;
   ctx.font = "900 9px monospace";
-  ctx.fillText(`${GRADE_TITLE[scores.overallGrade] || "RANKED CHALLENGER"}`, leftX + leftW / 2, leftY + 64);
+  ctx.fillText(`// SYSTEM RANK: ${GRADE_TITLE[scores.overallGrade] || "RANKED CHALLENGER"}`, leftX + leftW / 2, leftY + 62);
 
-  // Concentric technical scanner ring
-  ctx.strokeStyle = `${gradeColor}15`;
+  // Concentric technical scanner rings
+  ctx.strokeStyle = `${gradeColor}10`;
   ctx.lineWidth = 1;
-  ctx.setLineDash([4, 6]);
+  ctx.setLineDash([5, 8]);
   ctx.beginPath();
-  ctx.arc(ringX, ringY, r + 16, 0, Math.PI * 2);
+  ctx.arc(ringX, ringY, r + 20, 0, Math.PI * 2);
   ctx.stroke();
   ctx.setLineDash([]);
 
   // Solid middle ring with glow
   ctx.shadowColor = gradeColor;
-  ctx.shadowBlur = 12;
-  ctx.strokeStyle = `${gradeColor}50`;
-  ctx.lineWidth = 3.5;
+  ctx.shadowBlur = 16;
+  ctx.strokeStyle = `${gradeColor}60`;
+  ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.arc(ringX, ringY, r, 0, Math.PI * 2);
   ctx.stroke();
   ctx.shadowBlur = 0; // reset
 
-  // Technical ticks
+  // Outer circles and tick details
   ctx.strokeStyle = `${gradeColor}40`;
-  ctx.lineWidth = 1.5;
-  for (let angle = 0; angle < 360; angle += 45) {
+  ctx.lineWidth = 1;
+  for (let angle = 0; angle < 360; angle += 30) {
     const rad = (angle * Math.PI) / 180;
-    const startX = ringX + Math.cos(rad) * (r + 3);
-    const startY = ringY + Math.sin(rad) * (r + 3);
-    const endX = ringX + Math.cos(rad) * (r + 8);
-    const endY = ringY + Math.sin(rad) * (r + 8);
+    const startX = ringX + Math.cos(rad) * (r + 4);
+    const startY = ringY + Math.sin(rad) * (r + 4);
+    const endX = ringX + Math.cos(rad) * (r + 10);
+    const endY = ringY + Math.sin(rad) * (r + 10);
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.lineTo(endX, endY);
@@ -179,9 +225,9 @@ export function generateShareCard(
 
   // Large centerpiece Grade
   ctx.shadowColor = gradeColor;
-  ctx.shadowBlur = 24;
+  ctx.shadowBlur = 32;
   ctx.fillStyle = "#ffffff";
-  ctx.font = "900 82px system-ui, -apple-system, sans-serif";
+  ctx.font = "900 92px system-ui, -apple-system, sans-serif";
   ctx.textBaseline = "middle";
   ctx.fillText(scores.overallGrade, ringX, ringY - 2);
   ctx.textBaseline = "alphabetic"; // reset
@@ -189,16 +235,16 @@ export function generateShareCard(
 
   // Rating percentage ratio
   ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-  ctx.font = "bold 9px monospace";
-  ctx.fillText(`OVERALL RATIO: ${scores.overallScore}%`, ringX, ringY + 54);
+  ctx.font = "bold 9.5px monospace";
+  ctx.fillText(`OVERALL RATIO: ${scores.overallScore}%`, ringX, ringY + 60);
 
-  // Left card bottom stats panel (asymmetrical corner cut)
+  // Left card bottom stats panel
   const statsY = leftY + 295;
   const statsW = leftW - 48;
   const statsH = 92;
   const statsX = leftX + 24;
 
-  ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
   roundRectCut(ctx, statsX, statsY, statsW, statsH, 8);
   ctx.fill();
   ctx.strokeStyle = "rgba(255, 255, 255, 0.02)";
@@ -212,7 +258,7 @@ export function generateShareCard(
   ctx.font = "900 8px monospace";
   ctx.fillText("POWER INDEX", statsX + 20, statsY + 28);
   ctx.fillStyle = "#ffffff";
-  ctx.font = "900 16px system-ui, -apple-system, sans-serif";
+  ctx.font = "900 18px system-ui, -apple-system, sans-serif";
   ctx.fillText(formatNumber(player.powerRaw), statsX + 20, statsY + 48);
   ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
   ctx.font = "bold 8px system-ui, -apple-system, sans-serif";
@@ -223,7 +269,7 @@ export function generateShareCard(
   ctx.font = "900 8px monospace";
   ctx.fillText("GOLD RESERVES", statsX + statsW / 2 + 10, statsY + 28);
   ctx.fillStyle = "#5ecb7a";
-  ctx.font = "900 16px system-ui, -apple-system, sans-serif";
+  ctx.font = "900 18px system-ui, -apple-system, sans-serif";
   ctx.fillText(formatNumber(player.goldRaw), statsX + statsW / 2 + 10, statsY + 48);
   ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
   ctx.font = "bold 8px system-ui, -apple-system, sans-serif";
@@ -235,16 +281,18 @@ export function generateShareCard(
   const rightW = 464;
   const rightH = 412;
 
-  // Glassmorphic right frame (asymmetrical corner cut)
+  // Glassmorphic right frame
   const rightGrad = ctx.createLinearGradient(rightX, rightY, rightX, rightY + rightH);
-  rightGrad.addColorStop(0, "rgba(10, 15, 30, 0.7)");
-  rightGrad.addColorStop(1, "rgba(3, 5, 11, 0.95)");
+  rightGrad.addColorStop(0, "rgba(8, 12, 24, 0.85)");
+  rightGrad.addColorStop(1, "rgba(2, 4, 8, 0.98)");
   ctx.fillStyle = rightGrad;
   roundRectCut(ctx, rightX, rightY, rightW, rightH, 16);
   ctx.fill();
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.035)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.045)";
   roundRectCut(ctx, rightX, rightY, rightW, rightH, 16);
   ctx.stroke();
+
+  drawCornerBrackets(ctx, rightX, rightY, rightW, rightH, 12, `${gradeColor}80`);
 
   // Header
   ctx.fillStyle = "#ffffff";
@@ -252,7 +300,7 @@ export function generateShareCard(
   ctx.textAlign = "left";
   ctx.fillText("COMPONENT ANALYSIS BREAKDOWN", rightX + 24, rightY + 30);
 
-  // 2x2 Grid of Ratings Cards (asymmetrical corner cuts)
+  // 2x2 Grid of Ratings Cards
   const metricsList = [
     { label: "POWER SCORE", score: scores.powerScore, color: "#8ab4c9" },
     { label: "GEAR SCORE", score: scores.gearScore, color: "#c9a84c" },
@@ -284,7 +332,7 @@ export function generateShareCard(
     const cy = gridStartY + row * (cardH + 16);
 
     // Card background
-    ctx.fillStyle = "rgba(255, 255, 255, 0.015)";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.018)";
     roundRectCut(ctx, cx, cy, cardW, cardH, 8);
     ctx.fill();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
@@ -293,12 +341,12 @@ export function generateShareCard(
 
     // Metric title
     ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-    ctx.font = "900 7px monospace";
+    ctx.font = "900 7.5px monospace";
     ctx.fillText(m.label, cx + 12, cy + 18);
 
     // Score Value
     ctx.fillStyle = "#ffffff";
-    ctx.font = "900 16px system-ui, -apple-system, sans-serif";
+    ctx.font = "900 17px system-ui, -apple-system, sans-serif";
     ctx.fillText(`${m.score}%`, cx + 12, cy + 38);
 
     // Grade badge
@@ -314,27 +362,27 @@ export function generateShareCard(
     ctx.stroke();
 
     ctx.fillStyle = badgeColor;
-    ctx.font = "900 9px system-ui, -apple-system, sans-serif";
+    ctx.font = "900 9.5px system-ui, -apple-system, sans-serif";
     ctx.fillText(badgeLetter, cx + cardW - 27, cy + 25);
     ctx.textAlign = "left";
 
     // Glowing bottom status bar
     ctx.fillStyle = badgeColor;
     ctx.shadowColor = badgeColor;
-    ctx.shadowBlur = 4;
-    roundRectCut(ctx, cx + 12, cy + 50, (cardW - 24) * (m.score / 100), 3, 1.5);
+    ctx.shadowBlur = 6;
+    roundRectCut(ctx, cx + 12, cy + 50, (cardW - 24) * (m.score / 100), 3.5, 1.55);
     ctx.fill();
     ctx.shadowBlur = 0; // reset
   });
 
   // Separation Divider
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.045)";
   ctx.beginPath();
   ctx.moveTo(rightX + 24, rightY + 218);
   ctx.lineTo(rightX + rightW - 24, rightY + 218);
   ctx.stroke();
 
-  // Loadout Section (asymmetrical corner cut)
+  // Loadout Section
   const loadoutY = rightY + 234;
   ctx.fillStyle = "#ffffff";
   ctx.font = "900 11px system-ui, -apple-system, sans-serif";
@@ -345,22 +393,22 @@ export function generateShareCard(
   ctx.font = "900 8px monospace";
   ctx.fillText("WEAPON", rightX + 24, loadoutY + 40);
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
-  ctx.fillText(`⚔️ ${player.sword}`, rightX + 24, loadoutY + 56);
+  ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+  ctx.fillText(`⚔️ ${player.sword}`, rightX + 24, loadoutY + 57);
   ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
   ctx.font = "bold 9px monospace";
-  ctx.fillText(`Level ${player.swordLevel}/10`, rightX + 24, loadoutY + 70);
+  ctx.fillText(`Level ${player.swordLevel}/10`, rightX + 24, loadoutY + 71);
 
   // Shield
   ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
   ctx.font = "900 8px monospace";
   ctx.fillText("OFFHAND SHIELD", rightX + rightW / 2 + 10, loadoutY + 40);
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
-  ctx.fillText(`🛡️ ${player.shield}`, rightX + rightW / 2 + 10, loadoutY + 56);
+  ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+  ctx.fillText(`🛡️ ${player.shield}`, rightX + rightW / 2 + 10, loadoutY + 57);
   ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
   ctx.font = "bold 9px monospace";
-  ctx.fillText(`Level ${player.shieldLevel}/10`, rightX + rightW / 2 + 10, loadoutY + 70);
+  ctx.fillText(`Level ${player.shieldLevel}/10`, rightX + rightW / 2 + 10, loadoutY + 71);
 
   // Companions
   const activePets = (player as any).activePets || (player as any).rawPayload?.inv?.activePets || [];
@@ -375,45 +423,50 @@ export function generateShareCard(
   ctx.font = "900 8px monospace";
   ctx.fillText("ACTIVE COMPANIONS", rightX + 24, loadoutY + 104);
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
-  ctx.fillText(`🐾 ${petLabel}`, rightX + 24, loadoutY + 120);
+  ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+  ctx.fillText(`🐾 ${petLabel}`, rightX + 24, loadoutY + 121);
   ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
   ctx.font = "bold 9px monospace";
-  ctx.fillText(`${activePets.length} Total companions active`, rightX + 24, loadoutY + 134);
+  ctx.fillText(`${activePets.length} Total companions active`, rightX + 24, loadoutY + 135);
 
   // 4. HEADER BRANDING DETAILS
   ctx.fillStyle = "#ffffff";
-  ctx.font = "900 16px system-ui, -apple-system, sans-serif";
+  ctx.font = "900 18px system-ui, -apple-system, sans-serif";
   ctx.textAlign = "left";
   ctx.fillText("SM", 36, 42);
   ctx.fillStyle = gradeColor;
   ctx.fillText("GRADE", 36 + ctx.measureText("SM ").width, 42);
 
-  ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
   ctx.font = "bold 9px monospace";
-  ctx.fillText("// SYSTEM ANALYTICS DETAILED DOSSIER", 36 + ctx.measureText("SMGRADE ").width + 20, 38);
+  ctx.fillText("// PLAYER DOSSIER PRO_GRADE_v2.0", 36 + ctx.measureText("SMGRADE ").width + 24, 38);
 
   ctx.textAlign = "right";
-  ctx.fillText("STATUS: TERMINAL SECURE", W - 36, 38);
+  ctx.fillText("[SYS.SECURE_STABLE]", W - 36, 38);
 
   // Header line
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
   ctx.beginPath();
   ctx.moveTo(36, 52);
   ctx.lineTo(W - 36, 52);
   ctx.stroke();
 
   // 5. FOOTER
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
   ctx.beginPath();
   ctx.moveTo(36, H - 36);
   ctx.lineTo(W - 36, H - 36);
   ctx.stroke();
 
-  ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-  ctx.font = "bold 8px monospace";
-  ctx.textAlign = "center";
-  ctx.fillText("GENERATED BY SMGRADE · PREMIUM PLAYER SHOWCASE · SMGRADE.COM", W / 2, H - 18);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+  ctx.font = "bold 8.5px monospace";
+  ctx.textAlign = "left";
+  ctx.fillText("SMGRADE.COM · PLAYER GRADE PROFILE", 36, H - 18);
+
+  // Add high tech barcode for branding aesthetics
+  ctx.textAlign = "right";
+  drawBarcode(ctx, W - 120, H - 28, 84, 14, "rgba(255, 255, 255, 0.15)");
+  ctx.fillText("GEN_HASH_SYS", W - 36, H - 18);
 
   return canvas;
 }

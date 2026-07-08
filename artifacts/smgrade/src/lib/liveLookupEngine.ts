@@ -1,5 +1,18 @@
 // @ts-ignore
-import { Client } from "colyseus.js";
+import { Client, registerSerializer } from "colyseus.js";
+
+class DummySerializer {
+  setState(rawState: any) {}
+  getState() { return null; }
+  patch(patches: any) {}
+  teardown() {}
+  handshake(bytes: any, it: any) {}
+}
+
+registerSerializer("j6CSBEPV_", DummySerializer);
+registerSerializer("CFQ2R9YEZ", DummySerializer);
+registerSerializer("9qPNKmk1V", DummySerializer);
+registerSerializer("none", DummySerializer);
 import { formatNumber } from "./numberParser";
 import { resolveItemByGameType } from "./gearDatabase";
 import type { ParsedPlayer } from "./parser";
@@ -84,7 +97,7 @@ export async function fetchLivePlayerInfo(
     throw new Error("WebSocket transport was not constructed by the library.");
   }
 
-  // Await socket open connection state (max 10s)
+  // Await socket open connection state (max 6s)
   await new Promise<void>((resolve, reject) => {
     let resolved = false;
     const timer = setTimeout(() => {
@@ -93,7 +106,7 @@ export async function fetchLivePlayerInfo(
         rm.leave();
         reject(new Error("WebSocket handshake timed out."));
       }
-    }, 10000);
+    }, 6000);
 
     ws.addEventListener("open", () => {
       if (!resolved) {
@@ -121,7 +134,7 @@ export async function fetchLivePlayerInfo(
     }
   });
 
-  // Step 4: Dispatch lookup packet and await result (max 10s)
+  // Step 4: Dispatch lookup packet and await result (max 6s)
   if (onStatusUpdate) onStatusUpdate({ step: 4, message: "Retrieving character inventory..." });
 
   return new Promise((resolve, reject) => {
@@ -132,7 +145,7 @@ export async function fetchLivePlayerInfo(
         rm.leave();
         reject(new Error("Game server request timed out."));
       }
-    }, 10000);
+    }, 6000);
 
     rm.onMessage("Server:SkinStatue:GetPlayerInfo", (message: any) => {
       if (!resolved) {

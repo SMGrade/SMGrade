@@ -12,8 +12,7 @@ import { getPriceRaw } from "@/lib/marketDatabase";
 import Simulator from "@/components/Simulator";
 import HistoryTracker from "@/components/HistoryTracker";
 import { ParticleBackground } from "./Home";
-import authStore, { type UserProfile } from "@/lib/authStore";
-import CompanionDrawer from "@/components/CompanionDrawer";
+import { type UserProfile } from "@/lib/authStore";
 import { ensurePricesLoaded, calculateNetWorth, lookupItemPrice, type NetWorthResult } from "@/lib/priceProvider";
 import { scorePlayer } from "@/lib/scorer";
 import { calculateDamageStats } from "@/lib/damageCalc";
@@ -403,8 +402,13 @@ export default function Result() {
   const [dailyExpanded, setDailyExpanded] = useState(false);
   const [socialExpanded, setSocialExpanded] = useState(false);
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [companionOpen, setCompanionOpen] = useState(false);
+  // Combat Tab Interactive Calculator States
+  const [calcPower, setCalcPower] = useState<number>(0);
+  const [calcSwordDs, setCalcSwordDs] = useState<number>(0);
+  const [calcShieldMs, setCalcShieldMs] = useState<number>(0);
+  const [calcSpeedBoost, setCalcSpeedBoost] = useState<number>(0);
+  const [calcPartySize, setCalcPartySize] = useState<number>(4);
+  const [calcBossHp, setCalcBossHp] = useState<number>(1e12);
 
   // Computed stats calculator
   const computedStats = useMemo(() => {
@@ -469,18 +473,13 @@ export default function Result() {
   }, [data]);
 
   useEffect(() => {
-    if (authStore.isLoggedIn()) {
-      authStore.fetchMe().then((p) => setProfile(p));
+    if (data && computedStats) {
+      setCalcPower(data.player.powerRaw || 0);
+      setCalcSwordDs(computedStats.ds || 0);
+      setCalcShieldMs(computedStats.ms || 0);
+      setCalcSpeedBoost(Math.round(computedStats.speedBoost * 100));
     }
-  }, []);
-
-  const refreshProfile = useCallback(() => {
-    if (authStore.isLoggedIn()) {
-      authStore.fetchMe().then((p) => setProfile(p));
-    } else {
-      setProfile(null);
-    }
-  }, []);
+  }, [data, computedStats]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -493,28 +492,8 @@ export default function Result() {
       const decoded = JSON.parse(d) as ResultData;
       if (decoded && decoded.player && decoded.scores) {
         setData(decoded);
-        
-        // Auto-save progression result to backend profile history if logged in
-        if (authStore.isLoggedIn()) {
-          const sw = getSwordData(decoded.player.sword);
-          const sh = getShieldData(decoded.player.shield);
-          const ds = sw ? scaledSwordDamage(sw.baseDamage, decoded.player.swordLevel) * 1e9 : 0;
-          const ms = sh ? scaledShieldDM(sh.baseDM, decoded.player.shieldLevel) : 0;
-          const dmg = (ds + 2 * Math.sqrt(Math.max(decoded.player.powerRaw, 0)) + 1) * (1 + ms);
-          const dps = dmg * 2.77;
-
-          authStore.addHistory(
-            decoded.player.level,
-            decoded.scores.overallGrade,
-            decoded.scores.overallScore,
-            decoded.player.power,
-            dps
-          );
-        }
-      } else {
-        setParseError(true);
       }
-    } catch {
+    } catch (err) {
       setParseError(true);
     }
   }, []);
@@ -646,22 +625,6 @@ export default function Result() {
           <Link href="/" className="text-white/40 hover:text-amber-400 text-xs font-bold uppercase tracking-widest transition-colors">
             ← Grade Another
           </Link>
-          {profile ? (
-            <button 
-              onClick={() => setCompanionOpen(true)}
-              className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/25 rounded-lg px-2.5 py-1 text-xs text-amber-400 font-bold hover:bg-amber-500/15 transition-all cursor-pointer font-display"
-            >
-              <img src={profile.profilePic} alt="avatar" className="w-5 h-5 rounded bg-[#070b13] border border-white/5" />
-              <span className="max-w-[70px] truncate">{profile.username}</span>
-            </button>
-          ) : (
-            <button 
-              onClick={() => setCompanionOpen(true)}
-              className="text-[10px] text-white/55 hover:text-amber-400 transition-colors font-black uppercase tracking-widest cursor-pointer"
-            >
-              Log In
-            </button>
-          )}
         </div>
       </header>
 
@@ -768,7 +731,7 @@ export default function Result() {
             {[
               { id: "overview", label: "Overview" },
               { id: "combat", label: "Combat & Calc" },
-              { id: "upgrades", label: "Upgrades & Gold" },
+              { id: "upgrades", label: "Upgrades" },
               { id: "benchmarks", label: "Benchmarks" },
               { id: "simulator", label: "Sandbox Sim" },
               { id: "coach", label: "AI Coach" },
@@ -864,7 +827,9 @@ export default function Result() {
                           </div>
                         </div>
                       ) : (
-                        <p className="text-xs text-white/50 italic">Farming & grind. No immediate upgrades available.</p>
+                        <p className="text-xs font-mono font-bold text-amber-500/90">
+                          ⏳ {scores.upgradeAdvice.powerShortageMessage || "Farming & grind. No immediate upgrades available."}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -1026,121 +991,220 @@ export default function Result() {
               </div>
             )}
 
-            {activeTab === "combat" && computedStats && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {activeTab === "combat" && computedStats && (() => {
+              // Calculate live values based on sliders
+              const liveDmgStats = calculateDamageStats({
+                ds: calcSwordDs,
+                swordDamageMultiplier: calcShieldMs,
+                power: calcPower,
+                petPowerBonus: 0,
+                armorPowerBonus: 0,
+                attackSpeed: 2.77 * (1 + calcSpeedBoost / 100)
+              });
+
+              // Party calculation
+              const playerDps = liveDmgStats.damagePerSecond;
+              const partyDps = playerDps + (calcPartySize - 1) * playerDps;
+              const estSeconds = calcBossHp / (partyDps || 1);
+              const formatTime = (sec: number) => {
+                if (sec === Infinity || isNaN(sec)) return "—";
+                if (sec < 60) return `${sec.toFixed(1)}s`;
+                const mins = Math.floor(sec / 60);
+                const secs = Math.round(sec % 60);
+                return `${mins}m ${secs}s`;
+              };
+
+              return (
+                <div className="space-y-6">
+                  {/* Top Stats Display */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-2">
+                      <div className="text-[10px] text-amber-400 uppercase font-black tracking-wider">Calculated DPH</div>
+                      <div className="text-3xl font-black font-mono text-white">{formatNumber(liveDmgStats.damagePerHit)}</div>
+                      <div className="text-[10px] text-white/40">
+                        Power Contribution: <span className="text-amber-500">+{formatNumber(2 * Math.sqrt(calcPower))}</span>
+                      </div>
+                    </div>
+
+                    <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-2">
+                      <div className="text-[10px] text-purple-400 uppercase font-black tracking-wider">Calculated DPS</div>
+                      <div className="text-3xl font-black font-mono text-white">{formatNumber(liveDmgStats.damagePerSecond)}</div>
+                      <div className="text-[10px] text-white/40">
+                        Attack Speed: <span className="text-purple-400">{(2.77 * (1 + calcSpeedBoost / 100)).toFixed(2)} hits/sec</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Calculator Sliders Panel */}
+                  <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-5">
+                    <SectionLabel>Interactive Damage Calculator</SectionLabel>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Left Sliders: Power & DS */}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-white/60">Power Stat</span>
+                            <span className="font-mono text-amber-400">{formatNumber(calcPower)}</span>
+                          </div>
+                          <input 
+                            type="range"
+                            min="0"
+                            max={Math.max(data.player.powerRaw * 3, 1000000).toString()}
+                            step={Math.max(Math.round(data.player.powerRaw * 3 / 100), 1000).toString()}
+                            value={calcPower}
+                            onChange={(e) => setCalcPower(Number(e.target.value))}
+                            className="w-full accent-amber-500 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
+                          />
+                          <div className="flex justify-between text-[9px] text-white/20">
+                            <span>0</span>
+                            <span>{formatNumber(data.player.powerRaw * 3)} (3x Current)</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-white/60">Weapon Damage (DS)</span>
+                            <span className="font-mono text-amber-400">{formatNumber(calcSwordDs)}</span>
+                          </div>
+                          <input 
+                            type="range"
+                            min="0"
+                            max={Math.max(computedStats.ds * 3, 1000000).toString()}
+                            step={Math.max(Math.round(computedStats.ds * 3 / 100), 1000).toString()}
+                            value={calcSwordDs}
+                            onChange={(e) => setCalcSwordDs(Number(e.target.value))}
+                            className="w-full accent-amber-500 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
+                          />
+                          <div className="flex justify-between text-[9px] text-white/20">
+                            <span>0</span>
+                            <span>{formatNumber(computedStats.ds * 3)} (3x Current)</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Sliders: MS & Speed */}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-white/60">Shield Damage Multiplier (MS)</span>
+                            <span className="font-mono text-amber-400">{(calcShieldMs * 100).toFixed(0)}%</span>
+                          </div>
+                          <input 
+                            type="range"
+                            min="0"
+                            max="50"
+                            step="0.1"
+                            value={calcShieldMs}
+                            onChange={(e) => setCalcShieldMs(Number(e.target.value))}
+                            className="w-full accent-amber-500 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
+                          />
+                          <div className="flex justify-between text-[9px] text-white/20">
+                            <span>0%</span>
+                            <span>5000%</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-white/60">Pet Speed Boost</span>
+                            <span className="font-mono text-purple-400">+{calcSpeedBoost}%</span>
+                          </div>
+                          <input 
+                            type="range"
+                            min="0"
+                            max="300"
+                            step="5"
+                            value={calcSpeedBoost}
+                            onChange={(e) => setCalcSpeedBoost(Number(e.target.value))}
+                            className="w-full accent-purple-500 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
+                          />
+                          <div className="flex justify-between text-[9px] text-white/20">
+                            <span>0%</span>
+                            <span>+300%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Group Damage Calculator Panel */}
+                  <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-4">
+                    <SectionLabel>Group Damage & Raid Boss Calculator</SectionLabel>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-white/60">Party Size (Number of Players)</span>
+                            <span className="font-mono text-emerald-400">{calcPartySize} players</span>
+                          </div>
+                          <input 
+                            type="range"
+                            min="1"
+                            max="8"
+                            value={calcPartySize}
+                            onChange={(e) => setCalcPartySize(Number(e.target.value))}
+                            className="w-full accent-emerald-500 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
+                          />
+                          <div className="flex justify-between text-[9px] text-white/20">
+                            <span>1 (Solo)</span>
+                            <span>8 (Full Raid Group)</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs text-white/60 block">Raid Boss HP Target</label>
+                          <select 
+                            value={calcBossHp}
+                            onChange={(e) => setCalcBossHp(Number(e.target.value))}
+                            className="w-full bg-[#03050b]/80 border border-white/10 rounded-lg p-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500"
+                          >
+                            <option value={100e9}>100B HP</option>
+                            <option value={1e12}>1T HP</option>
+                            <option value={10e12}>10T HP</option>
+                            <option value={100e12}>100T HP</option>
+                            <option value={500e12}>500T HP (World 11 Boss)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Group Calculation Results Card */}
+                      <div className="bg-black/30 border border-white/5 rounded-xl p-4 flex flex-col justify-center space-y-3">
+                        <div className="space-y-1">
+                          <div className="text-[10px] text-white/40 uppercase font-black font-mono">Total Party DPS Estimate</div>
+                          <div className="text-2xl font-black font-mono text-emerald-400">{formatNumber(partyDps)}</div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="text-[10px] text-white/40 uppercase font-black font-mono">Estimated Boss Kill Time</div>
+                          <div className="text-3xl font-black font-mono text-white">{formatTime(estSeconds)}</div>
+                        </div>
+
+                        <div className="text-[9px] text-white/30 leading-relaxed">
+                          Assumes all group members have gear/dps identical to the values configured in the sliders above.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Math Formula Card */}
                   <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-3">
-                    <div className="text-[10px] text-amber-400 uppercase font-black tracking-wider">Damage Per Hit (DPH)</div>
-                    <div className="text-3xl font-black font-display text-white">{formatNumber(computedStats.dph)}</div>
-                    <p className="text-[10px] text-white/30 leading-relaxed font-semibold">
-                      Based on standard formula:<br />
-                      <code className="text-amber-400/90 font-mono font-bold">DPH = (DS + 2 * sqrt(Power) + 1) * (1 + MS)</code>
-                    </p>
-                  </div>
-
-                  <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-3">
-                    <div className="text-[10px] text-purple-400 uppercase font-black tracking-wider">Damage Per Second (DPS)</div>
-                    <div className="text-3xl font-black font-display text-white">{formatNumber(computedStats.dps)}</div>
-                    <p className="text-[10px] text-white/30 leading-relaxed font-semibold">
-                      Calculated from DPH and attack speed:<br />
-                      <code className="text-purple-400/90 font-mono font-bold">DPS = DPH * {computedStats.finalAttackSpeed.toFixed(2)} hits/sec</code>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-4">
-                  <SectionLabel>Combat Variable Breakdown</SectionLabel>
-                  <div className="space-y-3.5 text-xs font-semibold">
-                    <div className="flex justify-between border-b border-white/[0.02] pb-2">
-                      <span className="text-white/40">Weapon Stat contribution (DS)</span>
-                      <span className="font-mono text-amber-400">+{formatNumber(computedStats.ds)} DMG</span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/[0.02] pb-2">
-                      <span className="text-white/40">Power Stat contribution (2 * sqrt(P))</span>
-                      <span className="font-mono text-amber-400">+{formatNumber(2 * Math.sqrt(Math.max(player.powerRaw, 0)))} DMG</span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/[0.02] pb-2">
-                      <span className="text-white/40">Shield Multiplier contribution (1 + MS)</span>
-                      <span className="font-mono text-amber-400">x{(1 + computedStats.ms).toFixed(1)} Multiplier</span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/[0.02] pb-2">
-                      <span className="text-white/40">Base Attack Speed</span>
-                      <span className="font-mono">2.77 hits/sec</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/40">Equipped Pets Speed Boost</span>
-                      <span className="font-mono text-purple-400">+{Math.round(computedStats.speedBoost * 100)}% Speed</span>
+                    <SectionLabel>Standard Combat Formula Guides</SectionLabel>
+                    <div className="space-y-3 text-xs leading-relaxed font-semibold">
+                      <p>
+                        DPH (Damage Per Hit) is the foundation of SwordMasters combat. It scales heavily with Weapon Damage (DS) and the square root of your Power stat.
+                      </p>
+                      <div className="p-3 bg-black/40 border border-white/5 rounded-lg font-mono text-[11px] text-amber-400 space-y-1">
+                        <div>DPH = (DS + 2 * sqrt(Power) + 1) * (1 + MS)</div>
+                        <div>DPS = DPH * AttackSpeed</div>
+                        <div>PPH = DPH * (1 + PetPowerBonus + ArmorPowerBonus)</div>
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Debug Calculator panel */}
-                <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-4">
-                  <div className="flex items-center justify-between border-b border-white/[0.04] pb-2">
-                    <SectionLabel>Debug Calculation Panel</SectionLabel>
-                    <span className="text-[9px] text-[#ffd700] font-bold uppercase tracking-widest border border-amber-400/30 px-2 py-0.5 rounded bg-amber-400/5">SMGrade v2.0 Engine</span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Base Damage (DS)</span>
-                      <span className="text-white font-bold">{formatNumber(computedStats.ds)}</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Sword Multiplier (MS)</span>
-                      <span className="text-white font-bold">x{computedStats.ms.toFixed(2)}</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Protection</span>
-                      <span className="text-white font-bold">{formatNumber(computedStats.protection)}</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Health Multiplier</span>
-                      <span className="text-white font-bold">x{(player as any).rawPayload?.inv?.healthMultiplier || 1.0}</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Gold Multiplier</span>
-                      <span className="text-white font-bold">x{computedStats.goldMulti.toFixed(2)}</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Power (P)</span>
-                      <span className="text-white font-bold">{formatNumber(player.powerRaw)}</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">sqrt(Power)</span>
-                      <span className="text-white font-bold">{Math.sqrt(Math.max(player.powerRaw, 0)).toFixed(2)}</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Pet Power Bonus</span>
-                      <span className="text-white font-bold">+{((computedStats.powerMulti - 1) * 100).toFixed(0)}%</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Armor Power Bonus</span>
-                      <span className="text-white font-bold">+0%</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Attack Speed</span>
-                      <span className="text-white font-bold">{computedStats.finalAttackSpeed.toFixed(2)} swings/sec</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Damage / Hit</span>
-                      <span className="text-[#ffd700] font-bold">{formatNumber(computedStats.dph)}</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Power / Hit</span>
-                      <span className="text-[#ffd700] font-bold">{formatNumber(computedStats.pph)}</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Damage / sec</span>
-                      <span className="text-purple-400 font-bold">{formatNumber(computedStats.dps)}</span>
-                    </div>
-                    <div className="bg-white/[0.01] border border-white/[0.02] p-3 rounded space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider block">Power / sec</span>
-                      <span className="text-purple-400 font-bold">{formatNumber(computedStats.pps)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {activeTab === "upgrades" && computedStats && (
               <div className="space-y-6">
@@ -1152,69 +1216,83 @@ export default function Result() {
                   </div>
                   
                   <div className="p-5 space-y-4">
-                    {scores.upgradeAdvice.recommendations && scores.upgradeAdvice.recommendations.length > 0 ? (
-                      scores.upgradeAdvice.recommendations.map((rec, index) => {
-                        const rankLabels = ["#1 Best Combat Upgrade", "#2 Second Best Upgrade", "#3 Third Best Upgrade"];
-                        const label = rankLabels[index] || `Upgrade #${index + 1}`;
-                        
-                        return (
-                          <div key={index} className="rounded-lg p-4 border border-white/[0.04] bg-white/[0.01] space-y-2">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <div className="text-[8px] uppercase tracking-widest text-amber-400 font-black">{label}</div>
-                                <div className="text-white font-extrabold text-sm mt-0.5">{rec.name} {rec.level > 0 ? `Lv${rec.level}` : ""}</div>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-[8px] uppercase tracking-widest text-white/30 font-black">Combat Boost</div>
-                                <div className="text-amber-400 font-bold text-xs">+{rec.damageGainPct}%</div>
-                              </div>
-                            </div>
-                            <p className="text-white/50 text-xs leading-relaxed">
-                              {rec.reason}
-                            </p>
-                            <div className="flex justify-between border-t border-white/[0.03] pt-2 text-[10px] font-bold">
-                              <span className="text-white/35">Market Price: <span className="text-white">{rec.marketPriceNote || "Unknown"}</span></span>
-                              <span className={rec.affordable ? "text-[#5ecb7a]" : "text-white/40 font-semibold"}>
-                                {rec.affordable ? "✓ Affordable Now" : "⏳ Long-term goal"}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="text-xs font-semibold text-white/40 text-center py-4 border border-white/[0.03] rounded-lg bg-white/[0.01]">
-                        No upgrade currently recommended.
+                    {scores.upgradeAdvice.powerShortageMessage ? (
+                      <div className="text-center py-6 px-4 border border-[#f59e0b]/15 rounded-lg bg-[#f59e0b]/5 text-[#ffd700] font-black font-mono text-xs uppercase tracking-widest">
+                        ⚠️ {scores.upgradeAdvice.powerShortageMessage}
                       </div>
+                    ) : (
+                      scores.upgradeAdvice.recommendations && scores.upgradeAdvice.recommendations.length > 0 ? (
+                        scores.upgradeAdvice.recommendations.map((rec, index) => {
+                          const rankLabels = ["#1 Best Combat Upgrade", "#2 Second Best Upgrade", "#3 Third Best Upgrade"];
+                          const label = rankLabels[index] || `Upgrade #${index + 1}`;
+                          
+                          return (
+                            <div key={index} className="rounded-lg p-4 border border-white/[0.04] bg-white/[0.01] space-y-2">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <div className="text-[8px] uppercase tracking-widest text-amber-400 font-black">{label}</div>
+                                  <div className="text-white font-extrabold text-sm mt-0.5">{rec.name} {rec.level > 0 ? `Lv${rec.level}` : ""}</div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-[8px] uppercase tracking-widest text-white/30 font-black">Combat Boost</div>
+                                  <div className="text-amber-400 font-bold text-xs">+{rec.damageGainPct}%</div>
+                                </div>
+                              </div>
+                              <p className="text-white/50 text-xs leading-relaxed">
+                                {rec.reason}
+                              </p>
+                              <div className="flex justify-between border-t border-white/[0.03] pt-2 text-[10px] font-bold">
+                                <span className="text-white/35">Market Price: <span className="text-white">{rec.marketPriceNote || "Unknown"}</span></span>
+                                <span className="text-[#5ecb7a]">
+                                  ✓ Affordable Now
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="text-xs font-semibold text-white/40 text-center py-4 border border-white/[0.03] rounded-lg bg-white/[0.01]">
+                          No upgrade currently recommended.
+                        </div>
+                      )
                     )}
                   </div>
                 </div>
 
-                {/* Gold Planner block */}
-                <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-4">
-                  <SectionLabel>Gold & Budget Planner</SectionLabel>
-                  <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
-                    <div className="bg-white/[0.01] p-3 rounded-lg border border-white/5 space-y-1">
-                      <div className="text-white/30 text-[9px] uppercase tracking-wider">Current Account Balance</div>
-                      <div className="text-white font-bold font-mono">{player.gold} Gold</div>
+                {/* Late Game Goals Section */}
+                {scores.upgradeAdvice.lateGameGoals && scores.upgradeAdvice.lateGameGoals.length > 0 && (
+                  <div className="border border-white/[0.04] rounded-xl overflow-hidden glass-panel text-white">
+                    <div className="px-5 py-4 border-b border-white/[0.04] bg-white/[0.01]">
+                      <span className="text-amber-400 font-black text-xs tracking-widest uppercase font-display">Late Game Goals</span>
                     </div>
                     
-                    {(() => {
-                      const nextSword = getNextSwordUpgrade(player.sword, player.swordLevel);
-                      const cost = nextSword ? (getPriceRaw(nextSword.name, 1) || 1e12) : 0;
-                      const isAffordable = player.goldRaw >= cost;
-                      const diff = Math.max(cost - player.goldRaw, 0);
-                      
-                      return (
-                        <div className="bg-white/[0.01] p-3 rounded-lg border border-white/5 space-y-1">
-                          <div className="text-white/30 text-[9px] uppercase tracking-wider">Next Sword Budget</div>
-                          <div className={isAffordable ? "text-[#5ecb7a] font-bold" : "text-red-400 font-bold"}>
-                            {isAffordable ? "Affordable Now" : `Short ${formatNumber(diff)} Gold`}
+                    <div className="p-5 space-y-4">
+                      {scores.upgradeAdvice.lateGameGoals.map((rec, index) => {
+                        return (
+                          <div key={index} className="rounded-lg p-4 border border-white/[0.04] bg-white/[0.01] opacity-75 space-y-2">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <div className="text-[8px] uppercase tracking-widest text-white/40 font-black">Future Target</div>
+                                <div className="text-white font-extrabold text-sm mt-0.5">{rec.name} {rec.level > 0 ? `Lv${rec.level}` : ""}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-[8px] uppercase tracking-widest text-white/30 font-black">Combat Boost</div>
+                                <div className="text-amber-500 font-bold text-xs">+{rec.damageGainPct}%</div>
+                              </div>
+                            </div>
+                            <p className="text-white/40 text-xs leading-relaxed">
+                              {rec.reason}
+                            </p>
+                            <div className="flex justify-between border-t border-white/[0.03] pt-2 text-[10px] font-bold">
+                              <span className="text-white/35">Market Price: <span className="text-white">{rec.marketPriceNote || "Unknown"}</span></span>
+                              <span className="text-red-400 font-semibold">{rec.status}</span>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })()}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -1318,11 +1396,7 @@ export default function Result() {
       <footer className="border-t border-white/[0.03] bg-[#070b13]/60 px-6 py-5 text-center text-white/20 text-[9px] font-bold uppercase tracking-widest z-10">
         Companion App — built for SwordMasters
       </footer>
-      <CompanionDrawer 
-        isOpen={companionOpen} 
-        onClose={() => setCompanionOpen(false)} 
-        onLoginStateChange={refreshProfile}
-      />
+
     </div>
   );
 }

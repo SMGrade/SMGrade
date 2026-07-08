@@ -42,6 +42,8 @@ export interface UpgradeAdvice {
   immediate: UpgradeGoal | null;
   longTerm: UpgradeGoal | null;
   recommendations: UpgradeGoal[];
+  lateGameGoals?: UpgradeGoal[];
+  powerShortageMessage?: string | null;
 }
 
 export interface UpgradeTip {
@@ -361,7 +363,6 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   const swLevel = player.swordLevel;
   const shLevel = player.shieldLevel;
   
-  const goldBudgetInPower = player.goldRaw * constants.goldExchangeRate * 3;
   const benchmark = getInterpolatedBenchmark(player.level);
 
   // Current stats base
@@ -384,71 +385,71 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   // Evaluate Sword Candidates
   const swords = items.filter(i => i.type === "sword" || (i as any).category === "sword");
   swords.forEach(sw => {
-    const isCurrent = curSw && sw.name === curSw.name;
+    const isCurrent = curSw && sw.name.toLowerCase() === curSw.name.toLowerCase();
     const maxLvl = sw.maxLevel || 10;
     
     if (isCurrent) {
-      // Current weapon upgrades (up to its maxLevel)
+      // Upgrades to current weapon
       for (let lvl = swLevel + 1; lvl <= maxLvl; lvl++) {
         const cost = getPriceRawFromMarket(sw.name, lvl);
         if (cost > 0) {
           const canStats = getSwordStats(sw, lvl);
-          
-          const isDmgGreater = canStats.damage > curSwStats.damage;
-          const isProtGreater = canStats.prot >= curSwStats.prot;
-          const isScoreGreater = canStats.score > curSwStats.score;
-
-          console.log(`[UpgradeEngine] Sword ${sw.name} Lv${lvl} candidate check:`);
-          console.log(`  Current: Dmg=${curSwStats.damage}, Prot=${curSwStats.prot}, Score=${curSwStats.score}`);
-          console.log(`  Candidate: Dmg=${canStats.damage}, Prot=${canStats.prot}, Score=${canStats.score}`);
-
-          if (isDmgGreater && isProtGreater && isScoreGreater) {
-            console.log(`  Reason Accepted: Upgrade provides strictly superior effective combat stats.`);
+          if (canStats.score > curSwStats.score && canStats.damage > curSwStats.damage) {
             const gain = Math.round(((canStats.score - curSwStats.score) / Math.max(curSwStats.score, 1)) * 100);
-            candidates.push({
-              name: sw.name,
-              level: lvl,
-              type: "Sword",
-              damageGainPct: gain,
-              cost,
-              priceNote: getPriceNoteFromMarket(sw.name, lvl),
-              isUpgradeCurrent: true,
-              stats: canStats,
-            });
-          } else {
-            console.log(`  Reason Rejected: Weaker or non-upgrade. (${!isDmgGreater ? "Dmg NO" : "Dmg YES"}, ${!isProtGreater ? "Prot NO" : "Prot YES"}, ${!isScoreGreater ? "Score NO" : "Score YES"})`);
+            if (gain > 0) {
+              candidates.push({
+                name: sw.name,
+                level: lvl,
+                type: "Sword",
+                damageGainPct: gain,
+                cost,
+                priceNote: getPriceNoteFromMarket(sw.name, lvl),
+                isUpgradeCurrent: true,
+                stats: canStats,
+              });
+            }
           }
         }
       }
     } else {
-      // Transitioning to a new stronger sword (ONLY recommend at Level 1)
-      const cost = getPriceRawFromMarket(sw.name, 1);
-      if (cost > 0) {
-        const canStats = getSwordStats(sw, 1);
-        
-        const isDmgGreater = canStats.damage > curSwStats.damage;
-        const isProtGreater = canStats.prot >= curSwStats.prot;
-        const isScoreGreater = canStats.score > curSwStats.score;
-
-        console.log(`[UpgradeEngine] Sword ${sw.name} Lv1 candidate check:`);
-        console.log(`  Current: Dmg=${curSwStats.damage}, Prot=${curSwStats.prot}, Score=${curSwStats.score}`);
-        console.log(`  Candidate: Dmg=${canStats.damage}, Prot=${canStats.prot}, Score=${canStats.score}`);
-
-        if (isDmgGreater && isProtGreater && isScoreGreater) {
-          console.log(`  Reason Accepted: Next tier is strictly superior at base Level 1.`);
-          const gain = Math.round(((canStats.score - curSwStats.score) / Math.max(curSwStats.score, 1)) * 100);
+      // Transitioning to a new sword
+      // Logical progression: only evaluate if sw is a higher-tier sword (baseDamage > curSw.baseDamage)
+      if (curSw && sw.baseValue <= curSw.baseDamage) {
+        return; // reject lower or equal tier transitions (e.g. beginner weapons or level 10 weapons that are weaker)
+      }
+      
+      // Find the first level L of sw that yields a direct upgrade in combat damage compared to our current weapon
+      let firstUpgradeLevel = -1;
+      let totalCost = 0;
+      
+      for (let lvl = 1; lvl <= maxLvl; lvl++) {
+        const canStats = getSwordStats(sw, lvl);
+        if (canStats.score > curSwStats.score && canStats.damage > curSwStats.damage) {
+          firstUpgradeLevel = lvl;
+          // The cost to transition is the purchase price (Level 1) plus any upgrade cost to that target level!
+          let sumCost = 0;
+          for (let l = 1; l <= lvl; l++) {
+            sumCost += getPriceRawFromMarket(sw.name, l);
+          }
+          totalCost = sumCost;
+          break;
+        }
+      }
+      
+      if (firstUpgradeLevel !== -1 && totalCost > 0) {
+        const canStats = getSwordStats(sw, firstUpgradeLevel);
+        const gain = Math.round(((canStats.score - curSwStats.score) / Math.max(curSwStats.score, 1)) * 100);
+        if (gain > 0) {
           candidates.push({
             name: sw.name,
-            level: 1,
+            level: firstUpgradeLevel,
             type: "Sword",
             damageGainPct: gain,
-            cost,
-            priceNote: getPriceNoteFromMarket(sw.name, 1),
+            cost: totalCost,
+            priceNote: getPriceNoteFromMarket(sw.name, firstUpgradeLevel),
             isUpgradeCurrent: false,
             stats: canStats,
           });
-        } else {
-          console.log(`  Reason Rejected: Weaker or non-upgrade at Level 1. (${!isDmgGreater ? "Dmg NO" : "Dmg YES"}, ${!isProtGreater ? "Prot NO" : "Prot YES"}, ${!isScoreGreater ? "Score NO" : "Score YES"})`);
         }
       }
     }
@@ -457,113 +458,76 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   // Evaluate Shield Candidates
   const shields = items.filter(i => i.type === "shield" || (i as any).category === "shield");
   shields.forEach(sh => {
-    const isCurrent = curSh && sh.name === curSh.name;
+    const isCurrent = curSh && sh.name.toLowerCase() === curSh.name.toLowerCase();
     const maxLvl = sh.maxLevel || 10;
     
     if (isCurrent) {
-      // Current shield upgrades (up to its maxLevel)
+      // Upgrades to current shield
       for (let lvl = shLevel + 1; lvl <= maxLvl; lvl++) {
         const cost = getPriceRawFromMarket(sh.name, lvl);
         if (cost > 0) {
           const canStats = getShieldStats(sh, lvl);
-          
-          const isDmgGreater = canStats.dm > curShStats.dm;
-          const isProtGreater = canStats.prot >= curShStats.prot;
-          const isScoreGreater = canStats.score > curShStats.score;
-
-          console.log(`[UpgradeEngine] Shield ${sh.name} Lv${lvl} candidate check:`);
-          console.log(`  Current: DM=${curShStats.dm.toFixed(2)}x, Prot=${curShStats.prot}, Score=${curShStats.score}`);
-          console.log(`  Candidate: DM=${canStats.dm.toFixed(2)}x, Prot=${canStats.prot}, Score=${canStats.score}`);
-
-          if (isDmgGreater && isProtGreater && isScoreGreater) {
-            console.log(`  Reason Accepted: Upgrade provides strictly superior effective protection/multipliers.`);
+          if (canStats.score > curShStats.score && canStats.dm > curShStats.dm) {
             const gain = Math.round(((canStats.score - curShStats.score) / Math.max(curShStats.score, 1)) * 100);
-            candidates.push({
-              name: sh.name,
-              level: lvl,
-              type: "Shield",
-              damageGainPct: gain,
-              cost,
-              priceNote: getPriceNoteFromMarket(sh.name, lvl),
-              isUpgradeCurrent: true,
-              stats: canStats,
-            });
-          } else {
-            console.log(`  Reason Rejected: Weaker or non-upgrade. (${!isDmgGreater ? "DM NO" : "DM YES"}, ${!isProtGreater ? "Prot NO" : "Prot YES"}, ${!isScoreGreater ? "Score NO" : "Score YES"})`);
+            if (gain > 0) {
+              candidates.push({
+                name: sh.name,
+                level: lvl,
+                type: "Shield",
+                damageGainPct: gain,
+                cost,
+                priceNote: getPriceNoteFromMarket(sh.name, lvl),
+                isUpgradeCurrent: true,
+                stats: canStats,
+              });
+            }
           }
         }
       }
     } else {
-      // Transitioning to a new stronger shield (ONLY recommend at Level 1)
-      const cost = getPriceRawFromMarket(sh.name, 1);
-      if (cost > 0) {
-        const canStats = getShieldStats(sh, 1);
-        
-        const isDmgGreater = canStats.dm > curShStats.dm;
-        const isProtGreater = canStats.prot >= curShStats.prot;
-        const isScoreGreater = canStats.score > curShStats.score;
-
-        console.log(`[UpgradeEngine] Shield ${sh.name} Lv1 candidate check:`);
-        console.log(`  Current: DM=${curShStats.dm.toFixed(2)}x, Prot=${curShStats.prot}, Score=${curShStats.score}`);
-        console.log(`  Candidate: DM=${canStats.dm.toFixed(2)}x, Prot=${canStats.prot}, Score=${canStats.score}`);
-
-        if (isDmgGreater && isProtGreater && isScoreGreater) {
-          console.log(`  Reason Accepted: Next tier is strictly superior at base Level 1.`);
-          const gain = Math.round(((canStats.score - curShStats.score) / Math.max(curShStats.score, 1)) * 100);
+      // Transitioning to a new shield
+      // Logical progression: only evaluate if sh is a higher-tier shield (baseDM > curSh.baseDM)
+      if (curSh && sh.baseValue <= curSh.baseDM) {
+        return; // reject lower or equal tier transitions
+      }
+      
+      // Find the first level L of sh that yields a direct upgrade in multiplier compared to our current shield
+      let firstUpgradeLevel = -1;
+      let totalCost = 0;
+      
+      for (let lvl = 1; lvl <= maxLvl; lvl++) {
+        const canStats = getShieldStats(sh, lvl);
+        if (canStats.score > curShStats.score && canStats.dm > curShStats.dm) {
+          firstUpgradeLevel = lvl;
+          let sumCost = 0;
+          for (let l = 1; l <= lvl; l++) {
+            sumCost += getPriceRawFromMarket(sh.name, l);
+          }
+          totalCost = sumCost;
+          break;
+        }
+      }
+      
+      if (firstUpgradeLevel !== -1 && totalCost > 0) {
+        const canStats = getShieldStats(sh, firstUpgradeLevel);
+        const gain = Math.round(((canStats.score - curShStats.score) / Math.max(curShStats.score, 1)) * 100);
+        if (gain > 0) {
           candidates.push({
             name: sh.name,
-            level: 1,
+            level: firstUpgradeLevel,
             type: "Shield",
             damageGainPct: gain,
-            cost,
-            priceNote: getPriceNoteFromMarket(sh.name, 1),
+            cost: totalCost,
+            priceNote: getPriceNoteFromMarket(sh.name, firstUpgradeLevel),
             isUpgradeCurrent: false,
             stats: canStats,
           });
-        } else {
-          console.log(`  Reason Rejected: Weaker or non-upgrade at Level 1. (${!isDmgGreater ? "DM NO" : "DM YES"}, ${!isProtGreater ? "Prot NO" : "Prot YES"}, ${!isScoreGreater ? "Score NO" : "Score YES"})`);
         }
       }
     }
   });
 
-  // Sort candidates strictly by combat improvement (damageGainPct) descending
-  const sortedCandidates = candidates.sort((a, b) => b.damageGainPct - a.damageGainPct);
-
-  const recommendations: UpgradeGoal[] = sortedCandidates.slice(0, 3).map(c => {
-    const isAffordable = player.goldRaw >= c.cost;
-    const status = isAffordable ? "Affordable Now" : "Long-term goal";
-    let reason = "";
-    if (c.isUpgradeCurrent) {
-      reason = `Upgrading your current ${c.name} to Level ${c.level} increases combat strength by +${c.damageGainPct}% combat value.`;
-    } else {
-      reason = `Transitioning to ${c.name} Lv1 increases combat strength by +${c.damageGainPct}% combat value.`;
-    }
-
-    // Print audit trace report to console for validation
-    const isSw = c.type === "Sword";
-    printUpgradeAudit(
-      isSw ? "Weapon" : "Shield",
-      isSw ? curSwStats : curShStats,
-      c.stats,
-      reason
-    );
-
-    return {
-      name: c.name,
-      level: c.level,
-      type: c.type,
-      damageGainPct: c.damageGainPct,
-      marketPriceNote: c.priceNote,
-      estimatedRequirements: `Level ~${benchmark.minLevel.toLocaleString()}, Power ~${formatNumber(benchmark.avgPower)}`,
-      affordable: isAffordable,
-      status,
-      reason
-    };
-  });
-
-  // Fallback if no upgrades exist (player has the strongest gear)
-  if (recommendations.length === 0) {
+  if (candidates.length === 0) {
     const fallbackGoal: UpgradeGoal = {
       name: "No upgrade currently recommended.",
       level: 0,
@@ -577,14 +541,94 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     return {
       immediate: fallbackGoal,
       longTerm: null,
-      recommendations: [fallbackGoal]
+      recommendations: [fallbackGoal],
+      lateGameGoals: [],
+      powerShortageMessage: null
     };
+  }
+
+  // Calculate efficiency for all candidates: combat gain per log-scaled cost
+  const getEfficiency = (c: Candidate) => {
+    const logCost = Math.log10(c.cost) > 0 ? Math.log10(c.cost) : 1;
+    return c.damageGainPct / logCost;
+  };
+
+  // Group candidates into affordable vs unaffordable using Player Power
+  const affordable = candidates.filter(c => player.powerRaw >= c.cost);
+  const unaffordable = candidates.filter(c => player.powerRaw < c.cost);
+
+  let powerShortageMessage: string | null = null;
+  let recommendations: UpgradeGoal[] = [];
+  let lateGameGoals: UpgradeGoal[] = [];
+
+  if (affordable.length > 0) {
+    // Sort affordable candidates by efficiency descending
+    affordable.sort((a, b) => getEfficiency(b) - getEfficiency(a));
+    
+    const uniqueSelected: Candidate[] = [];
+    affordable.forEach(c => {
+      if (!uniqueSelected.some(u => u.name === c.name && u.level === c.level)) {
+        uniqueSelected.push(c);
+      }
+    });
+
+    recommendations = uniqueSelected.slice(0, 3).map((c, index) => {
+      const label = index === 0 ? "#1 Best Combat Upgrade" : `Upgrade #${index + 1}`;
+      const reason = `[Best Value] Upgrading to ${c.name} Lv${c.level} yields a solid +${c.damageGainPct}% combat value increase within your current Power limits.`;
+      
+      return {
+        name: c.name,
+        level: c.level,
+        type: c.type,
+        damageGainPct: c.damageGainPct,
+        marketPriceNote: c.priceNote,
+        estimatedRequirements: `Level ~${benchmark.minLevel.toLocaleString()}, Power ~${formatNumber(benchmark.avgPower)}`,
+        affordable: true,
+        status: "Affordable Now",
+        reason
+      };
+    });
+  } else {
+    // Nothing is affordable. Calculate the shortage based on the cheapest candidate overall
+    const sortedCheapest = [...candidates].sort((a, b) => a.cost - b.cost);
+    const cheapest = sortedCheapest[0];
+    const shortage = cheapest.cost - player.powerRaw;
+    powerShortageMessage = `Need ${formatNumber(shortage)} more Power`;
+  }
+
+  if (unaffordable.length > 0) {
+    // Sort late game candidates by cost ascending (closest goals first)
+    unaffordable.sort((a, b) => a.cost - b.cost);
+    
+    const uniqueLate: Candidate[] = [];
+    unaffordable.forEach(c => {
+      if (!uniqueLate.some(u => u.name === c.name && u.level === c.level)) {
+        uniqueLate.push(c);
+      }
+    });
+
+    lateGameGoals = uniqueLate.slice(0, 3).map(c => {
+      const shortage = c.cost - player.powerRaw;
+      return {
+        name: c.name,
+        level: c.level,
+        type: c.type,
+        damageGainPct: c.damageGainPct,
+        marketPriceNote: c.priceNote,
+        estimatedRequirements: `Level ~${benchmark.minLevel.toLocaleString()}, Power ~${formatNumber(benchmark.avgPower)}`,
+        affordable: false,
+        status: `Short ${formatNumber(shortage)} Power`,
+        reason: `[Late Game Goal] Upgrading to ${c.name} Lv${c.level} delivers +${c.damageGainPct}% combat value but requires ${formatNumber(c.cost)} Power total.`
+      };
+    });
   }
 
   return {
     immediate: recommendations[0] || null,
-    longTerm: recommendations[1] || null,
-    recommendations
+    longTerm: lateGameGoals[0] || null,
+    recommendations,
+    lateGameGoals,
+    powerShortageMessage
   };
 }
 
@@ -656,43 +700,28 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
   const curSwStats = swData ? getSwordStats(swData, player.swordLevel) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
   const curShStats = shData ? getShieldStats(shData, player.shieldLevel) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
 
-  const getRarityFactor = (rarity: string): number => {
-    switch (rarity) {
-      case "Legendary": return 1.0;
-      case "Epic": return 0.9;
-      case "Rare": return 0.7;
-      case "Common": return 0.5;
-      default: return 0.4;
+  const allSwords = items.filter(i => i.type === "sword" || (i as any).category === "sword");
+  const allShields = items.filter(i => i.type === "shield" || (i as any).category === "shield");
+
+  let maxWeaponScore = 1;
+  let maxShieldScore = 1;
+
+  allSwords.forEach(sw => {
+    const swMaxStats = getSwordStats(sw, sw.maxLevel || 10);
+    if (swMaxStats.score > maxWeaponScore) {
+      maxWeaponScore = swMaxStats.score;
     }
-  };
+  });
 
-  let swordScore = 0;
-  if (swData) {
-    const swMaxLevel = swData.maxLevel || 10;
-    const swRarityFactor = getRarityFactor(swData.rarity);
-    swordScore = Math.round(
-      (
-        (curSwStats.damage / 24e9) * 70 +
-        (curSwStats.prot / 400e6) * 20 +
-        (player.swordLevel / swMaxLevel) * 10
-      ) * swRarityFactor
-    );
-    swordScore = clamp(swordScore);
-  }
+  allShields.forEach(sh => {
+    const shMaxStats = getShieldStats(sh, sh.maxLevel || 10);
+    if (shMaxStats.score > maxShieldScore) {
+      maxShieldScore = shMaxStats.score;
+    }
+  });
 
-  let shieldScore = 0;
-  if (shData) {
-    const shMaxLevel = shData.maxLevel || 10;
-    const shRarityFactor = getRarityFactor(shData.rarity);
-    shieldScore = Math.round(
-      (
-        (curShStats.dm / 36) * 70 +
-        (curShStats.prot / 14e9) * 20 +
-        (player.shieldLevel / shMaxLevel) * 10
-      ) * shRarityFactor
-    );
-    shieldScore = clamp(shieldScore);
-  }
+  const swordScore = swData ? clamp(Math.round((curSwStats.score / maxWeaponScore) * 100)) : 0;
+  const shieldScore = shData ? clamp(Math.round((curShStats.score / maxShieldScore) * 100)) : 0;
 
   const petTiersSum = activePets.reduce((acc: number, p: any) => {
     const item = resolveItemByGameType(p.type, "pet");
@@ -751,11 +780,11 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
   const progressScore = Math.round(levelScore * 0.50 + upgradePotentialScore * 0.50);
   const wealthScore = goldScore;
 
-  // Upgrade default weights if they are the old legacy settings
-  const gearW = constants.gearWeight !== 0.30 ? constants.gearWeight : 0.25;
-  const powerW = constants.powerWeight !== 0.40 ? constants.powerWeight : 0.60;
-  const progressW = constants.progressWeight !== 0.20 ? constants.progressWeight : 0.10;
-  const wealthW = constants.wealthWeight !== 0.10 ? constants.wealthWeight : 0.05;
+  // Hardcoded final weights mapping SMGrade official beta rules
+  const powerW = 0.55;
+  const gearW = 0.35;
+  const progressW = 0.08;
+  const wealthW = 0.02;
 
   // Overall index: composite representation where Power dominates
   let overallScore = clamp(
@@ -766,13 +795,6 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
       wealthScore * wealthW
     )
   );
-
-  // Power Score Cap: A player with weak Power must never receive a high grade
-  if (powerScore < 50) {
-    overallScore = Math.min(overallScore, 50); // Capped at C+
-  } else if (powerScore < 67) {
-    overallScore = Math.min(overallScore, 66); // Capped at B
-  }
 
   const overallGrade = scoreToGrade(overallScore, constants);
   const standing = scoreStanding(player.powerRaw, benchmark);

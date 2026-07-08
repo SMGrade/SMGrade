@@ -187,10 +187,10 @@ export default function MasterVault() {
   return (
     <div className="min-h-screen bg-[#03050b] text-white flex flex-col">
       {/* Header Banner */}
-      <header className="border-b border-white/[0.04] px-6 py-4 bg-[#070b13]/80 backdrop-blur-md sticky top-0 z-20 flex justify-between items-center shadow-lg">
+      <header className="border-b border-white/[0.04] px-4 py-2 bg-[#070b13]/80 backdrop-blur-md sticky top-0 z-20 flex justify-between items-center shadow-lg">
         <div className="flex items-center gap-3">
-          <Link href="/" className="text-amber-400 font-black text-xl font-display tracking-tight hover:opacity-85 cursor-pointer">
-            SM<span className="text-white">Grade</span> <span className="text-xs text-white/40 uppercase font-black font-mono">/ Vault</span>
+          <Link href="/" className="text-amber-400 font-black text-base font-display tracking-tight hover:opacity-85 cursor-pointer">
+            SM<span className="text-white">Grade</span> <span className="text-[10px] text-white/40 uppercase font-black font-mono">/ Vault</span>
           </Link>
         </div>
         <div className="flex gap-2">
@@ -206,13 +206,13 @@ export default function MasterVault() {
         </div>
       </header>
 
-      <div className="flex-1 max-w-7xl w-full mx-auto p-6 flex flex-col lg:flex-row gap-8">
+      <div className="flex-1 max-w-7xl w-full mx-auto p-4 flex flex-col lg:flex-row gap-6">
         {/* Navigation Sidebar */}
         <aside className="w-full lg:w-60 shrink-0 space-y-2">
           {[
             { id: "analytics", label: "📊 Vault Analytics" },
             { id: "lookups", label: "🔎 Player Lookup Logs" },
-            { id: "activity", label: "🔑 User Activity Logs" },
+            { id: "activity", label: "🔑 Player Activity Logs" },
             { id: "searched", label: "⭐ Most Searched" },
             { id: "gear", label: "⚔️ Popular Gear Meta" },
             { id: "db", label: "📁 Database Explorer" },
@@ -380,28 +380,36 @@ export default function MasterVault() {
               <table className="w-full border-collapse text-[10px] text-left">
                 <thead>
                   <tr className="border-b border-white/[0.04] text-white/30 uppercase font-black tracking-wider bg-white/[0.01]">
-                    <th className="p-3.5 w-40">Timestamp</th>
-                    <th className="p-3.5 w-32">Actor</th>
+                    <th className="p-3.5 w-40">Time</th>
+                    <th className="p-3.5 w-32">Username</th>
                     <th className="p-3.5 w-32">Action</th>
-                    <th className="p-3.5">Activity Description</th>
+                    <th className="p-3.5">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.02] font-semibold text-white/80">
-                  {activities.map((a) => (
-                    <tr key={a.id} className="hover:bg-white/[0.01] transition-colors font-semibold">
-                      <td className="p-3.5 text-white/40 font-mono">{new Date(a.timestamp).toLocaleString()}</td>
-                      <td className="p-3.5 text-amber-400 font-bold">{a.username}</td>
+                  {lookups.map((l) => (
+                    <tr key={l.id} className="hover:bg-white/[0.01] transition-colors font-semibold">
+                      <td className="p-3.5 text-white/40 font-mono">
+                        {new Date(l.timestamp).toLocaleString()}
+                      </td>
+                      <td className="p-3.5 text-amber-400 font-bold">{l.usernameSearched}</td>
                       <td className="p-3.5">
-                        <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider block text-center max-w-[110px]">
-                          {a.action}
+                        <span className="bg-[#8ab4c9]/10 border border-[#8ab4c9]/25 text-[#8ab4c9] px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider block text-center max-w-[110px]">
+                          Player Analysis
                         </span>
                       </td>
-                      <td className="p-3.5 text-white/60 leading-relaxed">{a.details}</td>
+                      <td className="p-3.5">
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                          l.status === "Success" ? "bg-[#5ecb7a]/10 border border-[#5ecb7a]/20 text-[#5ecb7a]" : "bg-red-500/10 border border-red-500/20 text-red-400"
+                        }`}>
+                          {l.status}
+                        </span>
+                      </td>
                     </tr>
                   ))}
-                  {activities.length === 0 && (
+                  {lookups.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="p-8 text-center text-white/30 italic">No user activity history entries logged.</td>
+                      <td colSpan={4} className="p-8 text-center text-white/30 italic">No player lookup logs recorded yet.</td>
                     </tr>
                   )}
                 </tbody>
