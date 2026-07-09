@@ -1,0 +1,60 @@
+diff --git a/build/esm/serializer/Serializer.mjs b/build/esm/serializer/Serializer.mjs
+index c8050e66a5c5ca8a26ff3236b214065ef17e5ae1..9d5a2a831caff6397819f44266afa8800634a663 100644
+--- a/build/esm/serializer/Serializer.mjs
++++ b/build/esm/serializer/Serializer.mjs
+@@ -1,14 +1,23 @@
+-// colyseus.js@0.14.13
++// colyseus.js@0.14.13 (patched: unknown serializer IDs fall back to DummySerializer)
++class DummySerializer {
++    setState() {}
++    getState() { return null; }
++    patch() {}
++    teardown() {}
++    handshake() {}
++}
+ const serializers = {};
+ function registerSerializer(id, serializer) {
+     serializers[id] = serializer;
+ }
+ function getSerializer(id) {
+-    const serializer = serializers[id];
+-    if (!serializer) {
+-        throw new Error("missing serializer: " + id);
++    // Return registered serializer, or auto-register a DummySerializer for unknown IDs.
++    // This prevents "missing serializer" uncaught exceptions when the game server
++    // sends a new/unknown serializer hash (e.g. GsQlaKLVq).
++    if (!serializers[id]) {
++        serializers[id] = DummySerializer;
+     }
+-    return serializer;
++    return serializers[id];
+ }
+ 
+ export { getSerializer, registerSerializer };
+diff --git a/dist/colyseus.js b/dist/colyseus.js
+index ae29442eaa7f88050c81f633d87fc8b785a068f2..16466e5b17c4c5496fe7ec6f7c3f2ba95176f632 100644
+--- a/dist/colyseus.js
++++ b/dist/colyseus.js
+@@ -838,11 +838,18 @@
+         serializers[id] = serializer;
+     }
+     function getSerializer(id) {
+-        var serializer = serializers[id];
+-        if (!serializer) {
+-            throw new Error("missing serializer: " + id);
++        // Auto-register a no-op DummySerializer for any unknown serializer ID,
++        // preventing "missing serializer" uncaught exceptions.
++        if (!serializers[id]) {
++            var DummySer = function() {};
++            DummySer.prototype.setState = function() {};
++            DummySer.prototype.getState = function() { return null; };
++            DummySer.prototype.patch = function() {};
++            DummySer.prototype.teardown = function() {};
++            DummySer.prototype.handshake = function() {};
++            serializers[id] = DummySer;
+         }
+-        return serializer;
++        return serializers[id];
+     }
+ 
+     // Use codes between 0~127 for lesser throughput (1 byte)

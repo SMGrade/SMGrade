@@ -164,3 +164,6 @@ allowBuilds:
   esbuild: true
   msgpackr-extract: set this to true or false
   protobufjs: set this to true or false
+
+patchedDependencies:
+  colyseus.js@0.14.13: patches/colyseus.js@0.14.13.patch
