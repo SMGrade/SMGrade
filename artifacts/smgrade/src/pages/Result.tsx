@@ -1065,7 +1065,7 @@ export default function Result() {
                 power: calcPower,
                 petPowerBonus: 0,
                 armorPowerBonus: 0,
-                attackSpeed: 2.77 * (1 + calcSpeedBoost / 100)
+                attackSpeed: 2.77
               });
 
               const formatTime = (sec: number) => {
