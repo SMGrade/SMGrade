@@ -1,20 +1,33 @@
-import { Router, type Request, type Response } from "express";
-// @ts-ignore
-import { Client, registerSerializer } from "colyseus.js";
+import { Router } from "express";
+import { createRequire } from "module";
 
-class DummySerializer {
-  setState(rawState: any) {}
-  getState() { return null; }
-  patch(patches: any) {}
-  teardown() {}
-  handshake(bytes: any, it: any) {}
+// Use a local copy of the msgpack codec (from colyseus.js/build/cjs/msgpack/index.js)
+// Deep imports into colyseus.js are blocked by its exports field — using local copy avoids that.
+const _require = createRequire(import.meta.url);
+const { encode: msgpackEncode, decode: msgpackDecode, decodePartial: msgpackDecodePartial } = _require(
+  "../msgpack.cjs"
+);
+
+// ── Colyseus Protocol Constants ─────────────────────────────────────────────
+const JOIN_ROOM = 10;
+const LEAVE_ROOM = 12;
+const ROOM_DATA = 13;
+
+// Build a ROOM_DATA packet to send.
+// Format (matching colyseus.js Room.send):
+//   byte 0   : ROOM_DATA (13)
+//   bytes 1..: msgpack-encoded type string
+//   bytes N..: msgpack-encoded payload
+// NOTE: @colyseus/schema encode.string uses msgpack string encoding, NOT a raw length prefix.
+function buildSendPacket(type: string, message: unknown): ArrayBuffer {
+  const typeBytes = new Uint8Array(msgpackEncode(type) as ArrayBuffer);
+  const payloadBytes = new Uint8Array(msgpackEncode(message) as ArrayBuffer);
+  const result = new Uint8Array(1 + typeBytes.byteLength + payloadBytes.byteLength);
+  result[0] = ROOM_DATA;
+  result.set(typeBytes, 1);
+  result.set(payloadBytes, 1 + typeBytes.byteLength);
+  return result.buffer;
 }
-
-// Register dummy fallback serializer signatures for SwordMasters game server changes
-registerSerializer("j6CSBEPV_", DummySerializer);
-registerSerializer("CFQ2R9YEZ", DummySerializer);
-registerSerializer("9qPNKmk1V", DummySerializer);
-registerSerializer("none", DummySerializer);
 
 const router = Router();
 
@@ -36,36 +49,39 @@ router.get("/live-lookup", async (req: any, res: any) => {
   isConnecting = true;
 
   try {
-    // 1. findServer
+    // ── Step 1: findServer ──────────────────────────────────────────────────
+    console.log("[live-lookup] Step 1: findServer");
     const fsRes = await fetch("https://loadbalancer.swordmasters.io/api/server/findServer", {
       method: "POST",
       headers: { "Content-Type": "application/json" }
     });
-    
+
     if (!fsRes.ok) {
-      res.status(502).json({ success: false, error: "Connection failed: Load balancer returned an error." });
       isConnecting = false;
+      res.status(502).json({ success: false, error: "Connection failed: Load balancer returned an error." });
       return;
     }
-    
+
     const fsData: any = await fsRes.json();
     const host = fsData.data?.foundServer || "eu1";
+    console.log("[live-lookup] findServer → host:", host);
 
     if (!fsData.token) {
-      res.status(502).json({ success: false, error: "Authentication failed: Load balancer did not provide a token." });
       isConnecting = false;
+      res.status(502).json({ success: false, error: "Authentication failed: Load balancer did not provide a token." });
       return;
     }
 
-    // 2. joinOrCreate
+    // ── Step 2: joinOrCreate ────────────────────────────────────────────────
+    console.log("[live-lookup] Step 2: joinOrCreate on", host);
     const mmRes = await fetch(`https://${host}.swordmasters.io/matchmake/joinOrCreate/world_1`, {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${fsData.token}`,
         "x-auth-token": fsData.token
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         token: fsData.token,
         auth: fsData.token,
         password: fsData.token,
@@ -75,121 +91,145 @@ router.get("/live-lookup", async (req: any, res: any) => {
     });
 
     if (!mmRes.ok) {
-      res.status(502).json({ success: false, error: "Room join failed: Matchmaker returned an error." });
       isConnecting = false;
+      res.status(502).json({ success: false, error: "Room join failed: Matchmaker returned an error." });
       return;
     }
 
     const mmData: any = await mmRes.json();
-    
-    if (!mmData.room || !mmData.room.publicAddress) {
-      res.status(502).json({ success: false, error: "Room join failed: Invalid room reservation payload." });
+
+    if (!mmData.room?.publicAddress) {
       isConnecting = false;
+      res.status(502).json({ success: false, error: "Room join failed: Invalid room reservation payload." });
       return;
     }
 
-    // 3. Connect via Colyseus
-    const client = new Client(`wss://${mmData.room.publicAddress}`);
-    
-    // Inject custom serializer fallback override to handle dynamic server hashes
-    client.buildEndpoint = function (room: any, options: any) {
-      if (options === void 0) { options = {}; }
-      var params = [];
-      for (var name_1 in options) {
-          if (!options.hasOwnProperty(name_1)) {
-              continue;
-          }
-          params.push(name_1 + "=" + options[name_1]);
-      }
-      params.push("token=" + encodeURIComponent(fsData.token));
-      params.push("auth=" + encodeURIComponent(fsData.token));
-      params.push("password=" + encodeURIComponent(fsData.token));
-      params.push("accessToken=" + encodeURIComponent(fsData.token));
-      params.push("jwt=" + encodeURIComponent(fsData.token));
-      params.push("Authorization=" + encodeURIComponent("Bearer " + fsData.token));
-      return this.endpoint + "/" + room.processId + "/" + room.roomId + "?" + params.join('&');
-    };
+    console.log("[live-lookup] joinOrCreate → room:", mmData.room.roomId, "at", mmData.room.publicAddress);
 
-    const room = await client.consumeSeatReservation(mmData);
+    // ── Step 3: Raw WebSocket — Colyseus protocol ───────────────────────────
+    // Build the WebSocket endpoint exactly as colyseus.js Client.buildEndpoint does:
+    // ${endpoint}/${processId}/${roomId}?sessionId=${sessionId}
+    const { processId, roomId } = mmData.room;
+    const sessionId = mmData.sessionId || "";
+    const wsUrl = `wss://${mmData.room.publicAddress}/${processId}/${roomId}?sessionId=${sessionId}`;
 
-    // Wait for the room to send the GetPlayerInfo response
-    let responded = false;
+    console.log("[live-lookup] Step 3: WebSocket connect →", wsUrl.split("?")[0]);
 
-    const timeout = setTimeout(() => {
-      if (!responded) {
+    await new Promise<void>((resolve) => {
+      let responded = false;
+      let ws: any = null;
+
+      const finish = (status: number, body: unknown) => {
+        if (responded) return;
         responded = true;
-        room.leave();
         isConnecting = false;
-        res.status(504).json({ success: false, error: "Player lookup timed out. Game servers did not respond." });
+        try { ws?.close(); } catch (_) {}
+        res.status(status).json(body);
+        resolve();
+      };
+
+      // 12 second overall timeout
+      const timeoutHandle = setTimeout(() => {
+        console.error("[live-lookup] Timeout after 12s — no GetPlayerInfo response received");
+        finish(504, { success: false, error: "Player lookup timed out. Game servers did not respond." });
+      }, 12000);
+
+      // Node.js 22+ has built-in WebSocket via global or undici
+      try {
+        ws = new (globalThis as any).WebSocket(wsUrl);
+      } catch (e: any) {
+        clearTimeout(timeoutHandle);
+        finish(502, { success: false, error: `WebSocket unavailable: ${e.message}` });
+        return;
       }
-    }, 6000);
 
-    room.onMessage("Server:SkinStatue:GetPlayerInfo", (message: any) => {
-      if (!responded) {
-        responded = true;
-        clearTimeout(timeout);
-        room.leave();
-        isConnecting = false;
+      ws.binaryType = "arraybuffer";
 
-        const playerInfo = message?.playerInfo || message;
-        if (!playerInfo || !playerInfo.username || !playerInfo.inv) {
-          res.status(404).json({ success: false, error: "Player not found or inventory data is empty." });
-          return;
-        }
-
-        res.json({
-          success: true,
-          playerInfo: playerInfo
-        });
-      }
-    });
-
-    room.onError((code: number, msg?: string) => {
-      if (!responded) {
-        responded = true;
-        clearTimeout(timeout);
-        isConnecting = false;
-        res.status(502).json({ success: false, error: `Protocol error: Room error code ${code}. ${msg || ""}` });
-      }
-    });
-
-    room.onLeave(() => {
-      if (!responded) {
-        responded = true;
-        clearTimeout(timeout);
-        isConnecting = false;
-        res.status(502).json({ success: false, error: "WebSocket closed unexpectedly by the game host." });
-      }
-    });
-
-    // Ensure the WebSocket transport is fully OPEN (1) before sending GetPlayerInfo
-    const ws = (room.connection?.transport as any)?.ws;
-    if (ws && ws.readyState !== 1) {
-      await new Promise<void>((resolve) => {
-        let resolved = false;
-        const cleanup = () => {
-          if (!resolved) {
-            resolved = true;
-            ws.removeEventListener("open", onOpen);
-            ws.removeEventListener("error", onError);
-            ws.removeEventListener("close", onClose);
-            resolve();
-          }
-        };
-        const onOpen = () => cleanup();
-        const onError = () => cleanup();
-        const onClose = () => cleanup();
-
-        ws.addEventListener("open", onOpen);
-        ws.addEventListener("error", onError);
-        ws.addEventListener("close", onClose);
-
-        // Safety timeout of 4 seconds
-        setTimeout(cleanup, 4000);
+      ws.addEventListener("open", () => {
+        console.log("[live-lookup] WebSocket OPEN — waiting for JOIN_ROOM from server");
       });
-    }
 
-    room.send("Client:SkinStatue:GetPlayerInfo", { username: username });
+      ws.addEventListener("message", (event: any) => {
+        try {
+          const data = event.data as ArrayBuffer;
+          const bytes = Array.from(new Uint8Array(data)) as number[];
+          const code = bytes[0];
+
+          if (code === JOIN_ROOM) {
+            // Server sent JOIN_ROOM — acknowledge with [10] then send GetPlayerInfo
+            console.log("[live-lookup] JOIN_ROOM received — acknowledging");
+            const ack = new Uint8Array([JOIN_ROOM]);
+            ws.send(ack.buffer);
+
+            // Now send GetPlayerInfo
+            const packet = buildSendPacket("Client:SkinStatue:GetPlayerInfo", { username });
+            ws.send(packet);
+            console.log("[live-lookup] GetPlayerInfo sent for:", username);
+
+          } else if (code === ROOM_DATA) {
+            // ROOM_DATA format: byte 0 = 13, then msgpack(type), then msgpack(payload)
+            // Use decodePartial to parse the type string and get the byte offset of the payload
+            let type: string | number;
+            let payloadOffset: number;
+
+            try {
+              [type, payloadOffset] = msgpackDecodePartial(data, 1);
+            } catch (typeErr: any) {
+              console.log("[live-lookup] ROOM_DATA type decode error:", typeErr.message, "— skipping");
+              return; // skip this message, wait for the next
+            }
+
+            console.log("[live-lookup] ROOM_DATA type:", type, "payload offset:", payloadOffset);
+
+            if (type === "Server:SkinStatue:GetPlayerInfo") {
+              // Decode the msgpack payload starting at payloadOffset
+              const slicedBuffer = data.slice(payloadOffset);
+              let message: any;
+              try {
+                message = msgpackDecode(slicedBuffer, 0);
+              } catch (decodeErr: any) {
+                console.error("[live-lookup] msgpack decode error:", decodeErr.message);
+                clearTimeout(timeoutHandle);
+                finish(502, { success: false, error: "Failed to decode player data from game server." });
+                return;
+              }
+
+              console.log("[live-lookup] GetPlayerInfo response received");
+              clearTimeout(timeoutHandle);
+
+              const playerInfo = message?.playerInfo || message;
+              if (!playerInfo?.username || !playerInfo?.inv) {
+                finish(404, { success: false, error: "Player not found or inventory data is empty." });
+              } else {
+                finish(200, { success: true, playerInfo });
+              }
+            }
+
+          } else if (code === LEAVE_ROOM) {
+            console.log("[live-lookup] LEAVE_ROOM received");
+            clearTimeout(timeoutHandle);
+            finish(502, { success: false, error: "Game server closed the room before responding." });
+          }
+        } catch (err: any) {
+          console.error("[live-lookup] Message processing error:", err.message);
+          // Don't abort — other messages may still arrive
+        }
+      });
+
+      ws.addEventListener("error", (event: any) => {
+        console.error("[live-lookup] WebSocket error:", event?.message || "unknown");
+        clearTimeout(timeoutHandle);
+        finish(502, { success: false, error: "WebSocket connection error to game server." });
+      });
+
+      ws.addEventListener("close", (event: any) => {
+        console.log("[live-lookup] WebSocket closed — code:", event?.code, "reason:", event?.reason);
+        clearTimeout(timeoutHandle);
+        if (!responded) {
+          finish(502, { success: false, error: "WebSocket closed unexpectedly by the game host." });
+        }
+      });
+    });
 
   } catch (err: any) {
     isConnecting = false;
