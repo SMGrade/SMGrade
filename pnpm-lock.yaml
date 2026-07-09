@@ -143,9 +143,6 @@ overrides:
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   esbuild: 0.27.3
 
-patchedDependencies:
-  colyseus.js@0.14.13: 31d4999c0354c4bd444730717762167645df255051494f4c701426cb56c9ccbc
-
 importers:
 
   .:
@@ -170,7 +167,7 @@ importers:
         version: link:../../lib/db
       colyseus.js:
         specifier: ^0.14.13
-        version: 0.14.13(patch_hash=31d4999c0354c4bd444730717762167645df255051494f4c701426cb56c9ccbc)
+        version: 0.14.13
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -414,7 +411,7 @@ importers:
         version: link:../../lib/db
       colyseus.js:
         specifier: ~0.14.13
-        version: 0.14.13(patch_hash=31d4999c0354c4bd444730717762167645df255051494f4c701426cb56c9ccbc)
+        version: 0.14.13
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -4773,7 +4770,7 @@ snapshots:
 
   colorette@2.0.20: {}
 
-  colyseus.js@0.14.13(patch_hash=31d4999c0354c4bd444730717762167645df255051494f4c701426cb56c9ccbc):
+  colyseus.js@0.14.13:
     dependencies:
       '@colyseus/schema': 1.0.46
       httpie: 2.0.0-next.13
