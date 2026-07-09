@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from './errorResponse';
-export * from './gradeExplainInput';
-export * from './gradeExplanation';
-export * from './healthStatus';
+export * from './errorResponse.js';
+export * from './gradeExplainInput.js';
+export * from './gradeExplanation.js';
+export * from './healthStatus.js';

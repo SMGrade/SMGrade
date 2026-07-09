@@ -1,24 +1,30 @@
-import express, { type Express } from "express";
+import express from "express";
 import cors from "cors";
-import pinoHttp from "pino-http";
+import pinoHttpNamespace from "pino-http";
 import path from "path";
-import router from "./routes";
-import { logger } from "./lib/logger";
+import router from "./routes/index.js";
+import { fileURLToPath } from "url";
+import { logger } from "./lib/logger.js";
 
-const app: Express = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const pinoHttp = (pinoHttpNamespace as any).default || pinoHttpNamespace;
+
+const app = express();
 
 app.use(
   pinoHttp({
     logger,
     serializers: {
-      req(req) {
+      req(req: any) {
         return {
           id: req.id,
           method: req.method,
           url: req.url?.split("?")[0],
         };
       },
-      res(res) {
+      res(res: any) {
         return {
           statusCode: res.statusCode,
         };
@@ -40,9 +46,9 @@ app.use(express.static(publicPath));
 
 app.use("/api", router);
 
-app.get("*any", (req, res) => {
+app.get("*any", (req: any, res: any) => {
   if (!req.path.startsWith("/api")) {
-    res.sendFile(path.join(publicPath, "index.html"), (err) => {
+    res.sendFile(path.join(publicPath, "index.html"), (err: any) => {
       if (err) {
         res.status(404).send("Front-end asset folder not built. Run pnpm run build first.");
       }

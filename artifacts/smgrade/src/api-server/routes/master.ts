@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import crypto from "crypto";
-import jsonDb from "../lib/jsonDb";
-import { getSession } from "./auth";
+import jsonDb from "../lib/jsonDb.js";
+import { getSession } from "./auth.js";
 
 const router = Router();
 
@@ -12,7 +12,7 @@ const MASTER_PASSWORD = process.env.MASTER_PASSWORD || "harrison@smgrade.swordma
 const masterSessions = new Set<string>();
 
 // Middleware to check Master session
-function checkMasterSession(req: Request, res: Response, next: () => void) {
+function checkMasterSession(req: any, res: any, next: () => void) {
   const authHeader = req.headers["x-master-token"];
   if (!authHeader || !masterSessions.has(authHeader as string)) {
     res.status(401).json({ error: "Unauthorized Master Vault access." });
@@ -22,7 +22,7 @@ function checkMasterSession(req: Request, res: Response, next: () => void) {
 }
 
 // 1. Unlock Master Vault
-router.post("/unlock", (req: Request, res: Response) => {
+router.post("/unlock", (req: any, res: any) => {
   const { password } = req.body;
   if (password === MASTER_PASSWORD) {
     const token = crypto.randomBytes(32).toString("hex");
@@ -38,7 +38,7 @@ router.post("/unlock", (req: Request, res: Response) => {
 });
 
 // 2. User Management: List/Search registered users
-router.get("/users", checkMasterSession, (req: Request, res: Response) => {
+router.get("/users", checkMasterSession, (req: any, res: any) => {
   const query = (req.query.q as string || "").toLowerCase();
   const users = jsonDb.getUsers().map((u) => ({
     id: u.id,
@@ -56,7 +56,7 @@ router.get("/users", checkMasterSession, (req: Request, res: Response) => {
 });
 
 // 3. User Management: Suspend / Activate
-router.post("/users/status", checkMasterSession, (req: Request, res: Response) => {
+router.post("/users/status", checkMasterSession, (req: any, res: any) => {
   const { userId, status } = req.body;
   if (!userId || !["active", "suspended"].includes(status)) {
     res.status(400).json({ error: "Invalid parameters." });
@@ -81,7 +81,7 @@ router.post("/users/status", checkMasterSession, (req: Request, res: Response) =
 });
 
 // 4. User Management: Change Role
-router.post("/users/role", checkMasterSession, (req: Request, res: Response) => {
+router.post("/users/role", checkMasterSession, (req: any, res: any) => {
   const { userId, role } = req.body;
   if (!userId || !["owner", "admin", "moderator", "viewer"].includes(role)) {
     res.status(400).json({ error: "Invalid role." });
@@ -101,7 +101,7 @@ router.post("/users/role", checkMasterSession, (req: Request, res: Response) => 
 });
 
 // 5. User Management: Reset password
-router.post("/users/reset-password", checkMasterSession, (req: Request, res: Response) => {
+router.post("/users/reset-password", checkMasterSession, (req: any, res: any) => {
   const { userId, newPassword } = req.body;
   if (!userId || !newPassword || newPassword.trim().length < 6) {
     res.status(400).json({ error: "Password must be at least 6 characters." });
@@ -121,7 +121,7 @@ router.post("/users/reset-password", checkMasterSession, (req: Request, res: Res
 });
 
 // 6. User Management: Change Username
-router.post("/users/change-username", checkMasterSession, (req: Request, res: Response) => {
+router.post("/users/change-username", checkMasterSession, (req: any, res: any) => {
   const { userId, newUsername } = req.body;
   if (!userId || !newUsername || newUsername.trim().length < 3) {
     res.status(400).json({ error: "Username must be at least 3 characters." });
@@ -148,7 +148,7 @@ router.post("/users/change-username", checkMasterSession, (req: Request, res: Re
 });
 
 // 7. User Management: Delete User
-router.delete("/users", checkMasterSession, (req: Request, res: Response) => {
+router.delete("/users", checkMasterSession, (req: any, res: any) => {
   const { userId } = req.body;
   if (!userId) {
     res.status(400).json({ error: "User ID is required." });
@@ -172,17 +172,17 @@ router.delete("/users", checkMasterSession, (req: Request, res: Response) => {
 });
 
 // 8. View Login History
-router.get("/login-history", checkMasterSession, (req: Request, res: Response) => {
+router.get("/login-history", checkMasterSession, (req: any, res: any) => {
   res.json(jsonDb.getLoginHistory());
 });
 
 // 9. View Audit Logs
-router.get("/audit-logs", checkMasterSession, (req: Request, res: Response) => {
+router.get("/audit-logs", checkMasterSession, (req: any, res: any) => {
   res.json(jsonDb.getAuditLogs());
 });
 
 // 10. System Health Status
-router.get("/health", checkMasterSession, (req: Request, res: Response) => {
+router.get("/health", checkMasterSession, (req: any, res: any) => {
   const stats = {
     uptime: process.uptime(),
     memory: process.memoryUsage(),
@@ -196,14 +196,14 @@ router.get("/health", checkMasterSession, (req: Request, res: Response) => {
 });
 
 // 11. Database Export / Backup
-router.get("/backup", checkMasterSession, (req: Request, res: Response) => {
+router.get("/backup", checkMasterSession, (req: any, res: any) => {
   const raw = jsonDb.getRawData();
   jsonDb.addAuditLog("Master Admin", "Database Backup", "Full database exported.");
   res.json(raw);
 });
 
 // 12. Database Import / Restore
-router.post("/restore", checkMasterSession, (req: Request, res: Response) => {
+router.post("/restore", checkMasterSession, (req: any, res: any) => {
   const { dbData } = req.body;
   if (!dbData || !Array.isArray(dbData.users) || !Array.isArray(dbData.history)) {
     res.status(400).json({ error: "Invalid backup database content." });
@@ -217,7 +217,7 @@ router.post("/restore", checkMasterSession, (req: Request, res: Response) => {
 });
 
 // 13. Public: Asynchronously log player lookup analytics
-router.post("/log-lookup", (req: Request, res: Response) => {
+router.post("/log-lookup", (req: any, res: any) => {
   // Execute logging asynchronously to avoid blocking the main server thread
   setImmediate(() => {
     try {
@@ -263,7 +263,7 @@ router.post("/log-lookup", (req: Request, res: Response) => {
 });
 
 // 14. Public: Log administrative/user activity
-router.post("/log-activity", (req: Request, res: Response) => {
+router.post("/log-activity", (req: any, res: any) => {
   const { username, action, details } = req.body;
   const session = getSession(req);
   const actor = session ? session.username : (username || "Guest");
@@ -273,7 +273,7 @@ router.post("/log-activity", (req: Request, res: Response) => {
 });
 
 // 15. Protected: Get player lookup logs with query filters
-router.get("/lookup-logs", checkMasterSession, (req: Request, res: Response) => {
+router.get("/lookup-logs", checkMasterSession, (req: any, res: any) => {
   const { username, date, grade, world, user, status } = req.query;
   let logs = jsonDb.getLookupLogs();
 
@@ -304,12 +304,12 @@ router.get("/lookup-logs", checkMasterSession, (req: Request, res: Response) => 
 });
 
 // 16. Protected: Get user activity logs
-router.get("/activity-logs", checkMasterSession, (req: Request, res: Response) => {
+router.get("/activity-logs", checkMasterSession, (req: any, res: any) => {
   res.json(jsonDb.getActivityLogs());
 });
 
 // 17. Protected: Get dashboard stats analytics
-router.get("/analytics", checkMasterSession, (req: Request, res: Response) => {
+router.get("/analytics", checkMasterSession, (req: any, res: any) => {
   const logs = jsonDb.getLookupLogs();
   const users = jsonDb.getUsers();
 
@@ -352,7 +352,7 @@ router.get("/analytics", checkMasterSession, (req: Request, res: Response) => {
 });
 
 // 18. Protected: Get top 10 searched players
-router.get("/most-searched", checkMasterSession, (req: Request, res: Response) => {
+router.get("/most-searched", checkMasterSession, (req: any, res: any) => {
   const logs = jsonDb.getLookupLogs();
   const counts: Record<string, { count: number; first: string; last: string }> = {};
 
@@ -384,7 +384,7 @@ router.get("/most-searched", checkMasterSession, (req: Request, res: Response) =
 });
 
 // 19. Protected: Get popular items meta stats
-router.get("/popular-gear", checkMasterSession, (req: Request, res: Response) => {
+router.get("/popular-gear", checkMasterSession, (req: any, res: any) => {
   const logs = jsonDb.getLookupLogs().filter(l => l.status === "Success");
   
   const swords: Record<string, number> = {};
@@ -417,7 +417,7 @@ router.get("/popular-gear", checkMasterSession, (req: Request, res: Response) =>
 });
 
 // 20. Protected: Export logs as JSON/CSV
-router.get("/export-logs", checkMasterSession, (req: Request, res: Response) => {
+router.get("/export-logs", checkMasterSession, (req: any, res: any) => {
   const format = req.query.format as string;
   const logs = jsonDb.getLookupLogs();
 

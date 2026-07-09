@@ -5,6 +5,7 @@
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": ".tsbuildinfo",
+    "outDir": "dist",
     "noEmit": false,
     "jsx": "preserve",
     "lib": ["esnext", "dom", "dom.iterable"],
@@ -19,6 +20,12 @@
   "references": [
     {
       "path": "../../lib/api-client-react"
+    },
+    {
+      "path": "../../lib/db"
+    },
+    {
+      "path": "../../lib/api-zod"
     }
   ]
 }

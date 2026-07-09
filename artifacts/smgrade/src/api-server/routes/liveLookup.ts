@@ -21,7 +21,7 @@ const router = Router();
 // Rate limiting connection safety flag
 let isConnecting = false;
 
-router.get("/live-lookup", async (req: Request, res: Response) => {
+router.get("/live-lookup", async (req: any, res: any) => {
   const username = req.query["username"] as string;
   if (!username) {
     res.status(400).json({ success: false, error: "Username query parameter is required." });

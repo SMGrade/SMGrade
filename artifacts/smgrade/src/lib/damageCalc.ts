@@ -26,12 +26,11 @@ export function calculateDamageStats(input: {
   const { ds, swordDamageMultiplier, power, petPowerBonus, armorPowerBonus = 0, attackSpeed = 2.77 } = input;
   const sqrtPower = Math.sqrt(Math.max(power, 0));
   
-  // Formulas as defined:
-  // DamagePerHit = (ds + 2 * sqrt(power) + 1) * (1 + swordDamageMultiplier)
-  const damagePerHit = (ds + 2 * sqrtPower + 1) * (1 + swordDamageMultiplier);
+  // Formulas with flooring to match integer representations in-game:
+  const damagePerHit = Math.floor((ds + 2 * sqrtPower + 1) * (1 + swordDamageMultiplier));
   
   // PowerPerHit = DamagePerHit * (1 + petPowerBonus + armorPowerBonus)
-  const powerPerHit = damagePerHit * (1 + petPowerBonus + armorPowerBonus);
+  const powerPerHit = Math.floor(damagePerHit * (1 + petPowerBonus + armorPowerBonus));
   
   // DamagePerSecond = DamagePerHit * AttackSpeed
   const damagePerSecond = damagePerHit * attackSpeed;

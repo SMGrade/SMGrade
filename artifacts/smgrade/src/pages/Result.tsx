@@ -7,7 +7,7 @@ import type { ScoreResult, GearSlotGrade } from "@/lib/scorer";
 import { formatNumber, parseNumber } from "@/lib/numberParser";
 import { getSwordRarity, getShieldRarity, getInterpolatedBenchmark } from "@/lib/benchmark";
 import { downloadShareCard } from "@/lib/shareCard";
-import { getSwordData, getShieldData, scaledSwordDamage, scaledShieldDM, loadItems, resolveItemByGameType, getNextSwordUpgrade, getNextShieldUpgrade, swordUpgradeGain, shieldUpgradeGain } from "@/lib/gearDatabase";
+import { SWORDS, SHIELDS, getSwordData, getShieldData, scaledSwordDamage, scaledShieldDM, loadItems, resolveItemByGameType, getNextSwordUpgrade, getNextShieldUpgrade, swordUpgradeGain, shieldUpgradeGain } from "@/lib/gearDatabase";
 import { getPriceRaw } from "@/lib/marketDatabase";
 import Simulator from "@/components/Simulator";
 import HistoryTracker from "@/components/HistoryTracker";
@@ -407,8 +407,51 @@ export default function Result() {
   const [calcSwordDs, setCalcSwordDs] = useState<number>(0);
   const [calcShieldMs, setCalcShieldMs] = useState<number>(0);
   const [calcSpeedBoost, setCalcSpeedBoost] = useState<number>(0);
-  const [calcPartySize, setCalcPartySize] = useState<number>(4);
   const [calcBossHp, setCalcBossHp] = useState<number>(1e12);
+
+  // Party Builder States & Helpers
+  interface PartyPlayer {
+    id: string;
+    nickname: string;
+    sword: string;
+    swordLevel: number;
+    shield: string;
+    shieldLevel: number;
+    powerInput: string;
+    powerRaw: number;
+  }
+  const [partyPlayers, setPartyPlayers] = useState<PartyPlayer[]>([]);
+
+  const updatePlayer = (id: string, updates: Partial<PartyPlayer>) => {
+    setPartyPlayers((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+    );
+  };
+
+  const removePlayer = (id: string) => {
+    setPartyPlayers((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const addPlayer = () => {
+    setPartyPlayers((prev) => {
+      const defaultSword = SWORDS[0]?.name || "Graveborn Edge";
+      const defaultShield = SHIELDS[0]?.name || "Sealguard";
+      const defaultPower = data?.player.powerRaw || 1e12;
+      const defaultPowerStr = data?.player.power || "1.0T";
+      
+      const newPlayer: PartyPlayer = {
+        id: Math.random().toString(36).substring(2, 9),
+        nickname: `Member #${prev.length + 1}`,
+        sword: defaultSword,
+        swordLevel: 1,
+        shield: defaultShield,
+        shieldLevel: 1,
+        powerInput: defaultPowerStr,
+        powerRaw: defaultPower
+      };
+      return [...prev, newPlayer];
+    });
+  };
 
   // Computed stats calculator
   const computedStats = useMemo(() => {
@@ -427,16 +470,23 @@ export default function Result() {
 
     const powerRaw = player.powerRaw;
 
-    // Speed and multipliers from pets (ignored for central combat formulas)
-    const speedBoost = 0;
-    const finalAttackSpeed = 2.77;
+    // Speed and multipliers from pets
+    const speedBoost = activePets.reduce((acc: number, p: any) => {
+      const petItem = resolveItemByGameType(p.type, "pet");
+      return acc + (petItem?.metadata?.speedBoost || 0);
+    }, 0.0);
+    const finalAttackSpeed = 2.77 * (1 + speedBoost);
     
     const goldMulti = activePets.reduce((acc: number, p: any) => {
       const petItem = resolveItemByGameType(p.type, "pet");
       return acc + (petItem?.metadata?.goldMulti || 0);
     }, 1.0);
 
-    const powerMulti = 1.0;
+    const petPowerBonus = activePets.reduce((acc: number, p: any) => {
+      const petItem = resolveItemByGameType(p.type, "pet");
+      return acc + (petItem?.baseValue || 0);
+    }, 0.0);
+    const powerMulti = 1.0 + petPowerBonus;
 
     const getProtRaw = (protStr?: string) => {
       if (!protStr || protStr === "-") return 0;
@@ -447,14 +497,13 @@ export default function Result() {
     const totalBaseProt = baseProt + baseShProt;
     const protection = totalBaseProt * (1 + 0.25 * (Math.max(player.swordLevel, player.shieldLevel, 1) - 1));
 
-    const petPowerBonus = 0;
     const damageStats = calculateDamageStats({
       ds,
       swordDamageMultiplier: ms,
       power: powerRaw,
-      petPowerBonus: 0,
+      petPowerBonus,
       armorPowerBonus: 0,
-      attackSpeed: 2.77
+      attackSpeed: finalAttackSpeed
     });
 
     return {
@@ -468,6 +517,7 @@ export default function Result() {
       pps: damageStats.powerPerSecond,
       goldMulti,
       powerMulti,
+      petPowerBonus,
       protection,
     };
   }, [data]);
@@ -478,6 +528,22 @@ export default function Result() {
       setCalcSwordDs(computedStats.ds || 0);
       setCalcShieldMs(computedStats.ms || 0);
       setCalcSpeedBoost(Math.round(computedStats.speedBoost * 100));
+
+      setPartyPlayers((prev) => {
+        if (prev.length > 0) return prev;
+        return [
+          {
+            id: "current-player",
+            nickname: data.player.username || "You",
+            sword: data.player.sword,
+            swordLevel: data.player.swordLevel || 1,
+            shield: data.player.shield,
+            shieldLevel: data.player.shieldLevel || 1,
+            powerInput: data.player.power || "0",
+            powerRaw: data.player.powerRaw || 0
+          }
+        ];
+      });
     }
   }, [data, computedStats]);
 
@@ -997,15 +1063,11 @@ export default function Result() {
                 ds: calcSwordDs,
                 swordDamageMultiplier: calcShieldMs,
                 power: calcPower,
-                petPowerBonus: 0,
+                petPowerBonus: computedStats.petPowerBonus,
                 armorPowerBonus: 0,
                 attackSpeed: 2.77 * (1 + calcSpeedBoost / 100)
               });
 
-              // Party calculation
-              const playerDps = liveDmgStats.damagePerSecond;
-              const partyDps = playerDps + (calcPartySize - 1) * playerDps;
-              const estSeconds = calcBossHp / (partyDps || 1);
               const formatTime = (sec: number) => {
                 if (sec === Infinity || isNaN(sec)) return "—";
                 if (sec < 60) return `${sec.toFixed(1)}s`;
@@ -1128,63 +1190,205 @@ export default function Result() {
                     </div>
                   </div>
 
-                  {/* Group Damage Calculator Panel */}
+                  {/* Group Damage & Raid Boss Calculator Panel */}
                   <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-4">
                     <SectionLabel>Group Damage & Raid Boss Calculator</SectionLabel>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-white/60">Party Size (Number of Players)</span>
-                            <span className="font-mono text-emerald-400">{calcPartySize} players</span>
-                          </div>
-                          <input 
-                            type="range"
-                            min="1"
-                            max="8"
-                            value={calcPartySize}
-                            onChange={(e) => setCalcPartySize(Number(e.target.value))}
-                            className="w-full accent-emerald-500 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer"
-                          />
-                          <div className="flex justify-between text-[9px] text-white/20">
-                            <span>1 (Solo)</span>
-                            <span>8 (Full Raid Group)</span>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="text-xs text-white/60 block">Raid Boss HP Target</label>
-                          <select 
-                            value={calcBossHp}
-                            onChange={(e) => setCalcBossHp(Number(e.target.value))}
-                            className="w-full bg-[#03050b]/80 border border-white/10 rounded-lg p-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500"
-                          >
-                            <option value={100e9}>100B HP</option>
-                            <option value={1e12}>1T HP</option>
-                            <option value={10e12}>10T HP</option>
-                            <option value={100e12}>100T HP</option>
-                            <option value={500e12}>500T HP (World 11 Boss)</option>
-                          </select>
-                        </div>
+                    <div className="text-xs text-white/50 leading-relaxed font-semibold">
+                      Configure individual player stats manually to calculate individual contributions, sum combined group damage (DPH) and DPS, and simulate raid boss battle times.
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {/* Player List */}
+                      <div className="space-y-3">
+                        {partyPlayers.map((p, index) => {
+                          const pSword = getSwordData(p.sword);
+                          const pShield = getShieldData(p.shield);
+                          const pDS = pSword ? scaledSwordDamage(pSword.baseDamage, p.swordLevel) * 1e9 : 0;
+                          const pMS = pShield ? scaledShieldDM(pShield.baseDM, p.shieldLevel) : 0;
+                          const pDmgStats = calculateDamageStats({
+                            ds: pDS,
+                            swordDamageMultiplier: pMS,
+                            power: p.powerRaw,
+                            petPowerBonus: p.id === "current-player" ? computedStats.petPowerBonus : 0,
+                            armorPowerBonus: 0,
+                            attackSpeed: 2.77
+                          });
+                          const pDps = pDmgStats.damagePerSecond;
+                          
+                          // Store computed stats for total summation
+                          (p as any).computedDps = pDps;
+                          (p as any).computedDph = pDmgStats.damagePerHit;
+                          
+                          return (
+                            <div key={p.id} className="grid grid-cols-1 lg:grid-cols-12 gap-3 p-4 border border-white/5 rounded-xl bg-black/20 items-center relative">
+                              {/* Mobile friendly cross icon to delete */}
+                              <button 
+                                onClick={() => removePlayer(p.id)}
+                                className="absolute top-2 right-2 text-white/20 hover:text-red-400 p-1 transition-colors text-xs border border-white/10 hover:border-red-500/30 rounded-md bg-white/5 w-6 h-6 flex items-center justify-center cursor-pointer"
+                                title="Remove Player"
+                              >
+                                ✕
+                              </button>
+                              
+                              {/* Nickname / Member Index */}
+                              <div className="lg:col-span-2">
+                                <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Nickname</label>
+                                <input 
+                                  type="text"
+                                  value={p.nickname}
+                                  onChange={(e) => updatePlayer(p.id, { nickname: e.target.value })}
+                                  className="w-full bg-[#070b13] border border-white/5 focus:border-amber-500/30 text-white rounded-lg px-2.5 py-2 text-xs font-semibold outline-none"
+                                  placeholder={`Player ${index + 1}`}
+                                />
+                              </div>
+                              
+                              {/* Sword Selector */}
+                              <div className="lg:col-span-3 grid grid-cols-4 gap-1.5">
+                                <div className="col-span-3">
+                                  <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Sword</label>
+                                  <select
+                                    value={p.sword}
+                                    onChange={(e) => updatePlayer(p.id, { sword: e.target.value })}
+                                    className="w-full bg-[#070b13] border border-white/5 text-white/80 rounded-lg px-2 py-2 text-xs outline-none cursor-pointer font-semibold focus:border-amber-500/30"
+                                  >
+                                    {SWORDS.map((s) => (
+                                      <option key={s.name} value={s.name}>{s.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="col-span-1">
+                                  <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Lvl</label>
+                                  <select
+                                    value={p.swordLevel}
+                                    onChange={(e) => updatePlayer(p.id, { swordLevel: parseInt(e.target.value) })}
+                                    className="w-full bg-[#070b13] border border-white/5 text-white/80 rounded-lg px-1.5 py-2 text-xs outline-none cursor-pointer font-semibold focus:border-amber-500/30"
+                                  >
+                                    {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => (
+                                      <option key={lvl} value={lvl}>Lv{lvl}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                              
+                              {/* Shield Selector */}
+                              <div className="lg:col-span-3 grid grid-cols-4 gap-1.5">
+                                <div className="col-span-3">
+                                  <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Shield</label>
+                                  <select
+                                    value={p.shield}
+                                    onChange={(e) => updatePlayer(p.id, { shield: e.target.value })}
+                                    className="w-full bg-[#070b13] border border-white/5 text-white/80 rounded-lg px-2 py-2 text-xs outline-none cursor-pointer font-semibold focus:border-amber-500/30"
+                                  >
+                                    {SHIELDS.map((s) => (
+                                      <option key={s.name} value={s.name}>{s.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="col-span-1">
+                                  <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Lvl</label>
+                                  <select
+                                    value={p.shieldLevel}
+                                    onChange={(e) => updatePlayer(p.id, { shieldLevel: parseInt(e.target.value) })}
+                                    className="w-full bg-[#070b13] border border-white/5 text-white/80 rounded-lg px-1.5 py-2 text-xs outline-none cursor-pointer font-semibold focus:border-amber-500/30"
+                                  >
+                                    {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => (
+                                      <option key={lvl} value={lvl}>Lv{lvl}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                              
+                              {/* Power Input */}
+                              <div className="lg:col-span-2">
+                                <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Power Stat</label>
+                                <input 
+                                  type="text"
+                                  value={p.powerInput}
+                                  onChange={(e) => updatePlayer(p.id, { powerInput: e.target.value, powerRaw: parseNumber(e.target.value) })}
+                                  className="w-full bg-[#070b13] border border-white/5 focus:border-amber-500/30 text-white rounded-lg px-2.5 py-2 text-xs font-mono outline-none"
+                                />
+                              </div>
+                              
+                              {/* Calculated stats: DPH, PPH, DPS */}
+                              <div className="lg:col-span-2 flex flex-col justify-center space-y-1 pl-2 pt-2 lg:pt-0">
+                                <div className="flex justify-between text-[10px] text-white/50">
+                                  <span>DPH:</span>
+                                  <span className="font-mono font-bold text-amber-500">{formatNumber(pDmgStats.damagePerHit)}</span>
+                                </div>
+                                <div className="flex justify-between text-[10px] text-white/50">
+                                  <span>PPH:</span>
+                                  <span className="font-mono font-bold text-purple-400">{formatNumber(pDmgStats.powerPerHit)}</span>
+                                </div>
+                                <div className="flex justify-between text-[10px] text-white/50">
+                                  <span>DPS:</span>
+                                  <span className="font-mono font-bold text-emerald-400">{formatNumber(pDps)}</span>
+                                </div>
+                                <div className="text-[9px] text-white/40 flex justify-between">
+                                  <span>Contrib:</span>
+                                  <span className="text-amber-400 font-bold font-mono">
+                                    {((p as any).computedDps / (partyPlayers.reduce((acc, pl) => acc + (pl as any).computedDps || 0, 0) || 1) * 100).toFixed(1)}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-
-                      {/* Group Calculation Results Card */}
-                      <div className="bg-black/30 border border-white/5 rounded-xl p-4 flex flex-col justify-center space-y-3">
-                        <div className="space-y-1">
-                          <div className="text-[10px] text-white/40 uppercase font-black font-mono">Total Party DPS Estimate</div>
-                          <div className="text-2xl font-black font-mono text-emerald-400">{formatNumber(partyDps)}</div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <div className="text-[10px] text-white/40 uppercase font-black font-mono">Estimated Boss Kill Time</div>
-                          <div className="text-3xl font-black font-mono text-white">{formatTime(estSeconds)}</div>
-                        </div>
-
-                        <div className="text-[9px] text-white/30 leading-relaxed">
-                          Assumes all group members have gear/dps identical to the values configured in the sliders above.
-                        </div>
-                      </div>
+                      
+                      {/* Add Player button */}
+                      <button 
+                        onClick={addPlayer}
+                        className="flex items-center gap-2 border border-dashed border-white/20 hover:border-amber-500/50 hover:bg-amber-500/5 text-white/60 hover:text-white px-4 py-3 rounded-xl transition-all duration-200 justify-center w-full text-xs font-bold font-display cursor-pointer"
+                      >
+                        <span>＋</span> Add Player
+                      </button>
+                      
+                      {/* Simulation Results (boss kill time using combined party DPS) */}
+                      {(() => {
+                        const totalPartyDps = partyPlayers.reduce((acc, p) => acc + ((p as any).computedDps || 0), 0);
+                        const totalPartyDamage = partyPlayers.reduce((acc, p) => acc + ((p as any).computedDph || 0), 0);
+                        const partyEstSeconds = calcBossHp / (totalPartyDps || 1);
+                        
+                        return (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mt-6 border-t border-white/5 pt-4">
+                            <div className="bg-black/30 border border-white/5 rounded-xl p-4 flex flex-col justify-center space-y-1">
+                              <div className="text-[9px] text-white/40 uppercase font-black font-mono">Total Party Members</div>
+                              <div className="text-lg font-black font-mono text-white">{partyPlayers.length} Players</div>
+                            </div>
+                            
+                            <div className="bg-black/30 border border-white/5 rounded-xl p-4 flex flex-col justify-center space-y-1.5">
+                              <div className="text-[9px] text-white/40 uppercase font-black font-mono">Total Group Damage (DPH)</div>
+                              <div className="text-lg font-black font-mono text-amber-500">{formatNumber(totalPartyDamage)}</div>
+                            </div>
+                            
+                            <div className="bg-black/30 border border-white/5 rounded-xl p-4 flex flex-col justify-center space-y-1.5">
+                              <div className="text-[9px] text-white/40 uppercase font-black font-mono">Total Group DPS</div>
+                              <div className="text-lg font-black font-mono text-emerald-400">{formatNumber(totalPartyDps)}</div>
+                            </div>
+                            
+                            <div className="bg-black/30 border border-white/5 rounded-xl p-4 flex flex-col justify-center space-y-1.5">
+                              <div className="text-[9px] text-white/40 uppercase font-black font-mono">Raid Boss HP Target</div>
+                              <select 
+                                value={calcBossHp}
+                                onChange={(e) => setCalcBossHp(Number(e.target.value))}
+                                className="bg-[#03050b]/80 border border-white/10 rounded-lg p-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                              >
+                                <option value={100e9}>100B HP</option>
+                                <option value={1e12}>1T HP</option>
+                                <option value={10e12}>10T HP</option>
+                                <option value={100e12}>100T HP</option>
+                                <option value={500e12}>500T HP (World 11 Boss)</option>
+                              </select>
+                            </div>
+                            
+                            <div className="bg-black/30 border border-white/5 rounded-xl p-4 flex flex-col justify-center space-y-1.5">
+                              <div className="text-[9px] text-white/40 uppercase font-black font-mono">Estimated Boss Kill Time</div>
+                              <div className="text-lg font-black font-mono text-amber-400">{formatTime(partyEstSeconds)}</div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 

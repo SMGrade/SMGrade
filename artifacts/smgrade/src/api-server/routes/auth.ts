@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import crypto from "crypto";
-import jsonDb from "../lib/jsonDb";
+import jsonDb from "../lib/jsonDb.js";
 
 const router = Router();
 
@@ -8,7 +8,7 @@ const router = Router();
 export const activeSessions = new Map<string, { userId: string; role: string; username: string }>();
 
 // Helper to authenticate user from auth header
-export function getSession(req: Request) {
+export function getSession(req: any) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
   const token = authHeader.split(" ")[1];
@@ -16,7 +16,7 @@ export function getSession(req: Request) {
 }
 
 // 1. Create Account
-router.post("/register", (req: Request, res: Response) => {
+router.post("/register", (req: any, res: any) => {
   const { username, password } = req.body;
   if (!username || !password || username.trim().length < 3 || password.trim().length < 6) {
     res.status(400).json({ error: "Username (min 3 chars) and Password (min 6 chars) are required." });
@@ -42,7 +42,7 @@ router.post("/register", (req: Request, res: Response) => {
 });
 
 // 2. Log In
-router.post("/login", (req: Request, res: Response) => {
+router.post("/login", (req: any, res: any) => {
   const { username, password } = req.body;
   if (!username || !password) {
     res.status(400).json({ error: "Username and Password are required." });
@@ -101,7 +101,7 @@ router.post("/login", (req: Request, res: Response) => {
 });
 
 // 3. Get Current Profile (Me)
-router.get("/me", (req: Request, res: Response) => {
+router.get("/me", (req: any, res: any) => {
   const session = getSession(req);
   if (!session) {
     res.status(401).json({ error: "Unauthorized" });
@@ -130,7 +130,7 @@ router.get("/me", (req: Request, res: Response) => {
 });
 
 // 4. Save User Custom Profile Details (notes, favorites)
-router.post("/profile", (req: Request, res: Response) => {
+router.post("/profile", (req: any, res: any) => {
   const session = getSession(req);
   if (!session) {
     res.status(401).json({ error: "Unauthorized" });
@@ -155,7 +155,7 @@ router.post("/profile", (req: Request, res: Response) => {
 });
 
 // 5. Get Progression History
-router.get("/history", (req: Request, res: Response) => {
+router.get("/history", (req: any, res: any) => {
   const session = getSession(req);
   if (!session) {
     res.status(401).json({ error: "Unauthorized" });
@@ -167,7 +167,7 @@ router.get("/history", (req: Request, res: Response) => {
 });
 
 // 6. Save Grading Result in History
-router.post("/history", (req: Request, res: Response) => {
+router.post("/history", (req: any, res: any) => {
   const session = getSession(req);
   if (!session) {
     res.status(401).json({ error: "Unauthorized" });
@@ -185,7 +185,7 @@ router.post("/history", (req: Request, res: Response) => {
 });
 
 // 7. Get Achievements
-router.get("/achievements", (req: Request, res: Response) => {
+router.get("/achievements", (req: any, res: any) => {
   const session = getSession(req);
   if (!session) {
     res.status(401).json({ error: "Unauthorized" });
