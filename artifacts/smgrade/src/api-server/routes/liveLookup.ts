@@ -162,6 +162,33 @@ router.get("/live-lookup", async (req: any, res: any) => {
       }
     });
 
+    // Ensure the WebSocket transport is fully OPEN (1) before sending GetPlayerInfo
+    const ws = (room.connection?.transport as any)?.ws;
+    if (ws && ws.readyState !== 1) {
+      await new Promise<void>((resolve) => {
+        let resolved = false;
+        const cleanup = () => {
+          if (!resolved) {
+            resolved = true;
+            ws.removeEventListener("open", onOpen);
+            ws.removeEventListener("error", onError);
+            ws.removeEventListener("close", onClose);
+            resolve();
+          }
+        };
+        const onOpen = () => cleanup();
+        const onError = () => cleanup();
+        const onClose = () => cleanup();
+
+        ws.addEventListener("open", onOpen);
+        ws.addEventListener("error", onError);
+        ws.addEventListener("close", onClose);
+
+        // Safety timeout of 4 seconds
+        setTimeout(cleanup, 4000);
+      });
+    }
+
     room.send("Client:SkinStatue:GetPlayerInfo", { username: username });
 
   } catch (err: any) {
