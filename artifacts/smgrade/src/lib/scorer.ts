@@ -365,9 +365,31 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   
   const benchmark = getInterpolatedBenchmark(player.level);
 
-  // Current stats base
-  const curSwStats = curSw ? getSwordStats(curSw, swLevel) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
-  const curShStats = curSh ? getShieldStats(curSh, shLevel) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
+  // Parse active pets to get the correct speed & power multiplier bonuses
+  const activePets = (player as any).activePets || (player as any).rawPayload?.inv?.activePets || [];
+  const speedBoost = activePets.reduce((acc: number, p: any) => {
+    const petItem = resolveItemByGameType(p.type, "pet");
+    return acc + (petItem?.metadata?.speedBoost || 0);
+  }, 0.0);
+  const finalAttackSpeed = 2.77 * (1 + speedBoost);
+
+  const petPowerBonus = activePets.reduce((acc: number, p: any) => {
+    const petItem = resolveItemByGameType(p.type, "pet");
+    return acc + (petItem?.baseValue || 0);
+  }, 0.0);
+
+  // Baseline player stats:
+  const curDs = curSw ? scaledSwordDamage(curSw.baseDamage, swLevel) * 1e9 : 0;
+  const curMs = curSh ? scaledShieldDM(curSh.baseDM, shLevel) : 0;
+
+  const currentStats = calculateDamageStats({
+    ds: curDs,
+    swordDamageMultiplier: curMs,
+    power: player.powerRaw,
+    petPowerBonus,
+    armorPowerBonus: 0,
+    attackSpeed: finalAttackSpeed
+  });
 
   interface Candidate {
     name: string;
@@ -377,151 +399,183 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     cost: number;
     priceNote: string | null;
     isUpgradeCurrent: boolean;
-    stats: GearStats;
+    resultingDps: number;
   }
 
   const candidates: Candidate[] = [];
 
-  // Evaluate Sword Candidates
-  const swords = items.filter(i => i.type === "sword" || (i as any).category === "sword");
-  swords.forEach(sw => {
-    const isCurrent = curSw && sw.name.toLowerCase() === curSw.name.toLowerCase();
-    const maxLvl = sw.maxLevel || 10;
+  // Check if there are objectively stronger obtainable options than what is equipped
+  const hasStrongerObtainableSword = curSw && items.some(other => 
+    other.type === "sword" && 
+    (other.baseValue || 0) > curSw.baseDamage && 
+    player.level >= (other.minLevel || 0)
+  );
+
+  const hasStrongerObtainableShield = curSh && items.some(other => 
+    other.type === "shield" && 
+    (other.baseValue || 0) > curSh.baseDM && 
+    player.level >= (other.minLevel || 0)
+  );
+
+  // 1. Evaluate Sword Upgrade/Replacement Candidates
+  items.forEach(item => {
+    if (item.type !== "sword") return;
     
+    // Check level/world lock requirements
+    const isObtainable = player.level >= (item.minLevel || 0);
+    if (!isObtainable) return;
+
+    const isCurrent = curSw && item.name.toLowerCase() === curSw.name.toLowerCase();
+    const maxLvl = item.maxLevel || 10;
+
     if (isCurrent) {
-      // Upgrades to current weapon
+      // Only upgrade currently equipped if there is no other obtainable sword that is objectively stronger
+      if (hasStrongerObtainableSword) return;
+
       for (let lvl = swLevel + 1; lvl <= maxLvl; lvl++) {
-        const cost = getPriceRawFromMarket(sw.name, lvl);
-        if (cost > 0) {
-          const canStats = getSwordStats(sw, lvl);
-          if (canStats.score > curSwStats.score && canStats.damage > curSwStats.damage) {
-            const gain = Math.round(((canStats.score - curSwStats.score) / Math.max(curSwStats.score, 1)) * 100);
-            if (gain > 0) {
-              candidates.push({
-                name: sw.name,
-                level: lvl,
-                type: "Sword",
-                damageGainPct: gain,
-                cost,
-                priceNote: getPriceNoteFromMarket(sw.name, lvl),
-                isUpgradeCurrent: true,
-                stats: canStats,
-              });
-            }
+        // Cumulative cost to upgrade from swLevel to lvl
+        let cumulativeCost = 0;
+        for (let l = swLevel + 1; l <= lvl; l++) {
+          cumulativeCost += getPriceRawFromMarket(item.name, l);
+        }
+        if (cumulativeCost > 0) {
+          const ds = scaledSwordDamage(item.baseValue, lvl) * 1e9;
+          const canStats = calculateDamageStats({
+            ds,
+            swordDamageMultiplier: curMs,
+            power: player.powerRaw,
+            petPowerBonus,
+            armorPowerBonus: 0,
+            attackSpeed: finalAttackSpeed
+          });
+          const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
+          if (gain > 0) {
+            candidates.push({
+              name: item.name,
+              level: lvl,
+              type: "Sword",
+              damageGainPct: gain,
+              cost: cumulativeCost,
+              priceNote: getPriceNoteFromMarket(item.name, lvl),
+              isUpgradeCurrent: true,
+              resultingDps: canStats.damagePerSecond
+            });
           }
         }
       }
     } else {
-      // Transitioning to a new sword
-      // Logical progression: only evaluate if sw is a higher-tier sword (baseDamage > curSw.baseDamage)
-      if (curSw && sw.baseValue <= curSw.baseDamage) {
-        return; // reject lower or equal tier transitions (e.g. beginner weapons or level 10 weapons that are weaker)
-      }
-      
-      // Find the first level L of sw that yields a direct upgrade in combat damage compared to our current weapon
-      let firstUpgradeLevel = -1;
-      let totalCost = 0;
-      
+      // Transition to a different obtainable sword
       for (let lvl = 1; lvl <= maxLvl; lvl++) {
-        const canStats = getSwordStats(sw, lvl);
-        if (canStats.score > curSwStats.score && canStats.damage > curSwStats.damage) {
-          firstUpgradeLevel = lvl;
-          // The cost to transition is the purchase price (Level 1) plus any upgrade cost to that target level!
-          let sumCost = 0;
-          for (let l = 1; l <= lvl; l++) {
-            sumCost += getPriceRawFromMarket(sw.name, l);
-          }
-          totalCost = sumCost;
-          break;
+        // Cumulative cost to buy (level 1) and upgrade to lvl
+        let cumulativeCost = 0;
+        for (let l = 1; l <= lvl; l++) {
+          cumulativeCost += getPriceRawFromMarket(item.name, l);
         }
-      }
-      
-      if (firstUpgradeLevel !== -1 && totalCost > 0) {
-        const canStats = getSwordStats(sw, firstUpgradeLevel);
-        const gain = Math.round(((canStats.score - curSwStats.score) / Math.max(curSwStats.score, 1)) * 100);
-        if (gain > 0) {
-          candidates.push({
-            name: sw.name,
-            level: firstUpgradeLevel,
-            type: "Sword",
-            damageGainPct: gain,
-            cost: totalCost,
-            priceNote: getPriceNoteFromMarket(sw.name, firstUpgradeLevel),
-            isUpgradeCurrent: false,
-            stats: canStats,
+        if (cumulativeCost > 0) {
+          const ds = scaledSwordDamage(item.baseValue, lvl) * 1e9;
+          const canStats = calculateDamageStats({
+            ds,
+            swordDamageMultiplier: curMs,
+            power: player.powerRaw,
+            petPowerBonus,
+            armorPowerBonus: 0,
+            attackSpeed: finalAttackSpeed
           });
+          const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
+          if (gain > 0) {
+            candidates.push({
+              name: item.name,
+              level: lvl,
+              type: "Sword",
+              damageGainPct: gain,
+              cost: cumulativeCost,
+              priceNote: getPriceNoteFromMarket(item.name, lvl),
+              isUpgradeCurrent: false,
+              resultingDps: canStats.damagePerSecond
+            });
+          }
         }
       }
     }
   });
 
-  // Evaluate Shield Candidates
-  const shields = items.filter(i => i.type === "shield" || (i as any).category === "shield");
-  shields.forEach(sh => {
-    const isCurrent = curSh && sh.name.toLowerCase() === curSh.name.toLowerCase();
-    const maxLvl = sh.maxLevel || 10;
-    
+  // 2. Evaluate Shield Upgrade/Replacement Candidates
+  items.forEach(item => {
+    if (item.type !== "shield") return;
+
+    // Check level/world lock requirements
+    const isObtainable = player.level >= (item.minLevel || 0);
+    if (!isObtainable) return;
+
+    const isCurrent = curSh && item.name.toLowerCase() === curSh.name.toLowerCase();
+    const maxLvl = item.maxLevel || 10;
+
     if (isCurrent) {
-      // Upgrades to current shield
+      // Only upgrade currently equipped if there is no other obtainable shield that is objectively stronger
+      if (hasStrongerObtainableShield) return;
+
       for (let lvl = shLevel + 1; lvl <= maxLvl; lvl++) {
-        const cost = getPriceRawFromMarket(sh.name, lvl);
-        if (cost > 0) {
-          const canStats = getShieldStats(sh, lvl);
-          if (canStats.score > curShStats.score && canStats.dm > curShStats.dm) {
-            const gain = Math.round(((canStats.score - curShStats.score) / Math.max(curShStats.score, 1)) * 100);
-            if (gain > 0) {
-              candidates.push({
-                name: sh.name,
-                level: lvl,
-                type: "Shield",
-                damageGainPct: gain,
-                cost,
-                priceNote: getPriceNoteFromMarket(sh.name, lvl),
-                isUpgradeCurrent: true,
-                stats: canStats,
-              });
-            }
+        // Cumulative cost to upgrade from shLevel to lvl
+        let cumulativeCost = 0;
+        for (let l = shLevel + 1; l <= lvl; l++) {
+          cumulativeCost += getPriceRawFromMarket(item.name, l);
+        }
+        if (cumulativeCost > 0) {
+          const ms = scaledShieldDM(item.baseValue, lvl);
+          const canStats = calculateDamageStats({
+            ds: curDs,
+            swordDamageMultiplier: ms,
+            power: player.powerRaw,
+            petPowerBonus,
+            armorPowerBonus: 0,
+            attackSpeed: finalAttackSpeed
+          });
+          const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
+          if (gain > 0) {
+            candidates.push({
+              name: item.name,
+              level: lvl,
+              type: "Shield",
+              damageGainPct: gain,
+              cost: cumulativeCost,
+              priceNote: getPriceNoteFromMarket(item.name, lvl),
+              isUpgradeCurrent: true,
+              resultingDps: canStats.damagePerSecond
+            });
           }
         }
       }
     } else {
-      // Transitioning to a new shield
-      // Logical progression: only evaluate if sh is a higher-tier shield (baseDM > curSh.baseDM)
-      if (curSh && sh.baseValue <= curSh.baseDM) {
-        return; // reject lower or equal tier transitions
-      }
-      
-      // Find the first level L of sh that yields a direct upgrade in multiplier compared to our current shield
-      let firstUpgradeLevel = -1;
-      let totalCost = 0;
-      
+      // Transition to a different obtainable shield
       for (let lvl = 1; lvl <= maxLvl; lvl++) {
-        const canStats = getShieldStats(sh, lvl);
-        if (canStats.score > curShStats.score && canStats.dm > curShStats.dm) {
-          firstUpgradeLevel = lvl;
-          let sumCost = 0;
-          for (let l = 1; l <= lvl; l++) {
-            sumCost += getPriceRawFromMarket(sh.name, l);
-          }
-          totalCost = sumCost;
-          break;
+        // Cumulative cost to buy (level 1) and upgrade to lvl
+        let cumulativeCost = 0;
+        for (let l = 1; l <= lvl; l++) {
+          cumulativeCost += getPriceRawFromMarket(item.name, l);
         }
-      }
-      
-      if (firstUpgradeLevel !== -1 && totalCost > 0) {
-        const canStats = getShieldStats(sh, firstUpgradeLevel);
-        const gain = Math.round(((canStats.score - curShStats.score) / Math.max(curShStats.score, 1)) * 100);
-        if (gain > 0) {
-          candidates.push({
-            name: sh.name,
-            level: firstUpgradeLevel,
-            type: "Shield",
-            damageGainPct: gain,
-            cost: totalCost,
-            priceNote: getPriceNoteFromMarket(sh.name, firstUpgradeLevel),
-            isUpgradeCurrent: false,
-            stats: canStats,
+        if (cumulativeCost > 0) {
+          const ms = scaledShieldDM(item.baseValue, lvl);
+          const canStats = calculateDamageStats({
+            ds: curDs,
+            swordDamageMultiplier: ms,
+            power: player.powerRaw,
+            petPowerBonus,
+            armorPowerBonus: 0,
+            attackSpeed: finalAttackSpeed
           });
+          const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
+          if (gain > 0) {
+            candidates.push({
+              name: item.name,
+              level: lvl,
+              type: "Shield",
+              damageGainPct: gain,
+              cost: cumulativeCost,
+              priceNote: getPriceNoteFromMarket(item.name, lvl),
+              isUpgradeCurrent: false,
+              resultingDps: canStats.damagePerSecond
+            });
+          }
         }
       }
     }
@@ -547,12 +601,6 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     };
   }
 
-  // Calculate efficiency for all candidates: combat gain per log-scaled cost
-  const getEfficiency = (c: Candidate) => {
-    const logCost = Math.log10(c.cost) > 0 ? Math.log10(c.cost) : 1;
-    return c.damageGainPct / logCost;
-  };
-
   // Group candidates into affordable vs unaffordable using Player Power
   const affordable = candidates.filter(c => player.powerRaw >= c.cost);
   const unaffordable = candidates.filter(c => player.powerRaw < c.cost);
@@ -562,8 +610,8 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   let lateGameGoals: UpgradeGoal[] = [];
 
   if (affordable.length > 0) {
-    // Sort affordable candidates by efficiency descending
-    affordable.sort((a, b) => getEfficiency(b) - getEfficiency(a));
+    // Sort affordable candidates by resulting player DPS descending (highest overall performance improvement)
+    affordable.sort((a, b) => b.resultingDps - a.resultingDps);
     
     const uniqueSelected: Candidate[] = [];
     affordable.forEach(c => {
@@ -573,8 +621,8 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     });
 
     recommendations = uniqueSelected.slice(0, 3).map((c, index) => {
-      const label = index === 0 ? "#1 Best Combat Upgrade" : `Upgrade #${index + 1}`;
-      const reason = `[Best Value] Upgrading to ${c.name} Lv${c.level} yields a solid +${c.damageGainPct}% combat value increase within your current Power limits.`;
+      const typeLabel = c.isUpgradeCurrent ? "Upgrading" : "Replacing with";
+      const reason = `[Best Value] ${typeLabel} ${c.name} Lv${c.level} yields a solid +${c.damageGainPct}% combat value increase within your current Power limits.`;
       
       return {
         name: c.name,
@@ -597,8 +645,8 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   }
 
   if (unaffordable.length > 0) {
-    // Sort late game candidates by cost ascending (closest goals first)
-    unaffordable.sort((a, b) => a.cost - b.cost);
+    // Sort unaffordable candidates by resulting player DPS descending (highest overall performance improvement)
+    unaffordable.sort((a, b) => b.resultingDps - a.resultingDps);
     
     const uniqueLate: Candidate[] = [];
     unaffordable.forEach(c => {
@@ -609,6 +657,7 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
 
     lateGameGoals = uniqueLate.slice(0, 3).map(c => {
       const shortage = c.cost - player.powerRaw;
+      const typeLabel = c.isUpgradeCurrent ? "Upgrading to" : "Replacing with";
       return {
         name: c.name,
         level: c.level,
@@ -618,7 +667,7 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
         estimatedRequirements: `Level ~${benchmark.minLevel.toLocaleString()}, Power ~${formatNumber(benchmark.avgPower)}`,
         affordable: false,
         status: `Short ${formatNumber(shortage)} Power`,
-        reason: `[Late Game Goal] Upgrading to ${c.name} Lv${c.level} delivers +${c.damageGainPct}% combat value but requires ${formatNumber(c.cost)} Power total.`
+        reason: `[Late Game Goal] ${typeLabel} ${c.name} Lv${c.level} delivers +${c.damageGainPct}% combat value but requires ${formatNumber(c.cost)} Power total.`
       };
     });
   }

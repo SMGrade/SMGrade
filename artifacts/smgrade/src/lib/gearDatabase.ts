@@ -21,6 +21,7 @@ export interface GameItem {
   healthMulti?: string;
   goldMulti?: string;
   typeId?: number;
+  minLevel?: number;
 
   metadata?: {
     goldMulti?: number;
@@ -41,6 +42,7 @@ export interface SwordData {
   healthMulti?: string;
   goldMulti?: string;
   typeId?: number;
+  minLevel?: number;
 }
 
 export interface ShieldData {
@@ -56,6 +58,7 @@ export interface ShieldData {
   healthMulti?: string;
   goldMulti?: string;
   typeId?: number;
+  minLevel?: number;
 }
 
 const STORAGE_KEY = "smg_items_db_v2";
@@ -210,7 +213,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "-",
     "healthMulti": "-",
     "goldMulti": "0.25x",
-    "typeId": 1
+    "typeId": 1,
+    "minLevel": 0
   },
   {
     "name": "Orc Sword",
@@ -228,7 +232,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "-",
     "healthMulti": "0.25x",
     "goldMulti": "0.25x",
-    "typeId": 2
+    "typeId": 2,
+    "minLevel": 0
   },
   {
     "name": "Double-Edged Sword",
@@ -246,7 +251,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "-",
     "healthMulti": "0.5x",
     "goldMulti": "-",
-    "typeId": 3
+    "typeId": 3,
+    "minLevel": 0
   },
   {
     "name": "Spiked Sword",
@@ -264,7 +270,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "-",
     "healthMulti": "0.75x",
     "goldMulti": "0.5x",
-    "typeId": 4
+    "typeId": 4,
+    "minLevel": 0
   },
   {
     "name": "Dead Man's Sword",
@@ -282,7 +289,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "-",
     "healthMulti": "1.5x",
     "goldMulti": "1.5x",
-    "typeId": 5
+    "typeId": 5,
+    "minLevel": 0
   },
   {
     "name": "Machete Sword",
@@ -300,7 +308,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "-",
     "healthMulti": "1x",
     "goldMulti": "0.75x",
-    "typeId": 6
+    "typeId": 6,
+    "minLevel": 25
   },
   {
     "name": "Scimitar Claw",
@@ -318,7 +327,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "1K",
     "healthMulti": "1.25x",
     "goldMulti": "1x",
-    "typeId": 7
+    "typeId": 7,
+    "minLevel": 25
   },
   {
     "name": "Morbid Will",
@@ -336,7 +346,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "2K",
     "healthMulti": "1.75x",
     "goldMulti": "1.25x",
-    "typeId": 8
+    "typeId": 8,
+    "minLevel": 25
   },
   {
     "name": "Inferno Claw",
@@ -354,7 +365,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "2K",
     "healthMulti": "2x",
     "goldMulti": "1.5x",
-    "typeId": 9
+    "typeId": 9,
+    "minLevel": 25
   },
   {
     "name": "Burned Spikeblade",
@@ -372,7 +384,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "3K",
     "healthMulti": "3x",
     "goldMulti": "3x",
-    "typeId": 10
+    "typeId": 10,
+    "minLevel": 25
   },
   {
     "name": "Icebreaker",
@@ -390,7 +403,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "2K",
     "healthMulti": "2.5x",
     "goldMulti": "2x",
-    "typeId": 11
+    "typeId": 11,
+    "minLevel": 50
   },
   {
     "name": "Frostbite",
@@ -408,7 +422,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "3K",
     "healthMulti": "3x",
     "goldMulti": "3x",
-    "typeId": 12
+    "typeId": 12,
+    "minLevel": 50
   },
   {
     "name": "Froststeel",
@@ -426,7 +441,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "3K",
     "healthMulti": "2.75x",
     "goldMulti": "3x",
-    "typeId": 13
+    "typeId": 13,
+    "minLevel": 50
   },
   {
     "name": "Frostfang",
@@ -444,7 +460,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "4K",
     "healthMulti": "3x",
     "goldMulti": "3.5x",
-    "typeId": 14
+    "typeId": 14,
+    "minLevel": 50
   },
   {
     "name": "Winter's Wrath",
@@ -462,7 +479,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "15K",
     "healthMulti": "5x",
     "goldMulti": "5x",
-    "typeId": 15
+    "typeId": 15,
+    "minLevel": 50
   },
   {
     "name": "Sandstrike",
@@ -480,7 +498,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "10K",
     "healthMulti": "3.25x",
     "goldMulti": "3.75x",
-    "typeId": 16
+    "typeId": 16,
+    "minLevel": 60
   },
   {
     "name": "Duneslicer",
@@ -498,7 +517,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "15K",
     "healthMulti": "3.5x",
     "goldMulti": "3.5x",
-    "typeId": 17
+    "typeId": 17,
+    "minLevel": 60
   },
   {
     "name": "Sandslasher",
@@ -516,7 +536,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "100K",
     "healthMulti": "3.5x",
     "goldMulti": "3x",
-    "typeId": 18
+    "typeId": 18,
+    "minLevel": 60
   },
   {
     "name": "Sunfire",
@@ -534,7 +555,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "250K",
     "healthMulti": "3.5x",
     "goldMulti": "3.75x",
-    "typeId": 19
+    "typeId": 19,
+    "minLevel": 60
   },
   {
     "name": "Emberwraith",
@@ -552,7 +574,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "1M",
     "healthMulti": "6x",
     "goldMulti": "6x",
-    "typeId": 20
+    "typeId": 20,
+    "minLevel": 60
   },
   {
     "name": "Blade of Sorrow",
@@ -570,7 +593,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "500K",
     "healthMulti": "4x",
     "goldMulti": "3.75x",
-    "typeId": 21
+    "typeId": 21,
+    "minLevel": 100
   },
   {
     "name": "Flame Heart",
@@ -588,7 +612,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "750K",
     "healthMulti": "4.25x",
     "goldMulti": "3.75x",
-    "typeId": 22
+    "typeId": 22,
+    "minLevel": 100
   },
   {
     "name": "Darkblade",
@@ -606,7 +631,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "1M",
     "healthMulti": "4.5x",
     "goldMulti": "4x",
-    "typeId": 23
+    "typeId": 23,
+    "minLevel": 100
   },
   {
     "name": "Fatecutter",
@@ -624,7 +650,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "2M",
     "healthMulti": "4.75x",
     "goldMulti": "4x",
-    "typeId": 24
+    "typeId": 24,
+    "minLevel": 100
   },
   {
     "name": "Devil's Blade",
@@ -642,7 +669,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "3M",
     "healthMulti": "6x",
     "goldMulti": "4x",
-    "typeId": 25
+    "typeId": 25,
+    "minLevel": 100
   },
   {
     "name": "Spear of Zeus",
@@ -660,7 +688,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "-",
     "healthMulti": "-",
     "goldMulti": "-",
-    "typeId": 26
+    "typeId": 26,
+    "minLevel": 300
   },
   {
     "name": "Coral Blade",
@@ -678,7 +707,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "3M",
     "healthMulti": "5x",
     "goldMulti": "4x",
-    "typeId": 27
+    "typeId": 27,
+    "minLevel": 400
   },
   {
     "name": "Spiked Moss",
@@ -696,7 +726,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "4M",
     "healthMulti": "5.5x",
     "goldMulti": "4.25x",
-    "typeId": 28
+    "typeId": 28,
+    "minLevel": 400
   },
   {
     "name": "Guardian's Spear",
@@ -714,7 +745,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "6M",
     "healthMulti": "6x",
     "goldMulti": "4.5x",
-    "typeId": 29
+    "typeId": 29,
+    "minLevel": 400
   },
   {
     "name": "Dragon's Teeth",
@@ -732,7 +764,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "8M",
     "healthMulti": "7x",
     "goldMulti": "5x",
-    "typeId": 30
+    "typeId": 30,
+    "minLevel": 1000
   },
   {
     "name": "Dragon's Poison",
@@ -750,7 +783,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "12M",
     "healthMulti": "9x",
     "goldMulti": "7x",
-    "typeId": 31
+    "typeId": 31,
+    "minLevel": 1000
   },
   {
     "name": "Starfire Blade",
@@ -768,7 +802,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "5M",
     "healthMulti": "5.75x",
     "goldMulti": "4.5x",
-    "typeId": 32
+    "typeId": 32,
+    "minLevel": 700
   },
   {
     "name": "Nova Blade",
@@ -786,7 +821,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "5M",
     "healthMulti": "6.5x",
     "goldMulti": "4.5x",
-    "typeId": 33
+    "typeId": 33,
+    "minLevel": 700
   },
   {
     "name": "Cosmic Blader",
@@ -804,7 +840,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "12M",
     "healthMulti": "6x",
     "goldMulti": "8x",
-    "typeId": 34
+    "typeId": 34,
+    "minLevel": 700
   },
   {
     "name": "Netherite Blade",
@@ -822,7 +859,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "20M",
     "healthMulti": "8x",
     "goldMulti": "10x",
-    "typeId": 35
+    "typeId": 35,
+    "minLevel": 1500
   },
   {
     "name": "Death's Scythe",
@@ -840,7 +878,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "80M",
     "healthMulti": "12x",
     "goldMulti": "12x",
-    "typeId": 36
+    "typeId": 36,
+    "minLevel": 1500
   },
   {
     "name": "Dragon's Devil",
@@ -858,7 +897,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "120M",
     "healthMulti": "15x",
     "goldMulti": "15x",
-    "typeId": 37
+    "typeId": 37,
+    "minLevel": 1500
   },
   {
     "name": "Einherjar's Blade",
@@ -876,7 +916,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "70M",
     "healthMulti": "10x",
     "goldMulti": "10x",
-    "typeId": 38
+    "typeId": 38,
+    "minLevel": 2000
   },
   {
     "name": "Runebreaker",
@@ -894,7 +935,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "100M",
     "healthMulti": "11x",
     "goldMulti": "11x",
-    "typeId": 39
+    "typeId": 39,
+    "minLevel": 2000
   },
   {
     "name": "Solbrand",
@@ -912,7 +954,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "150M",
     "healthMulti": "15x",
     "goldMulti": "16x",
-    "typeId": 40
+    "typeId": 40,
+    "minLevel": 2000
   },
   {
     "name": "Divinity Edge",
@@ -930,7 +973,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "300M",
     "healthMulti": "20x",
     "goldMulti": "20x",
-    "typeId": 41
+    "typeId": 41,
+    "minLevel": 2000
   },
   {
     "name": "Graveborn Edge",
@@ -948,7 +992,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "100M",
     "healthMulti": "11x",
     "goldMulti": "11x",
-    "typeId": 42
+    "typeId": 42,
+    "minLevel": 3000
   },
   {
     "name": "Dreadmourne",
@@ -966,7 +1011,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "200M",
     "healthMulti": "13x",
     "goldMulti": "13x",
-    "typeId": 43
+    "typeId": 43,
+    "minLevel": 3000
   },
   {
     "name": "Soulkeeper's Blade",
@@ -984,7 +1030,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "250M",
     "healthMulti": "17x",
     "goldMulti": "18x",
-    "typeId": 44
+    "typeId": 44,
+    "minLevel": 3000
   },
   {
     "name": "Last Horizon",
@@ -1002,7 +1049,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "400M",
     "healthMulti": "23x",
     "goldMulti": "22x",
-    "typeId": 45
+    "typeId": 45,
+    "minLevel": 3000
   },
   {
     "name": "Wooden Shield",
@@ -1020,7 +1068,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "100",
     "healthMulti": "-",
     "goldMulti": "-",
-    "typeId": 1
+    "typeId": 1,
+    "minLevel": 0
   },
   {
     "name": "Iron Shield",
@@ -1038,7 +1087,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "250",
     "healthMulti": "-",
     "goldMulti": "0.25x",
-    "typeId": 2
+    "typeId": 2,
+    "minLevel": 0
   },
   {
     "name": "Elite Shield",
@@ -1056,7 +1106,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "500",
     "healthMulti": "-",
     "goldMulti": "-",
-    "typeId": 3
+    "typeId": 3,
+    "minLevel": 0
   },
   {
     "name": "Warrior's Shield",
@@ -1074,7 +1125,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "750",
     "healthMulti": "0.25x",
     "goldMulti": "0.25x",
-    "typeId": 4
+    "typeId": 4,
+    "minLevel": 0
   },
   {
     "name": "Shield of the Kingdom",
@@ -1092,7 +1144,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "3K",
     "healthMulti": "2x",
     "goldMulti": "2x",
-    "typeId": 5
+    "typeId": 5,
+    "minLevel": 0
   },
   {
     "name": "Sweetguard",
@@ -1110,7 +1163,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "2K",
     "healthMulti": "0.5x",
     "goldMulti": "0.25x",
-    "typeId": 6
+    "typeId": 6,
+    "minLevel": 25
   },
   {
     "name": "Warden's Shield",
@@ -1128,7 +1182,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "3K",
     "healthMulti": "0.75x",
     "goldMulti": "0.5x",
-    "typeId": 7
+    "typeId": 7,
+    "minLevel": 25
   },
   {
     "name": "Light Barrier",
@@ -1146,7 +1201,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "5K",
     "healthMulti": "1x",
     "goldMulti": "0.75x",
-    "typeId": 8
+    "typeId": 8,
+    "minLevel": 25
   },
   {
     "name": "Obsidian Canny",
@@ -1164,7 +1220,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "7K",
     "healthMulti": "1.5x",
     "goldMulti": "1x",
-    "typeId": 9
+    "typeId": 9,
+    "minLevel": 25
   },
   {
     "name": "Dead Guard's Shield",
@@ -1182,7 +1239,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "15K",
     "healthMulti": "3x",
     "goldMulti": "3x",
-    "typeId": 10
+    "typeId": 10,
+    "minLevel": 25
   },
   {
     "name": "Snowfall Defender",
@@ -1200,7 +1258,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "8K",
     "healthMulti": "2x",
     "goldMulti": "1.5x",
-    "typeId": 11
+    "typeId": 11,
+    "minLevel": 50
   },
   {
     "name": "Arctic Ward",
@@ -1218,7 +1277,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "10K",
     "healthMulti": "1.5x",
     "goldMulti": "1x",
-    "typeId": 12
+    "typeId": 12,
+    "minLevel": 50
   },
   {
     "name": "Icy Rampart",
@@ -1236,7 +1296,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "12K",
     "healthMulti": "2x",
     "goldMulti": "1.5x",
-    "typeId": 13
+    "typeId": 13,
+    "minLevel": 50
   },
   {
     "name": "Frozen Fortress",
@@ -1254,7 +1315,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "15K",
     "healthMulti": "2.25x",
     "goldMulti": "3x",
-    "typeId": 14
+    "typeId": 14,
+    "minLevel": 50
   },
   {
     "name": "Winter's Wrathguard",
@@ -1272,7 +1334,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "50K",
     "healthMulti": "4x",
     "goldMulti": "5x",
-    "typeId": 15
+    "typeId": 15,
+    "minLevel": 50
   },
   {
     "name": "Sunshield",
@@ -1290,7 +1353,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "25K",
     "healthMulti": "2.5x",
     "goldMulti": "3x",
-    "typeId": 16
+    "typeId": 16,
+    "minLevel": 60
   },
   {
     "name": "Barbed Sunward",
@@ -1308,7 +1372,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "35K",
     "healthMulti": "2.75x",
     "goldMulti": "2.5x",
-    "typeId": 17
+    "typeId": 17,
+    "minLevel": 60
   },
   {
     "name": "Sunshroud",
@@ -1326,7 +1391,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "50K",
     "healthMulti": "3x",
     "goldMulti": "2x",
-    "typeId": 18
+    "typeId": 18,
+    "minLevel": 60
   },
   {
     "name": "Sandstone Shield",
@@ -1344,7 +1410,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "70K",
     "healthMulti": "3x",
     "goldMulti": "2.25x",
-    "typeId": 19
+    "typeId": 19,
+    "minLevel": 60
   },
   {
     "name": "Emberwraith Shield",
@@ -1362,7 +1429,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "500K",
     "healthMulti": "3.25x",
     "goldMulti": "2.5x",
-    "typeId": 20
+    "typeId": 20,
+    "minLevel": 60
   },
   {
     "name": "Hell Shield",
@@ -1380,7 +1448,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "250K",
     "healthMulti": "3.5x",
     "goldMulti": "2.5x",
-    "typeId": 21
+    "typeId": 21,
+    "minLevel": 100
   },
   {
     "name": "Shield of Fire",
@@ -1398,7 +1467,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "300K",
     "healthMulti": "3.75x",
     "goldMulti": "2.25x",
-    "typeId": 22
+    "typeId": 22,
+    "minLevel": 100
   },
   {
     "name": "Fire Rampart",
@@ -1416,7 +1486,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "600K",
     "healthMulti": "4x",
     "goldMulti": "2.5x",
-    "typeId": 23
+    "typeId": 23,
+    "minLevel": 100
   },
   {
     "name": "Infernal Protection",
@@ -1434,7 +1505,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "1M",
     "healthMulti": "4.25x",
     "goldMulti": "2.25x",
-    "typeId": 24
+    "typeId": 24,
+    "minLevel": 100
   },
   {
     "name": "Lord of Hell",
@@ -1452,7 +1524,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "3M",
     "healthMulti": "5x",
     "goldMulti": "6x",
-    "typeId": 25
+    "typeId": 25,
+    "minLevel": 100
   },
   {
     "name": "Steel Shield",
@@ -1470,7 +1543,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "1M",
     "healthMulti": "4.5x",
     "goldMulti": "2x",
-    "typeId": 26
+    "typeId": 26,
+    "minLevel": 400
   },
   {
     "name": "Hardened Moss",
@@ -1488,7 +1562,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "3M",
     "healthMulti": "5x",
     "goldMulti": "2.25x",
-    "typeId": 27
+    "typeId": 27,
+    "minLevel": 400
   },
   {
     "name": "Guardian's Protection",
@@ -1506,7 +1581,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "4M",
     "healthMulti": "6x",
     "goldMulti": "5x",
-    "typeId": 28
+    "typeId": 28,
+    "minLevel": 400
   },
   {
     "name": "Dragon's Shell",
@@ -1524,7 +1600,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "6M",
     "healthMulti": "8x",
     "goldMulti": "3x",
-    "typeId": 29
+    "typeId": 29,
+    "minLevel": 1000
   },
   {
     "name": "Dragon's Anger",
@@ -1542,7 +1619,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "10M",
     "healthMulti": "12x",
     "goldMulti": "10x",
-    "typeId": 30
+    "typeId": 30,
+    "minLevel": 1000
   },
   {
     "name": "Nebula Shield",
@@ -1560,7 +1638,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "3M",
     "healthMulti": "5x",
     "goldMulti": "2.5x",
-    "typeId": 31
+    "typeId": 31,
+    "minLevel": 700
   },
   {
     "name": "Starburst Shield",
@@ -1578,7 +1657,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "6M",
     "healthMulti": "6x",
     "goldMulti": "3x",
-    "typeId": 32
+    "typeId": 32,
+    "minLevel": 700
   },
   {
     "name": "Lunar Shield",
@@ -1596,7 +1676,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "10M",
     "healthMulti": "6x",
     "goldMulti": "6x",
-    "typeId": 33
+    "typeId": 33,
+    "minLevel": 700
   },
   {
     "name": "Death's Shield",
@@ -1614,7 +1695,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "300M",
     "healthMulti": "13x",
     "goldMulti": "13x",
-    "typeId": 34
+    "typeId": 34,
+    "minLevel": 1500
   },
   {
     "name": "Dragon's Soul",
@@ -1632,7 +1714,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "1B",
     "healthMulti": "17x",
     "goldMulti": "17x",
-    "typeId": 35
+    "typeId": 35,
+    "minLevel": 1500
   },
   {
     "name": "Einherjar's Guard",
@@ -1650,7 +1733,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "12M",
     "healthMulti": "6.5x",
     "goldMulti": "6.5x",
-    "typeId": 36
+    "typeId": 36,
+    "minLevel": 2000
   },
   {
     "name": "Runeguard",
@@ -1668,7 +1752,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "100M",
     "healthMulti": "10x",
     "goldMulti": "10x",
-    "typeId": 37
+    "typeId": 37,
+    "minLevel": 2000
   },
   {
     "name": "Sunward Bulwark",
@@ -1686,7 +1771,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "2B",
     "healthMulti": "15x",
     "goldMulti": "15x",
-    "typeId": 38
+    "typeId": 38,
+    "minLevel": 2000
   },
   {
     "name": "Asgardian Aegis",
@@ -1704,7 +1790,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "10B",
     "healthMulti": "20x",
     "goldMulti": "20x",
-    "typeId": 39
+    "typeId": 39,
+    "minLevel": 2000
   },
   {
     "name": "Crackshield",
@@ -1722,7 +1809,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "20M",
     "healthMulti": "8x",
     "goldMulti": "8x",
-    "typeId": 40
+    "typeId": 40,
+    "minLevel": 3000
   },
   {
     "name": "Tombplate",
@@ -1740,7 +1828,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "150M",
     "healthMulti": "12x",
     "goldMulti": "12x",
-    "typeId": 41
+    "typeId": 41,
+    "minLevel": 3000
   },
   {
     "name": "Sealguard",
@@ -1758,7 +1847,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "3B",
     "healthMulti": "17x",
     "goldMulti": "17x",
-    "typeId": 42
+    "typeId": 42,
+    "minLevel": 3000
   },
   {
     "name": "Final Bastion",
@@ -1776,7 +1866,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "protection": "14B",
     "healthMulti": "23x",
     "goldMulti": "21x",
-    "typeId": 43
+    "typeId": 43,
+    "minLevel": 3000
   },
   {
     "name": "Piggie",
@@ -1793,7 +1884,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 0.25,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Chicko",
@@ -1810,7 +1902,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 0.5,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Peppy",
@@ -1827,7 +1920,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 2,
       "speedBoost": 0.25
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Gumbear",
@@ -1844,7 +1938,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 0.75,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Croco",
@@ -1861,7 +1956,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 1,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Blue Axolotl",
@@ -1878,7 +1974,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 3,
       "speedBoost": 0.5
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Fluffy",
@@ -1895,7 +1992,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 1.25,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Sandy",
@@ -1912,7 +2010,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 1.5,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Pengoo",
@@ -1929,7 +2028,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 4,
       "speedBoost": 0.25
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Scorp",
@@ -1946,7 +2046,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 1.75,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Kamel",
@@ -1963,7 +2064,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 2,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Leo",
@@ -1980,7 +2082,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 5,
       "speedBoost": 1
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Lava Slime",
@@ -1997,7 +2100,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 2.5,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Firebat",
@@ -2014,7 +2118,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 2.75,
       "speedBoost": 1
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Phoenix",
@@ -2031,7 +2136,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 7,
       "speedBoost": 0.5
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Nemo",
@@ -2048,7 +2154,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 3,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Sharkie",
@@ -2065,7 +2172,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 3.5,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Octoo",
@@ -2082,7 +2190,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 7.5,
       "speedBoost": 0.5
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Fogo",
@@ -2099,7 +2208,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 3.75,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Purr",
@@ -2116,7 +2226,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 4,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Xen",
@@ -2133,7 +2244,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 10,
       "speedBoost": 0.75
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "XPeppy",
@@ -2150,7 +2262,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 13,
       "speedBoost": 0.5
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "XAxolotl",
@@ -2167,7 +2280,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 15,
       "speedBoost": 0.6
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "XPengoo",
@@ -2184,7 +2298,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 16.5,
       "speedBoost": 0.75
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "XLeo",
@@ -2201,7 +2316,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 18,
       "speedBoost": 1.5
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "XPhoenix",
@@ -2218,7 +2334,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 19.5,
       "speedBoost": 0.8
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "XOctoo",
@@ -2235,7 +2352,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 22,
       "speedBoost": 0.9
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "XXen",
@@ -2252,7 +2370,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 24,
       "speedBoost": 1
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Mimic",
@@ -2269,7 +2388,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 4,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Triwulf",
@@ -2286,7 +2406,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 4.25,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Inferno",
@@ -2303,7 +2424,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 10.25,
       "speedBoost": 1
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "XInferno",
@@ -2320,7 +2442,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 25,
       "speedBoost": 1
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Ponyo",
@@ -2337,7 +2460,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 4.25,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Chandy",
@@ -2354,7 +2478,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 4.5,
       "speedBoost": 0
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "Runix",
@@ -2371,7 +2496,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 12.5,
       "speedBoost": 1.2
-    }
+    },
+    "minLevel": 0
   },
   {
     "name": "XRunix",
@@ -2388,7 +2514,8 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 27.5,
       "speedBoost": 1.35
-    }
+    },
+    "minLevel": 0
   }
 ];
 
@@ -2439,7 +2566,8 @@ export function reloadGearDatabase(): void {
       protection: i.protection,
       healthMulti: i.healthMulti,
       goldMulti: i.goldMulti,
-      typeId: i.typeId
+      typeId: i.typeId,
+      minLevel: i.minLevel
     }))
     .sort((a, b) => a.tierRank - b.tierRank);
   SWORDS.push(...(swords as any));
@@ -2459,7 +2587,8 @@ export function reloadGearDatabase(): void {
       protection: i.protection,
       healthMulti: i.healthMulti,
       goldMulti: i.goldMulti,
-      typeId: i.typeId
+      typeId: i.typeId,
+      minLevel: i.minLevel
     }))
     .sort((a, b) => a.tierRank - b.tierRank);
   SHIELDS.push(...(shields as any));
@@ -2494,46 +2623,24 @@ export function getShieldData(name: string): ShieldData | null {
   }) ?? null;
 }
 
-export function getNextSwordUpgrade(name: string, currentLevel: number = 1): SwordData | null {
+export function getNextSwordUpgrade(name: string): SwordData | null {
   const current = getSwordData(name);
   if (!current) {
     const isNone = !name || /none|empty|unknown/i.test(name);
     return isNone ? (SWORDS[0] || null) : null;
   }
-  const curDmg = scaledSwordDamage(current.baseDamage, currentLevel);
-  const options = SWORDS.filter((s) => {
-    const candidateDmg = scaledSwordDamage(s.baseDamage, 1);
-    return s.baseDamage > current.baseDamage && candidateDmg > curDmg;
-  });
-  if (options.length === 0) return null;
-  options.sort((a, b) => {
-    if (a.baseDamage !== b.baseDamage) {
-      return a.baseDamage - b.baseDamage;
-    }
-    return a.tierRank - b.tierRank;
-  });
-  return options[0];
+  const next = SWORDS.find((s) => s.tierRank === current.tierRank + 1);
+  return next ?? null;
 }
 
-export function getNextShieldUpgrade(name: string, currentLevel: number = 1): ShieldData | null {
+export function getNextShieldUpgrade(name: string): ShieldData | null {
   const current = getShieldData(name);
   if (!current) {
     const isNone = !name || /none|empty|unknown/i.test(name);
     return isNone ? (SHIELDS[0] || null) : null;
   }
-  const curDM = scaledShieldDM(current.baseDM, currentLevel);
-  const options = SHIELDS.filter((s) => {
-    const candidateDM = scaledShieldDM(s.baseDM, 1);
-    return s.baseDM > current.baseDM && candidateDM > curDM;
-  });
-  if (options.length === 0) return null;
-  options.sort((a, b) => {
-    if (a.baseDM !== b.baseDM) {
-      return a.baseDM - b.baseDM;
-    }
-    return a.tierRank - b.tierRank;
-  });
-  return options[0];
+  const next = SHIELDS.find((s) => s.tierRank === current.tierRank + 1);
+  return next ?? null;
 }
 
 export function swordUpgradeGain(currentName: string, currentLevel: number, nextName: string): number {
@@ -2574,17 +2681,16 @@ export interface TypeMappingsTable {
 }
 
 export function loadTypeMappings(): TypeMappingsTable {
-  let userMappings: any = {};
   try {
     const raw = localStorage.getItem(MAPPINGS_STORAGE_KEY);
     if (raw) {
-      userMappings = JSON.parse(raw) || {};
+      return JSON.parse(raw);
     }
   } catch (err) {}
   return {
-    swords: { ...SWORD_TYPE_MAP, ...(userMappings.swords || {}) },
-    shields: { ...SHIELD_TYPE_MAP, ...(userMappings.shields || {}) },
-    pets: { ...PET_TYPE_MAP, ...(userMappings.pets || {}) }
+    swords: { ...SWORD_TYPE_MAP },
+    shields: { ...SHIELD_TYPE_MAP },
+    pets: { ...PET_TYPE_MAP }
   };
 }
 
@@ -2623,7 +2729,8 @@ export function resolveItemByGameType(type: number, category: "sword" | "shield"
       prices: {},
       world: "Unknown",
       dropSource: "Unknown",
-      tierRank: 0
+      tierRank: 0,
+      minLevel: 0
     };
   }
 
@@ -2647,6 +2754,7 @@ export function resolveItemByGameType(type: number, category: "sword" | "shield"
     prices: {},
     world: "Unknown",
     dropSource: "Unknown",
-    tierRank: 0
+    tierRank: 0,
+    minLevel: 0
   };
 }

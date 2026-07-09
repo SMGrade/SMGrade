@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const catalogPath = '/Users/machd/Downloads/SM REQS/game_catalog.json';
+const catalogPath = '/Users/machd/Desktop/SMGrade/SMGrade-Website/artifacts/smgrade/public/game_catalog.json';
 const targetPath = '/Users/machd/Desktop/SMGrade/SMGrade-Website/artifacts/smgrade/src/lib/gearDatabase.ts';
 
 if (!fs.existsSync(catalogPath)) {
@@ -128,7 +128,7 @@ catalog.swords.forEach((s) => {
     type: "sword",
     rarity: s.rarity,
     baseValue: baseValue,
-    maxLevel: 10,
+    maxLevel: s.rarity === "Legendary" ? 5 : 10, // Apply Legendary max level limit
     passive: "None",
     image: emoji,
     recommendationScore: s.type * 10,
@@ -139,7 +139,8 @@ catalog.swords.forEach((s) => {
     protection: formatProt(s.damageProtection),
     healthMulti: s.healthMultiplier ? `${s.healthMultiplier}x` : "-",
     goldMulti: s.goldMultiplier ? `${s.goldMultiplier}x` : "-",
-    typeId: s.type
+    typeId: s.type,
+    minLevel: s.minLevel || 0
   });
 });
 
@@ -151,7 +152,7 @@ catalog.shields.forEach((s) => {
     type: "shield",
     rarity: s.rarity,
     baseValue: s.damageMultiplier || 1.0, // baseDM
-    maxLevel: 10,
+    maxLevel: s.rarity === "Legendary" ? 5 : 10, // Apply Legendary max level limit
     passive: "None",
     image: emoji,
     recommendationScore: s.type * 10,
@@ -162,7 +163,8 @@ catalog.shields.forEach((s) => {
     protection: formatProt(s.damageProtection),
     healthMulti: s.healthMultiplier ? `${s.healthMultiplier}x` : "-",
     goldMulti: s.goldMultiplier ? `${s.goldMultiplier}x` : "-",
-    typeId: s.type
+    typeId: s.type,
+    minLevel: s.minLevel || 0
   });
 });
 
@@ -184,7 +186,8 @@ catalog.pets.forEach((p) => {
     metadata: {
       goldMulti: p.goldMultiplier || 0,
       speedBoost: p.speedMultiplier || 0
-    }
+    },
+    minLevel: 0
   });
 });
 
@@ -211,6 +214,7 @@ export interface GameItem {
   healthMulti?: string;
   goldMulti?: string;
   typeId?: number;
+  minLevel?: number;
 
   metadata?: {
     goldMulti?: number;
@@ -231,6 +235,7 @@ export interface SwordData {
   healthMulti?: string;
   goldMulti?: string;
   typeId?: number;
+  minLevel?: number;
 }
 
 export interface ShieldData {
@@ -246,6 +251,7 @@ export interface ShieldData {
   healthMulti?: string;
   goldMulti?: string;
   typeId?: number;
+  minLevel?: number;
 }
 
 const STORAGE_KEY = "smg_items_db_v2";
@@ -307,7 +313,8 @@ export function reloadGearDatabase(): void {
       protection: i.protection,
       healthMulti: i.healthMulti,
       goldMulti: i.goldMulti,
-      typeId: i.typeId
+      typeId: i.typeId,
+      minLevel: i.minLevel
     }))
     .sort((a, b) => a.tierRank - b.tierRank);
   SWORDS.push(...(swords as any));
@@ -327,7 +334,8 @@ export function reloadGearDatabase(): void {
       protection: i.protection,
       healthMulti: i.healthMulti,
       goldMulti: i.goldMulti,
-      typeId: i.typeId
+      typeId: i.typeId,
+      minLevel: i.minLevel
     }))
     .sort((a, b) => a.tierRank - b.tierRank);
   SHIELDS.push(...(shields as any));
@@ -468,7 +476,8 @@ export function resolveItemByGameType(type: number, category: "sword" | "shield"
       prices: {},
       world: "Unknown",
       dropSource: "Unknown",
-      tierRank: 0
+      tierRank: 0,
+      minLevel: 0
     };
   }
 
@@ -492,7 +501,8 @@ export function resolveItemByGameType(type: number, category: "sword" | "shield"
     prices: {},
     world: "Unknown",
     dropSource: "Unknown",
-    tierRank: 0
+    tierRank: 0,
+    minLevel: 0
   };
 }
 `;
