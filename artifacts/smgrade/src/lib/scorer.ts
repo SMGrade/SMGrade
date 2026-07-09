@@ -365,20 +365,7 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   
   const benchmark = getInterpolatedBenchmark(player.level);
 
-  // Parse active pets to get the correct speed & power multiplier bonuses
-  const activePets = (player as any).activePets || (player as any).rawPayload?.inv?.activePets || [];
-  const speedBoost = activePets.reduce((acc: number, p: any) => {
-    const petItem = resolveItemByGameType(p.type, "pet");
-    return acc + (petItem?.metadata?.speedBoost || 0);
-  }, 0.0);
-  const finalAttackSpeed = 2.77 * (1 + speedBoost);
-
-  const petPowerBonus = activePets.reduce((acc: number, p: any) => {
-    const petItem = resolveItemByGameType(p.type, "pet");
-    return acc + (petItem?.baseValue || 0);
-  }, 0.0);
-
-  // Baseline player stats:
+  // Baseline player stats with un-pet-boosted constants for consistent combat math:
   const curDs = curSw ? scaledSwordDamage(curSw.baseDamage, swLevel) * 1e9 : 0;
   const curMs = curSh ? scaledShieldDM(curSh.baseDM, shLevel) : 0;
 
@@ -386,9 +373,9 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     ds: curDs,
     swordDamageMultiplier: curMs,
     power: player.powerRaw,
-    petPowerBonus,
+    petPowerBonus: 0,
     armorPowerBonus: 0,
-    attackSpeed: finalAttackSpeed
+    attackSpeed: 2.77
   });
 
   interface Candidate {
@@ -444,9 +431,9 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
             ds,
             swordDamageMultiplier: curMs,
             power: player.powerRaw,
-            petPowerBonus,
+            petPowerBonus: 0,
             armorPowerBonus: 0,
-            attackSpeed: finalAttackSpeed
+            attackSpeed: 2.77
           });
           const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
           if (gain > 0) {
@@ -477,9 +464,9 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
             ds,
             swordDamageMultiplier: curMs,
             power: player.powerRaw,
-            petPowerBonus,
+            petPowerBonus: 0,
             armorPowerBonus: 0,
-            attackSpeed: finalAttackSpeed
+            attackSpeed: 2.77
           });
           const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
           if (gain > 0) {
@@ -526,9 +513,9 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
             ds: curDs,
             swordDamageMultiplier: ms,
             power: player.powerRaw,
-            petPowerBonus,
+            petPowerBonus: 0,
             armorPowerBonus: 0,
-            attackSpeed: finalAttackSpeed
+            attackSpeed: 2.77
           });
           const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
           if (gain > 0) {
@@ -559,9 +546,9 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
             ds: curDs,
             swordDamageMultiplier: ms,
             power: player.powerRaw,
-            petPowerBonus,
+            petPowerBonus: 0,
             armorPowerBonus: 0,
-            attackSpeed: finalAttackSpeed
+            attackSpeed: 2.77
           });
           const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
           if (gain > 0) {
@@ -668,6 +655,267 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
         affordable: false,
         status: `Short ${formatNumber(shortage)} Power`,
         reason: `[Late Game Goal] ${typeLabel} ${c.name} Lv${c.level} delivers +${c.damageGainPct}% combat value but requires ${formatNumber(c.cost)} Power total.`
+      };
+    });
+  }
+
+  return {
+    immediate: recommendations[0] || null,
+    longTerm: lateGameGoals[0] || null,
+    recommendations,
+    lateGameGoals,
+    powerShortageMessage
+  };
+}
+
+function getLegacyUpgradeAdviceForGrading(player: ParsedPlayer, constants = loadGradingConstants()): UpgradeAdvice {
+  const items = loadItems();
+  const curSw = getSwordData(player.sword);
+  const curSh = getShieldData(player.shield);
+  
+  const swLevel = player.swordLevel;
+  const shLevel = player.shieldLevel;
+  
+  const benchmark = getInterpolatedBenchmark(player.level);
+
+  // Current stats base
+  const curSwStats = curSw ? getSwordStats(curSw, swLevel) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
+  const curShStats = curSh ? getShieldStats(curSh, shLevel) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
+
+  interface Candidate {
+    name: string;
+    level: number;
+    type: "Sword" | "Shield";
+    damageGainPct: number;
+    cost: number;
+    priceNote: string | null;
+    isUpgradeCurrent: boolean;
+    stats: GearStats;
+  }
+
+  const candidates: Candidate[] = [];
+
+  // Evaluate Sword Candidates
+  const swords = items.filter(i => i.type === "sword" || (i as any).category === "sword");
+  swords.forEach(sw => {
+    const isCurrent = curSw && sw.name.toLowerCase() === curSw.name.toLowerCase();
+    const maxLvl = sw.maxLevel || 10;
+    
+    if (isCurrent) {
+      for (let lvl = swLevel + 1; lvl <= maxLvl; lvl++) {
+        const cost = getPriceRawFromMarket(sw.name, lvl);
+        if (cost > 0) {
+          const canStats = getSwordStats(sw, lvl);
+          if (canStats.score > curSwStats.score && canStats.damage > curSwStats.damage) {
+            const gain = Math.round(((canStats.score - curSwStats.score) / Math.max(curSwStats.score, 1)) * 100);
+            if (gain > 0) {
+              candidates.push({
+                name: sw.name,
+                level: lvl,
+                type: "Sword",
+                damageGainPct: gain,
+                cost,
+                priceNote: getPriceNoteFromMarket(sw.name, lvl),
+                isUpgradeCurrent: true,
+                stats: canStats,
+              });
+            }
+          }
+        }
+      }
+    } else {
+      if (curSw && sw.baseValue <= curSw.baseDamage) {
+        return;
+      }
+      
+      let firstUpgradeLevel = -1;
+      let totalCost = 0;
+      
+      for (let lvl = 1; lvl <= maxLvl; lvl++) {
+        const canStats = getSwordStats(sw, lvl);
+        if (canStats.score > curSwStats.score && canStats.damage > curSwStats.damage) {
+          firstUpgradeLevel = lvl;
+          let sumCost = 0;
+          for (let l = 1; l <= lvl; l++) {
+            sumCost += getPriceRawFromMarket(sw.name, l);
+          }
+          totalCost = sumCost;
+          break;
+        }
+      }
+      
+      if (firstUpgradeLevel !== -1 && totalCost > 0) {
+        const canStats = getSwordStats(sw, firstUpgradeLevel);
+        const gain = Math.round(((canStats.score - curSwStats.score) / Math.max(curSwStats.score, 1)) * 100);
+        if (gain > 0) {
+          candidates.push({
+            name: sw.name,
+            level: firstUpgradeLevel,
+            type: "Sword",
+            damageGainPct: gain,
+            cost: totalCost,
+            priceNote: getPriceNoteFromMarket(sw.name, firstUpgradeLevel),
+            isUpgradeCurrent: false,
+            stats: canStats,
+          });
+        }
+      }
+    }
+  });
+
+  // Evaluate Shield Candidates
+  const shields = items.filter(i => i.type === "shield" || (i as any).category === "shield");
+  shields.forEach(sh => {
+    const isCurrent = curSh && sh.name.toLowerCase() === curSh.name.toLowerCase();
+    const maxLvl = sh.maxLevel || 10;
+    
+    if (isCurrent) {
+      for (let lvl = shLevel + 1; lvl <= maxLvl; lvl++) {
+        const cost = getPriceRawFromMarket(sh.name, lvl);
+        if (cost > 0) {
+          const canStats = getShieldStats(sh, lvl);
+          if (canStats.score > curShStats.score && canStats.dm > curShStats.dm) {
+            const gain = Math.round(((canStats.score - curShStats.score) / Math.max(curShStats.score, 1)) * 100);
+            if (gain > 0) {
+              candidates.push({
+                name: sh.name,
+                level: lvl,
+                type: "Shield",
+                damageGainPct: gain,
+                cost,
+                priceNote: getPriceNoteFromMarket(sh.name, lvl),
+                isUpgradeCurrent: true,
+                stats: canStats,
+              });
+            }
+          }
+        }
+      }
+    } else {
+      if (curSh && sh.baseValue <= curSh.baseDM) {
+        return;
+      }
+      
+      let firstUpgradeLevel = -1;
+      let totalCost = 0;
+      
+      for (let lvl = 1; lvl <= maxLvl; lvl++) {
+        const canStats = getShieldStats(sh, lvl);
+        if (canStats.score > curShStats.score && canStats.dm > curShStats.dm) {
+          firstUpgradeLevel = lvl;
+          let sumCost = 0;
+          for (let l = 1; l <= lvl; l++) {
+            sumCost += getPriceRawFromMarket(sh.name, l);
+          }
+          totalCost = sumCost;
+          break;
+        }
+      }
+      
+      if (firstUpgradeLevel !== -1 && totalCost > 0) {
+        const canStats = getShieldStats(sh, firstUpgradeLevel);
+        const gain = Math.round(((canStats.score - curShStats.score) / Math.max(curShStats.score, 1)) * 100);
+        if (gain > 0) {
+          candidates.push({
+            name: sh.name,
+            level: firstUpgradeLevel,
+            type: "Shield",
+            damageGainPct: gain,
+            cost: totalCost,
+            priceNote: getPriceNoteFromMarket(sh.name, firstUpgradeLevel),
+            isUpgradeCurrent: false,
+            stats: canStats,
+          });
+        }
+      }
+    }
+  });
+
+  if (candidates.length === 0) {
+    const fallbackGoal: UpgradeGoal = {
+      name: "No upgrade currently recommended.",
+      level: 0,
+      type: "Power",
+      damageGainPct: 0,
+      marketPriceNote: null,
+      affordable: true,
+      status: "Affordable Now",
+      reason: "No upgrade currently recommended. Your current equipment is the strongest available."
+    };
+    return {
+      immediate: fallbackGoal,
+      longTerm: null,
+      recommendations: [fallbackGoal],
+      lateGameGoals: [],
+      powerShortageMessage: null
+    };
+  }
+
+  const getEfficiency = (c: Candidate) => {
+    const logCost = Math.log10(c.cost) > 0 ? Math.log10(c.cost) : 1;
+    return c.damageGainPct / logCost;
+  };
+
+  const affordable = candidates.filter(c => player.powerRaw >= c.cost);
+  const unaffordable = candidates.filter(c => player.powerRaw < c.cost);
+
+  let powerShortageMessage: string | null = null;
+  let recommendations: UpgradeGoal[] = [];
+  let lateGameGoals: UpgradeGoal[] = [];
+
+  if (affordable.length > 0) {
+    affordable.sort((a, b) => getEfficiency(b) - getEfficiency(a));
+    
+    const uniqueSelected: Candidate[] = [];
+    affordable.forEach(c => {
+      if (!uniqueSelected.some(u => u.name === c.name && u.level === c.level)) {
+        uniqueSelected.push(c);
+      }
+    });
+
+    recommendations = uniqueSelected.slice(0, 3).map((c, index) => {
+      const reason = `[Best Value] Upgrading to ${c.name} Lv${c.level} yields a solid +${c.damageGainPct}% combat value increase within your current Power limits.`;
+      return {
+        name: c.name,
+        level: c.level,
+        type: c.type,
+        damageGainPct: c.damageGainPct,
+        marketPriceNote: c.priceNote,
+        estimatedRequirements: `Level ~${benchmark.minLevel.toLocaleString()}, Power ~${formatNumber(benchmark.avgPower)}`,
+        affordable: true,
+        status: "Affordable Now",
+        reason
+      };
+    });
+  } else {
+    const sortedCheapest = [...candidates].sort((a, b) => a.cost - b.cost);
+    const cheapest = sortedCheapest[0];
+    const shortage = cheapest.cost - player.powerRaw;
+    powerShortageMessage = `Need ${formatNumber(shortage)} more Power`;
+  }
+
+  if (unaffordable.length > 0) {
+    unaffordable.sort((a, b) => a.cost - b.cost);
+    
+    const uniqueLate: Candidate[] = [];
+    unaffordable.forEach(c => {
+      if (!uniqueLate.some(u => u.name === c.name && u.level === c.level)) {
+        uniqueLate.push(c);
+      }
+    });
+
+    lateGameGoals = uniqueLate.slice(0, 3).map(c => {
+      const shortage = c.cost - player.powerRaw;
+      return {
+        name: c.name,
+        level: c.level,
+        type: c.type,
+        damageGainPct: c.damageGainPct,
+        marketPriceNote: c.priceNote,
+        estimatedRequirements: `Level ~${benchmark.minLevel.toLocaleString()}, Power ~${formatNumber(benchmark.avgPower)}`,
+        affordable: false,
+        status: `Short ${formatNumber(shortage)} Power`,
+        reason: `[Late Game Goal] Upgrading to ${c.name} Lv${c.level} delivers +${c.damageGainPct}% combat value but requires ${formatNumber(c.cost)} Power total.`
       };
     });
   }
@@ -791,9 +1039,10 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
 
   // 10. Upgrade Advice & Potential Score
   const upgradeAdvice = getUpgradeAdvice(player, constants);
+  const legacyUpgradeAdvice = getLegacyUpgradeAdviceForGrading(player, constants);
   let upgradePotentialScore = 100;
-  if (upgradeAdvice.immediate && upgradeAdvice.immediate.type !== "Power") {
-    upgradePotentialScore = clamp(Math.round(100 - upgradeAdvice.immediate.damageGainPct));
+  if (legacyUpgradeAdvice.immediate && legacyUpgradeAdvice.immediate.type !== "Power") {
+    upgradePotentialScore = clamp(Math.round(100 - legacyUpgradeAdvice.immediate.damageGainPct));
   }
 
   // 11. Quest progress score (REMOVED - SwordMasters is only the data source)

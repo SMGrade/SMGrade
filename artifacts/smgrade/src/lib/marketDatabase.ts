@@ -40,6 +40,9 @@ export const DEFAULT_PRICES_ESTIMATED: Record<string, Record<number, string>> = 
 };
 
 export function loadMarketData(): MarketItem[] {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return initializeMarketData();
+  }
   try {
     const rawNew = localStorage.getItem(MARKET_STORAGE_KEY);
     if (rawNew) {
@@ -78,7 +81,7 @@ export function loadMarketData(): MarketItem[] {
             }
           }
         });
-        if (updated) {
+        if (updated && typeof window !== "undefined" && window.localStorage) {
           localStorage.setItem(MARKET_STORAGE_KEY, JSON.stringify(parsed));
         }
         return parsed;
@@ -91,7 +94,9 @@ export function loadMarketData(): MarketItem[] {
 }
 
 export function saveMarketData(data: MarketItem[]): void {
-  localStorage.setItem(MARKET_STORAGE_KEY, JSON.stringify(data));
+  if (typeof window !== "undefined" && window.localStorage) {
+    localStorage.setItem(MARKET_STORAGE_KEY, JSON.stringify(data));
+  }
 }
 
 export function initializeMarketData(): MarketItem[] {
@@ -132,7 +137,9 @@ export function initializeMarketData(): MarketItem[] {
     }
   });
 
-  localStorage.setItem(MARKET_STORAGE_KEY, JSON.stringify(list));
+  if (typeof window !== "undefined" && window.localStorage) {
+    localStorage.setItem(MARKET_STORAGE_KEY, JSON.stringify(list));
+  }
   return list;
 }
 

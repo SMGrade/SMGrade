@@ -501,9 +501,9 @@ export default function Result() {
       ds,
       swordDamageMultiplier: ms,
       power: powerRaw,
-      petPowerBonus,
+      petPowerBonus: 0,
       armorPowerBonus: 0,
-      attackSpeed: finalAttackSpeed
+      attackSpeed: 2.77
     });
 
     return {
@@ -1063,7 +1063,7 @@ export default function Result() {
                 ds: calcSwordDs,
                 swordDamageMultiplier: calcShieldMs,
                 power: calcPower,
-                petPowerBonus: computedStats.petPowerBonus,
+                petPowerBonus: 0,
                 armorPowerBonus: 0,
                 attackSpeed: 2.77 * (1 + calcSpeedBoost / 100)
               });
@@ -1210,7 +1210,7 @@ export default function Result() {
                             ds: pDS,
                             swordDamageMultiplier: pMS,
                             power: p.powerRaw,
-                            petPowerBonus: p.id === "current-player" ? computedStats.petPowerBonus : 0,
+                            petPowerBonus: 0,
                             armorPowerBonus: 0,
                             attackSpeed: 2.77
                           });
