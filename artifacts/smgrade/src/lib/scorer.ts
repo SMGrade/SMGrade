@@ -4,7 +4,7 @@ import {
   getInterpolatedBenchmark,
   getSwordTier,
   getShieldTier,
-} from "./benchmark";
+} from "./benchmark.js";
 import {
   getSwordData,
   getShieldData,
@@ -16,13 +16,13 @@ import {
   shieldUpgradeGain,
   loadItems,
   resolveItemByGameType,
-} from "./gearDatabase";
-import { getPriceRawFromMarket, getPriceNoteFromMarket } from "./marketDatabase";
-import { calculateDamageStats } from "./damageCalc";
-import { calculateNetWorth } from "./priceProvider";
-import { formatNumber, parseNumber } from "./numberParser";
-import type { ParsedPlayer } from "./parser";
-import { loadGradingConstants } from "./settings";
+} from "./gearDatabase.js";
+import { getPriceRawFromMarket, getPriceNoteFromMarket } from "./marketDatabase.js";
+import { calculateDamageStats } from "./damageCalc.js";
+import { calculateNetWorth } from "./priceProvider.js";
+import { formatNumber, parseNumber } from "./numberParser.js";
+import type { ParsedPlayer } from "./parser.js";
+import { loadGradingConstants } from "./settings.js";
 
 export type GradeLetter = "S+" | "S" | "A+" | "A" | "B+" | "B" | "C+" | "C" | "D";
 
@@ -460,7 +460,7 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   const candidates: Candidate[] = [];
 
   // 1. Evaluate Sword Upgrade/Replacement Candidates
-  items.forEach(item => {
+  items.forEach((item: any) => {
     if (item.type !== "sword") return;
     
     // Check obtainability
@@ -561,7 +561,7 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   });
 
   // 2. Evaluate Shield Upgrade/Replacement Candidates
-  items.forEach(item => {
+  items.forEach((item: any) => {
     if (item.type !== "shield") return;
 
     // Check obtainability
@@ -789,8 +789,8 @@ function getLegacyUpgradeAdviceForGrading(player: ParsedPlayer, constants = load
   const candidates: Candidate[] = [];
 
   // Evaluate Sword Candidates
-  const swords = items.filter(i => i.type === "sword" || (i as any).category === "sword");
-  swords.forEach(sw => {
+  const swords = items.filter((i: any) => i.type === "sword" || (i as any).category === "sword");
+  swords.forEach((sw: any) => {
     const isCurrent = curSw && sw.name.toLowerCase() === curSw.name.toLowerCase();
     const maxLvl = sw.maxLevel || 10;
     
@@ -857,8 +857,8 @@ function getLegacyUpgradeAdviceForGrading(player: ParsedPlayer, constants = load
   });
 
   // Evaluate Shield Candidates
-  const shields = items.filter(i => i.type === "shield" || (i as any).category === "shield");
-  shields.forEach(sh => {
+  const shields = items.filter((i: any) => i.type === "shield" || (i as any).category === "shield");
+  shields.forEach((sh: any) => {
     const isCurrent = curSh && sh.name.toLowerCase() === curSh.name.toLowerCase();
     const maxLvl = sh.maxLevel || 10;
     
@@ -1090,20 +1090,20 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
   const curSwStats = swData ? getSwordStats(swData, player.swordLevel) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
   const curShStats = shData ? getShieldStats(shData, player.shieldLevel) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
 
-  const allSwords = items.filter(i => i.type === "sword" || (i as any).category === "sword");
-  const allShields = items.filter(i => i.type === "shield" || (i as any).category === "shield");
+  const allSwords = items.filter((i: any) => i.type === "sword" || (i as any).category === "sword");
+  const allShields = items.filter((i: any) => i.type === "shield" || (i as any).category === "shield");
 
   let maxWeaponScore = 1;
   let maxShieldScore = 1;
 
-  allSwords.forEach(sw => {
+  allSwords.forEach((sw: any) => {
     const swMaxStats = getSwordStats(sw, sw.maxLevel || 10);
     if (swMaxStats.score > maxWeaponScore) {
       maxWeaponScore = swMaxStats.score;
     }
   });
 
-  allShields.forEach(sh => {
+  allShields.forEach((sh: any) => {
     const shMaxStats = getShieldStats(sh, sh.maxLevel || 10);
     if (shMaxStats.score > maxShieldScore) {
       maxShieldScore = shMaxStats.score;

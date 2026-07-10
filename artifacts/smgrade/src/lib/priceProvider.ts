@@ -1,5 +1,5 @@
-import { parseNumber, formatNumber } from "./numberParser";
-import { resolveItemByGameType } from "./gearDatabase";
+import { parseNumber, formatNumber } from "./numberParser.js";
+import { resolveItemByGameType } from "./gearDatabase.js";
 
 export interface NetWorthResult {
   equipped: number;

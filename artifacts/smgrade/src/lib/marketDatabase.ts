@@ -1,6 +1,6 @@
 // SwordMasters Unified Canonical Market Price Database
-import { loadItems } from "./gearDatabase";
-import { parseNumber, formatNumber } from "./numberParser";
+import { loadItems } from "./gearDatabase.js";
+import { parseNumber, formatNumber } from "./numberParser.js";
 
 export interface MarketItem {
   name: string;

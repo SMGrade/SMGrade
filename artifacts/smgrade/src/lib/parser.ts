@@ -1,4 +1,4 @@
-import { parseNumber } from "./numberParser";
+import { parseNumber } from "./numberParser.js";
 
 export interface ParsedPlayer {
   username: string;
