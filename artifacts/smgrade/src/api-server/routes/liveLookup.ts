@@ -35,6 +35,7 @@ const router = Router();
 let isConnecting = false;
 
 router.get("/live-lookup", async (req: any, res: any) => {
+  const startTime = Date.now();
   const username = req.query["username"] as string;
   if (!username) {
     res.status(400).json({ success: false, error: "Username query parameter is required." });
@@ -124,6 +125,88 @@ router.get("/live-lookup", async (req: any, res: any) => {
         responded = true;
         isConnecting = false;
         try { ws?.close(); } catch (_) {}
+        
+        // Log asynchronously to jsonDb
+        setImmediate(() => {
+          try {
+            const duration = Date.now() - startTime;
+            const ipAddress = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "127.0.0.1";
+            
+            if (status === 200 && body && (body as any).success) {
+              const playerInfo = (body as any).playerInfo;
+              const { normalizeLivePlayer } = require("../../lib/liveLookupEngine");
+              const { scorePlayer } = require("../../lib/scorer");
+              const { jsonDb } = require("../lib/jsonDb");
+              
+              const normalized = normalizeLivePlayer(playerInfo);
+              const scores = scorePlayer(normalized);
+              
+              jsonDb.addLookupLog({
+                usernameSearched: playerInfo.username || username,
+                ipAddress,
+                sessionId: "live-lookup-session",
+                userAccount: null,
+                userType: "Guest",
+                status: "Success",
+                responseTimeMs: duration,
+                grade: scores.overallGrade,
+                gearScore: scores.gearScore,
+                wealthScore: scores.wealthScore,
+                powerScore: scores.powerScore,
+                progressionScore: scores.progressScore,
+                recommendedUpgrade: scores.upgradeAdvice.immediate ? `${scores.upgradeAdvice.immediate.name} Lv${scores.upgradeAdvice.immediate.level}` : "None",
+                playerLevel: normalized.level,
+                playerPower: normalized.powerRaw,
+                playerGold: normalized.goldRaw,
+                equippedSword: normalized.sword.split(",")[0] || "Unknown",
+                equippedShield: normalized.shield.split(",")[0] || "Unknown",
+                worldNumber: normalized.worldNumber || 1
+              });
+              
+              jsonDb.addActivityLog(
+                playerInfo.username || username,
+                "Live Lookup",
+                `Successful live lookup of ${playerInfo.username || username}`,
+                "Success",
+                duration
+              );
+            } else {
+              const { jsonDb } = require("../lib/jsonDb");
+              jsonDb.addLookupLog({
+                usernameSearched: username,
+                ipAddress,
+                sessionId: "live-lookup-session",
+                userAccount: null,
+                userType: "Guest",
+                status: "Failed",
+                responseTimeMs: duration,
+                grade: "—",
+                gearScore: 0,
+                wealthScore: 0,
+                powerScore: 0,
+                progressionScore: 0,
+                recommendedUpgrade: "None",
+                playerLevel: 0,
+                playerPower: 0,
+                playerGold: 0,
+                equippedSword: "Unknown",
+                equippedShield: "Unknown",
+                worldNumber: 1
+              });
+              
+              jsonDb.addActivityLog(
+                username,
+                "Live Lookup",
+                `Failed live lookup of ${username}`,
+                "Failed",
+                duration
+              );
+            }
+          } catch (logErr) {
+            console.error("Error logging live lookup:", logErr);
+          }
+        });
+
         res.status(status).json(body);
         resolve();
       };

@@ -31,6 +31,8 @@ interface ActivityLog {
   username: string;
   action: string;
   details: string;
+  status?: string;
+  responseTimeMs?: number;
 }
 
 interface AnalyticsStats {
@@ -80,6 +82,12 @@ export default function MasterVault() {
   const [filterGrade, setFilterGrade] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterWorld, setFilterWorld] = useState("");
+
+  // Activity Filters
+  const [actSearch, setActSearch] = useState("");
+  const [actFilterAction, setActFilterAction] = useState("");
+  const [actFilterStatus, setActFilterStatus] = useState("");
+  const [actFilterDate, setActFilterDate] = useState("");
 
   const unlocked = !!token;
 
@@ -375,47 +383,124 @@ export default function MasterVault() {
             </div>
           )}
 
-          {activeTab === "activity" && (
-            <div className="border border-white/[0.04] rounded-2xl bg-[#070b13]/60 glass-panel overflow-x-auto shadow-md">
-              <table className="w-full border-collapse text-[10px] text-left">
-                <thead>
-                  <tr className="border-b border-white/[0.04] text-white/30 uppercase font-black tracking-wider bg-white/[0.01]">
-                    <th className="p-3.5 w-40">Time</th>
-                    <th className="p-3.5 w-32">Username</th>
-                    <th className="p-3.5 w-32">Action</th>
-                    <th className="p-3.5">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.02] font-semibold text-white/80">
-                  {lookups.map((l) => (
-                    <tr key={l.id} className="hover:bg-white/[0.01] transition-colors font-semibold">
-                      <td className="p-3.5 text-white/40 font-mono">
-                        {new Date(l.timestamp).toLocaleString()}
-                      </td>
-                      <td className="p-3.5 text-amber-400 font-bold">{l.usernameSearched}</td>
-                      <td className="p-3.5">
-                        <span className="bg-[#8ab4c9]/10 border border-[#8ab4c9]/25 text-[#8ab4c9] px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider block text-center max-w-[110px]">
-                          Player Analysis
-                        </span>
-                      </td>
-                      <td className="p-3.5">
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                          l.status === "Success" ? "bg-[#5ecb7a]/10 border border-[#5ecb7a]/20 text-[#5ecb7a]" : "bg-red-500/10 border border-red-500/20 text-red-400"
-                        }`}>
-                          {l.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {lookups.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="p-8 text-center text-white/30 italic">No player lookup logs recorded yet.</td>
-                    </tr>
+          {activeTab === "activity" && (() => {
+            const filteredActivities = activities.filter(act => {
+              if (actSearch && !act.username.toLowerCase().includes(actSearch.toLowerCase())) return false;
+              if (actFilterAction && act.action !== actFilterAction) return false;
+              if (actFilterStatus) {
+                const s = act.status || "Info";
+                if (actFilterStatus === "Info" && s === "Success") return false;
+                if (actFilterStatus === "Info" && s === "Failed") return false;
+                if (actFilterStatus !== "Info" && s !== actFilterStatus) return false;
+              }
+              if (actFilterDate) {
+                const datePart = new Date(act.timestamp).toISOString().split('T')[0];
+                if (datePart !== actFilterDate) return false;
+              }
+              return true;
+            });
+
+            return (
+              <div className="space-y-4">
+                {/* Filters HUD */}
+                <div className="border border-white/[0.04] rounded-xl p-4 bg-[#070b13]/60 glass-panel flex flex-wrap gap-3 items-center">
+                  <input
+                    type="text"
+                    placeholder="Search username..."
+                    className="bg-white/[0.01] border border-white/[0.03] text-white text-[10px] px-3 py-2 rounded-lg outline-none w-36 font-bold font-mono placeholder:text-white/20"
+                    value={actSearch}
+                    onChange={(e) => setActSearch(e.target.value)}
+                  />
+                  <select
+                    className="bg-[#03050b] border border-white/[0.03] text-white/60 text-[10px] px-2 py-2 rounded-lg outline-none font-bold"
+                    value={actFilterAction}
+                    onChange={(e) => setActFilterAction(e.target.value)}
+                  >
+                    <option value="">All Actions</option>
+                    <option value="Player Analysis">Player Analysis</option>
+                    <option value="Live Lookup">Live Lookup</option>
+                    <option value="Admin Login">Admin Login</option>
+                    <option value="Admin Login Attempt Failed">Login Failed</option>
+                    <option value="Database Restored">Database Restored</option>
+                  </select>
+                  <select
+                    className="bg-[#03050b] border border-white/[0.03] text-white/60 text-[10px] px-2 py-2 rounded-lg outline-none font-bold"
+                    value={actFilterStatus}
+                    onChange={(e) => setActFilterStatus(e.target.value)}
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="Success">Success</option>
+                    <option value="Failed">Failed</option>
+                    <option value="Info">Info/Other</option>
+                  </select>
+                  <input
+                    type="date"
+                    className="bg-[#03050b] border border-white/[0.03] text-white/60 text-[10px] px-2 py-1.5 rounded-lg outline-none font-bold font-mono"
+                    value={actFilterDate}
+                    onChange={(e) => setActFilterDate(e.target.value)}
+                  />
+                  {(actSearch || actFilterAction || actFilterStatus || actFilterDate) && (
+                    <button 
+                      onClick={() => {
+                        setActSearch("");
+                        setActFilterAction("");
+                        setActFilterStatus("");
+                        setActFilterDate("");
+                      }} 
+                      className="text-[9px] font-black uppercase text-amber-400 hover:underline cursor-pointer"
+                    >
+                      Clear Filters
+                    </button>
                   )}
-                </tbody>
-              </table>
-            </div>
-          )}
+                </div>
+
+                <div className="border border-white/[0.04] rounded-2xl bg-[#070b13]/60 glass-panel overflow-x-auto shadow-md">
+                  <table className="w-full border-collapse text-[10px] text-left">
+                    <thead>
+                      <tr className="border-b border-white/[0.04] text-white/30 uppercase font-black tracking-wider bg-white/[0.01]">
+                        <th className="p-3.5 w-40">Time</th>
+                        <th className="p-3.5 w-32">Username</th>
+                        <th className="p-3.5 w-32">Action</th>
+                        <th className="p-3.5">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.02] font-semibold text-white/80">
+                      {filteredActivities.map((act) => (
+                        <tr key={act.id} className="hover:bg-white/[0.01] transition-colors font-semibold">
+                          <td className="p-3.5 text-white/40 font-mono">
+                            {new Date(act.timestamp).toLocaleString()}
+                          </td>
+                          <td className="p-3.5 text-amber-400 font-bold">{act.username}</td>
+                          <td className="p-3.5">
+                            <span className="bg-[#8ab4c9]/10 border border-[#8ab4c9]/25 text-[#8ab4c9] px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider block text-center max-w-[110px]">
+                              {act.action}
+                            </span>
+                          </td>
+                          <td className="p-3.5 flex items-center justify-between">
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                              act.status === "Success" ? "bg-[#5ecb7a]/10 border border-[#5ecb7a]/20 text-[#5ecb7a]" :
+                              act.status === "Failed" ? "bg-red-500/10 border border-red-500/20 text-red-400" :
+                              "bg-white/5 border border-white/10 text-white/60"
+                            }`}>
+                              {act.status || "Info"}
+                            </span>
+                            {act.responseTimeMs !== undefined && (
+                              <span className="text-[9px] text-white/35 font-mono ml-2">{act.responseTimeMs}ms</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredActivities.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="p-8 text-center text-white/30 italic">No player lookup logs recorded yet.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
 
           {activeTab === "searched" && (
             <div className="border border-white/[0.04] rounded-2xl bg-[#070b13]/60 glass-panel overflow-x-auto shadow-md">

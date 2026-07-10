@@ -25,6 +25,16 @@ interface LookupLogEntry {
   status: string;
 }
 
+interface ActivityLogEntry {
+  id: string;
+  timestamp: string;
+  username: string;
+  action: string;
+  details: string;
+  status?: string;
+  responseTimeMs?: number;
+}
+
 interface AuditLogEntry {
   id: string;
   timestamp: string;
@@ -49,18 +59,20 @@ interface SystemHealthInfo {
 }
 
 export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) {
-  const [activeTab, setActiveTab] = useState<"users" | "logins" | "audits" | "backup" | "health">("users");
+  const [activeTab, setActiveTab] = useState<"analytics" | "logins" | "audits" | "backup" | "health">("analytics");
   
-  // States for user management
-  const [users, setUsers] = useState<UserAdminInfo[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [editingUser, setEditingUser] = useState<UserAdminInfo | null>(null);
-  const [newUsername, setNewUsername] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newRole, setNewRole] = useState<string>("viewer");
+  // States for analytics dashboard
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [popularGear, setPopularGear] = useState<any>(null);
+  const [mostSearched, setMostSearched] = useState<any[]>([]);
 
   // States for logs
-  const [logins, setLogins] = useState<LookupLogEntry[]>([]);
+  const [activities, setActivities] = useState<ActivityLogEntry[]>([]);
+  const [actSearch, setActSearch] = useState("");
+  const [actFilterAction, setActFilterAction] = useState("");
+  const [actFilterStatus, setActFilterStatus] = useState("");
+  const [actFilterDate, setActFilterDate] = useState("");
+
   const [audits, setAudits] = useState<AuditLogEntry[]>([]);
   
   // Backup states
@@ -87,12 +99,16 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
     setActionMessage("");
     try {
       const headers = { "x-master-token": token };
-      if (activeTab === "users") {
-        const res = await fetch(`/api/master/users?q=${encodeURIComponent(searchQuery)}`, { headers });
-        if (res.ok) setUsers(await res.json());
+      if (activeTab === "analytics") {
+        const res = await fetch("/api/master/analytics", { headers });
+        if (res.ok) setAnalytics(await res.json());
+        const pgRes = await fetch("/api/master/popular-gear", { headers });
+        if (pgRes.ok) setPopularGear(await pgRes.json());
+        const msRes = await fetch("/api/master/most-searched", { headers });
+        if (msRes.ok) setMostSearched(await msRes.json());
       } else if (activeTab === "logins") {
-        const res = await fetch("/api/master/lookup-logs", { headers });
-        if (res.ok) setLogins(await res.json());
+        const res = await fetch("/api/master/activity-logs", { headers });
+        if (res.ok) setActivities(await res.json());
       } else if (activeTab === "audits") {
         const res = await fetch("/api/master/audit-logs", { headers });
         if (res.ok) setAudits(await res.json());
@@ -104,118 +120,6 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
       setActionError("Failed to fetch master data.");
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    loadTabContent();
-  }
-
-  async function handleStatusToggle(userId: string, currentStatus: string) {
-    const nextStatus = currentStatus === "active" ? "suspended" : "active";
-    try {
-      const res = await fetch("/api/master/users/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-master-token": token },
-        body: JSON.stringify({ userId, status: nextStatus }),
-      });
-      if (res.ok) {
-        setActionMessage(`User status changed successfully to ${nextStatus}.`);
-        loadTabContent();
-      } else {
-        const err = await res.json() as { error?: string };
-        setActionError(err.error || "Failed to update user status.");
-      }
-    } catch {
-      setActionError("Connection error.");
-    }
-  }
-
-  async function startEdit(user: UserAdminInfo) {
-    setEditingUser(user);
-    setNewUsername(user.username);
-    setNewRole(user.role);
-    setNewPassword("");
-    setActionError("");
-    setActionMessage("");
-  }
-
-  async function handleUpdateUser(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingUser) return;
-    setActionError("");
-    setActionMessage("");
-
-    try {
-      const headers = { "Content-Type": "application/json", "x-master-token": token };
-      // 1. Role update
-      if (newRole !== editingUser.role) {
-        const res = await fetch("/api/master/users/role", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ userId: editingUser.id, role: newRole }),
-        });
-        if (!res.ok) {
-          const err = await res.json() as { error?: string };
-          setActionError(err.error || "Failed to update role.");
-          return;
-        }
-      }
-
-      // 2. Username update
-      if (newUsername.trim() !== editingUser.username) {
-        const res = await fetch("/api/master/users/change-username", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ userId: editingUser.id, newUsername: newUsername.trim() }),
-        });
-        if (!res.ok) {
-          const err = await res.json() as { error?: string };
-          setActionError(err.error || "Failed to update username.");
-          return;
-        }
-      }
-
-      // 3. Password reset
-      if (newPassword.trim()) {
-        const res = await fetch("/api/master/users/reset-password", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ userId: editingUser.id, newPassword: newPassword.trim() }),
-        });
-        if (!res.ok) {
-          const err = await res.json() as { error?: string };
-          setActionError(err.error || "Failed to reset password.");
-          return;
-        }
-      }
-
-      setActionMessage("User details updated successfully.");
-      setEditingUser(null);
-      loadTabContent();
-    } catch {
-      setActionError("Connection error.");
-    }
-  }
-
-  async function handleDeleteUser(userId: string) {
-    if (!confirm("Are you absolutely sure you want to permanently delete this user? This cannot be undone.")) return;
-    try {
-      const res = await fetch("/api/master/users", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json", "x-master-token": token },
-        body: JSON.stringify({ userId }),
-      });
-      if (res.ok) {
-        setActionMessage("User permanently deleted.");
-        loadTabContent();
-      } else {
-        const err = await res.json() as { error?: string };
-        setActionError(err.error || "Failed to delete user.");
-      }
-    } catch {
-      setActionError("Connection error.");
     }
   }
 
@@ -291,7 +195,7 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
       {/* Tabs */}
       <div className="flex border-b border-white/[0.04] gap-2 overflow-x-auto pb-1">
         {[
-          { id: "users", label: "User Management" },
+          { id: "analytics", label: "Analytics Dashboard" },
           { id: "logins", label: "Player Activity Logs" },
           { id: "audits", label: "System Audits" },
           { id: "backup", label: "Backup & Restore" },
@@ -322,142 +226,198 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
           </div>
         ) : (
           <>
-            {activeTab === "users" && (
-              <div className="space-y-4">
-                {/* Search Bar */}
-                <form onSubmit={handleSearch} className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Search users by name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 bg-[#03050b] border border-white/[0.04] focus:border-amber-500/30 text-white text-xs rounded-lg px-4 py-2.5 outline-none placeholder-white/20"
-                  />
-                  <button type="submit" className="px-5 py-2.5 rounded-lg button-gold text-xs font-black">Search</button>
-                </form>
-
-                {editingUser ? (
-                  // Edit Modal/View
-                  <form onSubmit={handleUpdateUser} className="border border-white/[0.04] p-5 rounded-xl glass-panel space-y-4 max-w-md">
-                    <h3 className="text-sm font-black text-amber-400 uppercase tracking-wider">Edit: {editingUser.username}</h3>
-                    
-                    <div className="space-y-3 text-xs">
-                      <div>
-                        <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Modify Username</label>
-                        <input
-                          type="text"
-                          value={newUsername}
-                          onChange={(e) => setNewUsername(e.target.value)}
-                          className="w-full bg-[#03050b] border border-white/[0.04] text-white rounded px-3 py-2 outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Change Role permissions</label>
-                        <select
-                          value={newRole}
-                          onChange={(e) => setNewRole(e.target.value)}
-                          className="w-full bg-[#03050b] border border-white/[0.04] text-white rounded px-3 py-2 outline-none cursor-pointer"
-                        >
-                          <option value="owner">Owner (Full commands)</option>
-                          <option value="admin">Admin (Modify values)</option>
-                          <option value="moderator">Moderator (Check stats)</option>
-                          <option value="viewer">Viewer (Read-only)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Reset Password (leave empty to keep current)</label>
-                        <input
-                          type="password"
-                          value={newPassword}
-                          placeholder="New password value"
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full bg-[#03050b] border border-white/[0.04] text-white rounded px-3 py-2 outline-none"
-                        />
-                      </div>
+            {activeTab === "analytics" && analytics && (
+              <div className="space-y-6">
+                {/* Stats Cards Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: "Analyses Today", val: analytics.todayLookups },
+                    { label: "Analyses This Week", val: analytics.weekLookups },
+                    { label: "Total Stored", val: analytics.totalLookups },
+                    { label: "Live Lookups", val: `${analytics.successfulLiveLookups} / ${analytics.liveLookupsCount}` },
+                    { label: "Avg Grade", val: analytics.avgGrade },
+                    { label: "Avg Response Time", val: `${analytics.avgResponseTime}ms` },
+                    { label: "Success Rate", val: `${analytics.successRate}%` },
+                    { label: "Last Analysis", val: analytics.lastAnalysisTime ? new Date(analytics.lastAnalysisTime).toLocaleDateString() : "Never" },
+                  ].map((s, idx) => (
+                    <div key={idx} className="border border-white/[0.03] rounded-xl p-4 bg-[#070b13]/60 glass-panel shadow-sm">
+                      <span className="text-[9px] uppercase font-black text-white/30 tracking-wider block mb-1">{s.label}</span>
+                      <span className="text-xl font-black font-mono text-white">{s.val}</span>
                     </div>
+                  ))}
+                </div>
 
-                    <div className="flex gap-2 pt-2">
-                      <button type="submit" className="px-4 py-2 rounded bg-amber-500 text-black font-black text-xs">Save Updates</button>
-                      <button type="button" onClick={() => setEditingUser(null)} className="px-4 py-2 rounded bg-white/5 text-white/60 text-xs">Cancel</button>
-                    </div>
-                  </form>
-                ) : (
-                  // Users List
-                  <div className="border border-white/[0.04] rounded-xl overflow-hidden bg-white/[0.01] glass-panel">
-                    <div className="grid grid-cols-6 px-4 py-3 border-b border-white/[0.04] bg-white/[0.01] text-[9px] uppercase tracking-widest font-black text-white/30">
-                      <span>Username</span>
-                      <span className="text-center">Role</span>
-                      <span className="text-center">Status</span>
-                      <span className="text-center">Scans</span>
-                      <span className="text-center">Last Login</span>
-                      <span className="text-right">Actions</span>
-                    </div>
-
-                    <div className="divide-y divide-white/[0.02] text-xs">
-                      {users.length === 0 ? (
-                        <div className="text-center text-white/20 py-8">No registered users found.</div>
-                      ) : (
-                        users.map((u) => (
-                          <div key={u.id} className="grid grid-cols-6 px-4 py-3 items-center">
-                            <span className="font-bold text-white truncate pr-2">{u.username}</span>
-                            <span className="text-center font-bold text-amber-400 capitalize">{u.role}</span>
-                            <span className={`text-center font-black ${u.status === "active" ? "text-[#5ecb7a]" : "text-red-400"}`}>{u.status}</span>
-                            <span className="text-center font-mono text-white/60">{u.totalAnalyses}</span>
-                            <span className="text-center text-white/40 font-mono truncate">{u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : "Never"}</span>
-                            <div className="flex gap-2 justify-end">
-                              <button onClick={() => startEdit(u)} className="text-[10px] text-amber-400 hover:underline font-bold">Edit</button>
-                              {u.role !== "owner" && (
-                                <>
-                                  <button onClick={() => handleStatusToggle(u.id, u.status)} className={`text-[10px] hover:underline font-bold ${u.status === "active" ? "text-yellow-400" : "text-[#5ecb7a]"}`}>
-                                    {u.status === "active" ? "Suspend" : "Activate"}
-                                  </button>
-                                  <button onClick={() => handleDeleteUser(u.id)} className="text-[10px] text-red-400 hover:underline font-bold">Delete</button>
-                                </>
-                              )}
+                {/* Grade Distribution Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
+                    <h3 className="text-xs uppercase font-black tracking-widest text-amber-400 font-display">Grade Distribution</h3>
+                    <div className="space-y-3">
+                      {popularGear?.grades?.map((g: any) => {
+                        const pct = analytics?.totalLookups ? Math.round((g.count / analytics.totalLookups) * 100) : 0;
+                        return (
+                          <div key={g.name} className="space-y-1">
+                            <div className="flex justify-between text-[10px] font-bold">
+                              <span className="text-white/60">Grade {g.name}</span>
+                              <span className="font-mono text-white">{g.count} ({pct}%)</span>
                             </div>
+                            <div className="h-1.5 bg-white/[0.02] border border-white/[0.01] rounded-full overflow-hidden">
+                              <div className="h-full bg-amber-500 rounded-full" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {(!popularGear?.grades || popularGear.grades.length === 0) && (
+                        <p className="text-xs text-white/30 italic">No grade analysis records available yet.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Most Searched Usernames */}
+                  <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
+                    <h3 className="text-xs uppercase font-black tracking-widest text-amber-400 font-display">Most Searched Players</h3>
+                    <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1 font-semibold text-xs text-white/80">
+                      {mostSearched.slice(0, 5).map((ms, idx) => (
+                        <div key={idx} className="flex justify-between text-[10px] font-bold border-b border-white/[0.02] pb-2 last:border-0">
+                          <span className="text-white font-bold">{ms.username}</span>
+                          <span className="font-mono text-amber-400">{ms.searches} searches</span>
+                        </div>
+                      ))}
+                      {mostSearched.length === 0 && (
+                        <p className="text-xs text-white/30 italic">No search statistics available yet.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Top Gear Meta */}
+                  <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
+                    <h3 className="text-xs uppercase font-black tracking-widest text-amber-400 font-display">Popular Weapons Meta</h3>
+                    <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1 font-semibold text-xs text-white/80">
+                      {popularGear?.swords?.slice(0, 5).map((s: any, idx: number) => (
+                        <div key={idx} className="flex justify-between text-[10px] font-bold border-b border-white/[0.02] pb-2 last:border-0">
+                          <span className="text-white">{s.name}</span>
+                          <span className="font-mono text-amber-400">{s.count} times</span>
+                        </div>
+                      ))}
+                      {(!popularGear?.swords || popularGear.swords.length === 0) && (
+                        <p className="text-xs text-white/30 italic">No sword stats recorded yet.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "logins" && (() => {
+              const filteredActivities = activities.filter(act => {
+                if (actSearch && !act.username.toLowerCase().includes(actSearch.toLowerCase())) return false;
+                if (actFilterAction && act.action !== actFilterAction) return false;
+                if (actFilterStatus) {
+                  const s = act.status || "Info";
+                  if (actFilterStatus === "Info" && s === "Success") return false;
+                  if (actFilterStatus === "Info" && s === "Failed") return false;
+                  if (actFilterStatus !== "Info" && s !== actFilterStatus) return false;
+                }
+                if (actFilterDate) {
+                  const datePart = new Date(act.timestamp).toISOString().split('T')[0];
+                  if (datePart !== actFilterDate) return false;
+                }
+                return true;
+              });
+
+              return (
+                <div className="space-y-4">
+                  {/* Filters HUD */}
+                  <div className="border border-white/[0.04] rounded-xl p-4 bg-[#070b13]/60 glass-panel flex flex-wrap gap-3 items-center">
+                    <input
+                      type="text"
+                      placeholder="Search username..."
+                      className="bg-white/[0.01] border border-white/[0.03] text-white text-[10px] px-3 py-2 rounded-lg outline-none w-36 font-bold font-mono placeholder:text-white/20"
+                      value={actSearch}
+                      onChange={(e) => setActSearch(e.target.value)}
+                    />
+                    <select
+                      className="bg-[#03050b] border border-white/[0.03] text-white/60 text-[10px] px-2 py-2 rounded-lg outline-none font-bold"
+                      value={actFilterAction}
+                      onChange={(e) => setActFilterAction(e.target.value)}
+                    >
+                      <option value="">All Actions</option>
+                      <option value="Player Analysis">Player Analysis</option>
+                      <option value="Live Lookup">Live Lookup</option>
+                      <option value="Admin Login">Admin Login</option>
+                      <option value="Admin Login Attempt Failed">Login Failed</option>
+                      <option value="Database Restored">Database Restored</option>
+                    </select>
+                    <select
+                      className="bg-[#03050b] border border-white/[0.03] text-white/60 text-[10px] px-2 py-2 rounded-lg outline-none font-bold"
+                      value={actFilterStatus}
+                      onChange={(e) => setActFilterStatus(e.target.value)}
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="Success">Success</option>
+                      <option value="Failed">Failed</option>
+                      <option value="Info">Info/Other</option>
+                    </select>
+                    <input
+                      type="date"
+                      className="bg-[#03050b] border border-white/[0.03] text-white/60 text-[10px] px-2 py-1.5 rounded-lg outline-none font-bold font-mono"
+                      value={actFilterDate}
+                      onChange={(e) => setActFilterDate(e.target.value)}
+                    />
+                    {(actSearch || actFilterAction || actFilterStatus || actFilterDate) && (
+                      <button 
+                        onClick={() => {
+                          setActSearch("");
+                          setActFilterAction("");
+                          setActFilterStatus("");
+                          setActFilterDate("");
+                        }} 
+                        className="text-[9px] font-black uppercase text-amber-400 hover:underline cursor-pointer"
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="border border-white/[0.04] rounded-xl overflow-hidden bg-white/[0.01] glass-panel">
+                    <div className="grid grid-cols-4 px-4 py-3 border-b border-white/[0.04] bg-white/[0.01] text-[9px] uppercase tracking-widest font-black text-white/30">
+                      <span>Time</span>
+                      <span>Username</span>
+                      <span>Action</span>
+                      <span className="text-right">Status / Speed</span>
+                    </div>
+                    <div className="divide-y divide-white/[0.02] text-xs max-h-[400px] overflow-y-auto pr-1 font-semibold text-white/80">
+                      {filteredActivities.length === 0 ? (
+                        <div className="text-center text-white/20 py-8">No player activity logs recorded.</div>
+                      ) : (
+                        filteredActivities.map((act) => (
+                          <div key={act.id} className="grid grid-cols-4 px-4 py-3 items-center">
+                            <span className="text-white/40 font-mono">{new Date(act.timestamp).toLocaleString()}</span>
+                            <span className="font-bold text-amber-400">{act.username}</span>
+                            <span>
+                              <span className="inline-block bg-[#8ab4c9]/10 border border-[#8ab4c9]/25 text-[#8ab4c9] px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">
+                                {act.action}
+                              </span>
+                            </span>
+                            <span className="text-right flex items-center justify-end gap-2">
+                              <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                                act.status === "Success" ? "bg-[#5ecb7a]/10 border border-[#5ecb7a]/20 text-[#5ecb7a]" :
+                                act.status === "Failed" ? "bg-red-500/10 border border-red-500/20 text-red-400" :
+                                "bg-white/5 border border-white/10 text-white/60"
+                              }`}>
+                                {act.status || "Info"}
+                              </span>
+                              {act.responseTimeMs !== undefined && (
+                                <span className="text-[9px] text-white/35 font-mono">{act.responseTimeMs}ms</span>
+                              )}
+                            </span>
                           </div>
                         ))
                       )}
                     </div>
                   </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === "logins" && (
-              <div className="border border-white/[0.04] rounded-xl overflow-hidden bg-white/[0.01] glass-panel">
-                <div className="grid grid-cols-4 px-4 py-3 border-b border-white/[0.04] bg-white/[0.01] text-[9px] uppercase tracking-widest font-black text-white/30">
-                  <span>Time</span>
-                  <span className="text-center">Username</span>
-                  <span className="text-center">Action</span>
-                  <span className="text-right">Status</span>
                 </div>
-                <div className="divide-y divide-white/[0.02] text-xs max-h-[400px] overflow-y-auto pr-1">
-                  {logins.length === 0 ? (
-                    <div className="text-center text-white/20 py-8">No player lookup logs recorded.</div>
-                  ) : (
-                    logins.map((lg) => (
-                      <div key={lg.id} className="grid grid-cols-4 px-4 py-3 items-center">
-                        <span className="text-white/40 font-mono">{new Date(lg.timestamp).toLocaleString()}</span>
-                        <span className="text-center font-bold text-amber-400">{lg.usernameSearched}</span>
-                        <span className="text-center">
-                          <span className="inline-block bg-[#8ab4c9]/10 border border-[#8ab4c9]/20 text-[#8ab4c9] px-2 py-0.5 rounded text-[8px] font-black uppercase">
-                            Player Analysis
-                          </span>
-                        </span>
-                        <span className="text-right">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                            lg.status === "Success" ? "bg-[#5ecb7a]/10 border border-[#5ecb7a]/20 text-[#5ecb7a]" : "bg-red-500/10 border border-red-500/20 text-red-400"
-                          }`}>
-                            {lg.status}
-                          </span>
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {activeTab === "audits" && (
               <div className="border border-white/[0.04] rounded-xl overflow-hidden bg-white/[0.01] glass-panel">

@@ -255,6 +255,16 @@ router.post("/log-lookup", (req: any, res: any) => {
         equippedShield: logData.equippedShield || "Unknown",
         worldNumber
       });
+
+      jsonDb.addActivityLog(
+        logData.usernameSearched || "Unknown",
+        "Player Analysis",
+        logData.status === "Success"
+          ? `Successful player analysis of ${logData.usernameSearched || "Unknown"}`
+          : `Failed player analysis of ${logData.usernameSearched || "Unknown"}`,
+        logData.status || "Success",
+        responseTimeMs
+      );
     } catch (err) {
       console.error("Error logging player lookup:", err);
     }
@@ -337,6 +347,20 @@ router.get("/analytics", checkMasterSession, (req: any, res: any) => {
   const totalResponseTime = logs.reduce((sum, l) => sum + l.responseTimeMs, 0);
   const avgResponseTime = totalLookups > 0 ? totalResponseTime / totalLookups : 0;
 
+  const liveLookups = logs.filter(l => l.sessionId === "live-lookup-session");
+  const liveLookupsCount = liveLookups.length;
+  const successfulLiveLookups = liveLookups.filter(l => l.status === "Success").length;
+  const failedLiveLookups = liveLookups.filter(l => l.status === "Failed").length;
+
+  const gradeScores: Record<string, number> = { "S+": 9, "S": 8, "A+": 7, "A": 6, "B+": 5, "B": 4, "C+": 3, "C": 2, "D": 1 };
+  const scoreGrades = ["—", "D", "C", "C+", "B", "B+", "A", "A+", "S", "S+"];
+  const successLogs = logs.filter(l => l.status === "Success" && l.grade !== "—" && l.grade !== "");
+  const totalGradeScore = successLogs.reduce((sum, l) => sum + (gradeScores[l.grade] || 0), 0);
+  const avgGradeScore = successLogs.length > 0 ? Math.round(totalGradeScore / successLogs.length) : 0;
+  const avgGrade = scoreGrades[avgGradeScore] || "—";
+  
+  const lastAnalysisTime = logs.length > 0 ? logs[0].timestamp : null;
+
   res.json({
     totalLookups,
     todayLookups,
@@ -348,6 +372,11 @@ router.get("/analytics", checkMasterSession, (req: any, res: any) => {
     failedLookups,
     successRate: Math.round(successRate * 10) / 10,
     avgResponseTime: Math.round(avgResponseTime),
+    liveLookupsCount,
+    successfulLiveLookups,
+    failedLiveLookups,
+    avgGrade,
+    lastAnalysisTime
   });
 });
 

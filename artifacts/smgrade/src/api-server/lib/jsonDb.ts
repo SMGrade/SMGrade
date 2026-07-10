@@ -101,6 +101,8 @@ export interface ActivityLog {
   username: string;
   action: string;
   details: string;
+  status?: string;
+  responseTimeMs?: number;
 }
 
 export interface DbSchema {
@@ -388,13 +390,15 @@ export class JsonDatabase {
     return this.data.activityLogs || [];
   }
 
-  public addActivityLog(username: string, action: string, details: string) {
+  public addActivityLog(username: string, action: string, details: string, status?: string, responseTimeMs?: number) {
     const entry: ActivityLog = {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
       username,
       action,
-      details
+      details,
+      status,
+      responseTimeMs
     };
     if (!this.data.activityLogs) {
       this.data.activityLogs = [];
