@@ -266,28 +266,28 @@ export function getInterpolatedBenchmark(level: number): ExtendedBenchmarkTier {
 export function getSwordTier(name: string): number {
   if (!name) return 0;
   const items = loadItems ? loadItems() : [];
-  const found = items.find(i => i.type === "sword" && name.toLowerCase().includes(i.name.toLowerCase()));
+  const found = items.find((i: any) => i.type === "sword" && name.toLowerCase().includes(i.name.toLowerCase()));
   return found ? found.tierRank : 0;
 }
 
 export function getShieldTier(name: string): number {
   if (!name) return 0;
   const items = loadItems ? loadItems() : [];
-  const found = items.find(i => i.type === "shield" && name.toLowerCase().includes(i.name.toLowerCase()));
+  const found = items.find((i: any) => i.type === "shield" && name.toLowerCase().includes(i.name.toLowerCase()));
   return found ? found.tierRank : 0;
 }
 
 export function getSwordRarity(name: string): string {
   if (!name) return "None";
   const items = loadItems ? loadItems() : [];
-  const found = items.find(i => i.type === "sword" && name.toLowerCase().includes(i.name.toLowerCase()));
+  const found = items.find((i: any) => i.type === "sword" && name.toLowerCase().includes(i.name.toLowerCase()));
   return found ? found.rarity : "Unknown";
 }
 
 export function getShieldRarity(name: string): string {
   if (!name) return "None";
   const items = loadItems ? loadItems() : [];
-  const found = items.find(i => i.type === "shield" && name.toLowerCase().includes(i.name.toLowerCase()));
+  const found = items.find((i: any) => i.type === "shield" && name.toLowerCase().includes(i.name.toLowerCase()));
   return found ? found.rarity : "Unknown";
 }
-import { loadItems } from "./gearDatabase";
+import { loadItems } from "./gearDatabase.js";
