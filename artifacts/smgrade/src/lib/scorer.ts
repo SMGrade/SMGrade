@@ -471,7 +471,11 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
 
     if (isCurrent) {
       for (let lvl = swLevel + 1; lvl <= maxLvl; lvl++) {
-        // Cumulative cost to upgrade from swLevel to lvl
+        // Upgrade current item realistic checks:
+        if (lvl > swLevel + 2) continue; // next practical progression step is +1 or +2 levels
+        if (item.rarity === "Epic" && lvl >= 8) continue;
+        if (item.rarity === "Legendary" && lvl >= 6) continue;
+
         let cumulativeCost = 0;
         for (let l = swLevel + 1; l <= lvl; l++) {
           cumulativeCost += getPriceRawFromMarket(item.name, l);
@@ -488,6 +492,10 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
           });
           const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
           if (gain > 0) {
+            // Rare level 7 Epic / level 5 Legendary check
+            if (item.rarity === "Epic" && lvl === 7 && gain < 10) continue;
+            if (item.rarity === "Legendary" && lvl === 5 && gain < 10) continue;
+
             candidates.push({
               name: item.name,
               level: lvl,
@@ -504,7 +512,18 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     } else {
       // Transition to a different obtainable sword
       for (let lvl = 1; lvl <= maxLvl; lvl++) {
-        // Cumulative cost to buy (level 1) and upgrade to lvl
+        // Replacement item realistic checks:
+        if (item.rarity === "Epic" && lvl >= 8) continue;
+        if (item.rarity === "Legendary" && lvl >= 6) continue;
+        // A new replacement item next progression step is level 1 to 4 normally (6 for Epic)
+        if (item.rarity === "Epic" && lvl > 6) {
+          // lvl 7 is allowed if gain is >= 10, otherwise skip
+        } else if (item.rarity === "Legendary" && lvl > 4) {
+          // lvl 5 is allowed if gain is >= 10, otherwise skip
+        } else if (lvl > 4 && item.rarity !== "Epic") {
+          continue; // other non-epic/legendary new replacement items cap at lvl 4
+        }
+
         let cumulativeCost = 0;
         for (let l = 1; l <= lvl; l++) {
           cumulativeCost += getPriceRawFromMarket(item.name, l);
@@ -521,6 +540,10 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
           });
           const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
           if (gain > 0) {
+            // Rare level 7 Epic / level 5 Legendary check
+            if (item.rarity === "Epic" && lvl === 7 && gain < 10) continue;
+            if (item.rarity === "Legendary" && lvl === 5 && gain < 10) continue;
+
             candidates.push({
               name: item.name,
               level: lvl,
@@ -549,7 +572,11 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
 
     if (isCurrent) {
       for (let lvl = shLevel + 1; lvl <= maxLvl; lvl++) {
-        // Cumulative cost to upgrade from shLevel to lvl
+        // Upgrade current item realistic checks:
+        if (lvl > shLevel + 2) continue; // next practical progression step is +1 or +2 levels
+        if (item.rarity === "Epic" && lvl >= 8) continue;
+        if (item.rarity === "Legendary" && lvl >= 6) continue;
+
         let cumulativeCost = 0;
         for (let l = shLevel + 1; l <= lvl; l++) {
           cumulativeCost += getPriceRawFromMarket(item.name, l);
@@ -566,6 +593,10 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
           });
           const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
           if (gain > 0) {
+            // Rare level 7 Epic / level 5 Legendary check
+            if (item.rarity === "Epic" && lvl === 7 && gain < 10) continue;
+            if (item.rarity === "Legendary" && lvl === 5 && gain < 10) continue;
+
             candidates.push({
               name: item.name,
               level: lvl,
@@ -582,7 +613,18 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     } else {
       // Transition to a different obtainable shield
       for (let lvl = 1; lvl <= maxLvl; lvl++) {
-        // Cumulative cost to buy (level 1) and upgrade to lvl
+        // Replacement item realistic checks:
+        if (item.rarity === "Epic" && lvl >= 8) continue;
+        if (item.rarity === "Legendary" && lvl >= 6) continue;
+        // A new replacement item next progression step is level 1 to 4 normally (6 for Epic)
+        if (item.rarity === "Epic" && lvl > 6) {
+          // lvl 7 is allowed if gain is >= 10, otherwise skip
+        } else if (item.rarity === "Legendary" && lvl > 4) {
+          // lvl 5 is allowed if gain is >= 10, otherwise skip
+        } else if (lvl > 4 && item.rarity !== "Epic") {
+          continue; // other non-epic/legendary new replacement items cap at lvl 4
+        }
+
         let cumulativeCost = 0;
         for (let l = 1; l <= lvl; l++) {
           cumulativeCost += getPriceRawFromMarket(item.name, l);
@@ -599,6 +641,10 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
           });
           const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
           if (gain > 0) {
+            // Rare level 7 Epic / level 5 Legendary check
+            if (item.rarity === "Epic" && lvl === 7 && gain < 10) continue;
+            if (item.rarity === "Legendary" && lvl === 5 && gain < 10) continue;
+
             candidates.push({
               name: item.name,
               level: lvl,
