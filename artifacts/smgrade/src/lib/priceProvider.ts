@@ -32,7 +32,7 @@ export async function ensurePricesLoaded(): Promise<any> {
   return priceLoadPromise;
 }
 
-import { loadMarketData } from "./marketDatabase";
+import { loadMarketData } from "./marketDatabase.js";
 
 export function lookupItemPrice(
   category: "sword" | "shield" | "pet",
@@ -44,7 +44,7 @@ export function lookupItemPrice(
     try {
       const marketData = loadMarketData();
       const found = marketData.find(
-        i => i.name.toLowerCase() === name.toLowerCase() && i.category === category
+        (i: any) => i.name.toLowerCase() === name.toLowerCase() && i.category === category
       );
       if (found && found.prices) {
         const price = found.prices[level];
