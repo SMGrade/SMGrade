@@ -13,9 +13,9 @@ registerSerializer("j6CSBEPV_", DummySerializer);
 registerSerializer("CFQ2R9YEZ", DummySerializer);
 registerSerializer("9qPNKmk1V", DummySerializer);
 registerSerializer("none", DummySerializer);
-import { formatNumber } from "./numberParser";
-import { resolveItemByGameType } from "./gearDatabase";
-import type { ParsedPlayer } from "./parser";
+import { formatNumber } from "./numberParser.js";
+import { resolveItemByGameType } from "./gearDatabase.js";
+import type { ParsedPlayer } from "./parser.js";
 
 export interface LiveConnectionStatus {
   step: number;

@@ -1,5 +1,8 @@
 import { Router } from "express";
 import { createRequire } from "module";
+import { normalizeLivePlayer } from "../../lib/liveLookupEngine.js";
+import { scorePlayer } from "../../lib/scorer.js";
+import { jsonDb } from "../lib/jsonDb.js";
 
 // Use a local copy of the msgpack codec (from colyseus.js/build/cjs/msgpack/index.js)
 // Deep imports into colyseus.js are blocked by its exports field — using local copy avoids that.
@@ -134,9 +137,6 @@ router.get("/live-lookup", async (req: any, res: any) => {
             
             if (status === 200 && body && (body as any).success) {
               const playerInfo = (body as any).playerInfo;
-              const { normalizeLivePlayer } = require("../../lib/liveLookupEngine");
-              const { scorePlayer } = require("../../lib/scorer");
-              const { jsonDb } = require("../lib/jsonDb");
               
               const normalized = normalizeLivePlayer(playerInfo);
               const scores = scorePlayer(normalized);
@@ -160,7 +160,7 @@ router.get("/live-lookup", async (req: any, res: any) => {
                 playerGold: normalized.goldRaw,
                 equippedSword: normalized.sword.split(",")[0] || "Unknown",
                 equippedShield: normalized.shield.split(",")[0] || "Unknown",
-                worldNumber: normalized.worldNumber || 1
+                worldNumber: 1
               });
               
               jsonDb.addActivityLog(
@@ -171,7 +171,6 @@ router.get("/live-lookup", async (req: any, res: any) => {
                 duration
               );
             } else {
-              const { jsonDb } = require("../lib/jsonDb");
               jsonDb.addLookupLog({
                 usernameSearched: username,
                 ipAddress,
