@@ -365,6 +365,74 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   
   const benchmark = getInterpolatedBenchmark(player.level);
 
+  // Helper mappings for player's current world progression
+  const getWorldFromLevel = (lvl: number): number => {
+    if (lvl >= 3000) return 11;
+    if (lvl >= 2000) return 10;
+    if (lvl >= 1500) return 9;
+    if (lvl >= 1000) return 8.5; // Dragon World
+    if (lvl >= 700) return 8; // Spaceland W8
+    if (lvl >= 400) return 7; // Aqualand W7
+    if (lvl >= 300) return 6; // Heaven W6
+    if (lvl >= 100) return 5; // Netherworld W5
+    if (lvl >= 60) return 4; // Desertland W4
+    if (lvl >= 50) return 3; // Iceworld W3
+    if (lvl >= 25) return 2; // Sugarland W2
+    return 1; // Orkland W1
+  };
+
+  const getWorldNumberFromName = (worldName?: string): number => {
+    if (!worldName) return 1;
+    const name = worldName.toLowerCase();
+    if (name.includes("world 11") || name.includes("w11")) return 11;
+    if (name.includes("asgard") || name.includes("w10")) return 10;
+    if (name.includes("death") || name.includes("w9")) return 9;
+    if (name.includes("spaceland") || name.includes("w8")) return 8;
+    if (name.includes("dragon")) return 8; // Dragon World
+    if (name.includes("aqualand") || name.includes("w7")) return 7;
+    if (name.includes("heaven") || name.includes("w6")) return 6;
+    if (name.includes("netherworld") || name.includes("w5")) return 5;
+    if (name.includes("desertland") || name.includes("w4")) return 4;
+    if (name.includes("ice") || name.includes("w3")) return 3;
+    if (name.includes("sugar") || name.includes("w2")) return 2;
+    if (name.includes("ork") || name.includes("w1")) return 1;
+    return 1;
+  };
+
+  const playerWorld = (player as any).worldNumber || (player as any).rawPayload?.worldNumber || getWorldFromLevel(player.level);
+
+  // Check inventory to see if items are already owned
+  const inventorySwords = (player as any).inventorySwords || (player as any).rawPayload?.inv?.swords || [];
+  const inventoryShields = (player as any).inventoryShields || (player as any).rawPayload?.inv?.shields || [];
+  
+  const isAlreadyOwned = (itemName: string, isShield: boolean): boolean => {
+    if (isShield) {
+      return inventoryShields.some((s: any) => {
+        const shName = s.name || s.type; // support type or string name
+        return typeof shName === "string" && shName.toLowerCase() === itemName.toLowerCase();
+      });
+    } else {
+      return inventorySwords.some((s: any) => {
+        const swName = s.name || s.type;
+        return typeof swName === "string" && swName.toLowerCase() === itemName.toLowerCase();
+      });
+    }
+  };
+
+  const isObtainable = (item: any): boolean => {
+    // Already in inventory is always obtainable
+    if (isAlreadyOwned(item.name, item.type === "shield")) return true;
+    
+    // Check level requirement
+    if (player.level < (item.minLevel || 0)) return false;
+    
+    // Check world lock
+    const itemWorldNum = getWorldNumberFromName(item.world);
+    if (playerWorld < itemWorldNum) return false;
+    
+    return true;
+  };
+
   // Baseline player stats with un-pet-boosted constants for consistent combat math:
   const curDs = curSw ? scaledSwordDamage(curSw.baseDamage, swLevel) * 1e9 : 0;
   const curMs = curSh ? scaledShieldDM(curSh.baseDM, shLevel) : 0;
@@ -391,34 +459,17 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
 
   const candidates: Candidate[] = [];
 
-  // Check if there are objectively stronger obtainable options than what is equipped
-  const hasStrongerObtainableSword = curSw && items.some(other => 
-    other.type === "sword" && 
-    (other.baseValue || 0) > curSw.baseDamage && 
-    player.level >= (other.minLevel || 0)
-  );
-
-  const hasStrongerObtainableShield = curSh && items.some(other => 
-    other.type === "shield" && 
-    (other.baseValue || 0) > curSh.baseDM && 
-    player.level >= (other.minLevel || 0)
-  );
-
   // 1. Evaluate Sword Upgrade/Replacement Candidates
   items.forEach(item => {
     if (item.type !== "sword") return;
     
-    // Check level/world lock requirements
-    const isObtainable = player.level >= (item.minLevel || 0);
-    if (!isObtainable) return;
+    // Check obtainability
+    if (!isObtainable(item)) return;
 
     const isCurrent = curSw && item.name.toLowerCase() === curSw.name.toLowerCase();
     const maxLvl = item.maxLevel || 10;
 
     if (isCurrent) {
-      // Only upgrade currently equipped if there is no other obtainable sword that is objectively stronger
-      if (hasStrongerObtainableSword) return;
-
       for (let lvl = swLevel + 1; lvl <= maxLvl; lvl++) {
         // Cumulative cost to upgrade from swLevel to lvl
         let cumulativeCost = 0;
@@ -490,17 +541,13 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   items.forEach(item => {
     if (item.type !== "shield") return;
 
-    // Check level/world lock requirements
-    const isObtainable = player.level >= (item.minLevel || 0);
-    if (!isObtainable) return;
+    // Check obtainability
+    if (!isObtainable(item)) return;
 
     const isCurrent = curSh && item.name.toLowerCase() === curSh.name.toLowerCase();
     const maxLvl = item.maxLevel || 10;
 
     if (isCurrent) {
-      // Only upgrade currently equipped if there is no other obtainable shield that is objectively stronger
-      if (hasStrongerObtainableShield) return;
-
       for (let lvl = shLevel + 1; lvl <= maxLvl; lvl++) {
         // Cumulative cost to upgrade from shLevel to lvl
         let cumulativeCost = 0;
