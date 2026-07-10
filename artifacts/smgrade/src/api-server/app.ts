@@ -5,6 +5,7 @@ import path from "path";
 import router from "./routes/index.js";
 import { fileURLToPath } from "url";
 import { logger } from "./lib/logger.js";
+import jsonDb from "./lib/jsonDb.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,16 @@ app.use(
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Ensure DB is initialized before executing any API request
+app.use(async (req: any, res: any, next: any) => {
+  try {
+    await jsonDb.init();
+  } catch (err) {
+    console.error("[SMGrade App] Failed to initialize database on request:", err);
+  }
+  next();
+});
 
 // Unify static file hosting for React client build folder
 import fs from "fs";

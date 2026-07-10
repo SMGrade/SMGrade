@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import pg from "pg";
+const { Pool } = pg;
 
 const isVercel = process.env.VERCEL === "1" || !!process.env.VERCEL;
 const READ_ONLY_DB_FILE = path.join(process.cwd(), "db_storage.json");
@@ -137,12 +139,22 @@ const DEFAULT_DB: DbSchema = {
 
 export class JsonDatabase {
   private data: DbSchema;
+  private pool: any = null;
+  private initPromise: Promise<void> | null = null;
 
   constructor() {
-    this.data = this.load();
+    this.data = this.loadFromFile();
+    if (process.env.DATABASE_URL) {
+      this.pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+          rejectUnauthorized: false
+        }
+      });
+    }
   }
 
-  private load(): DbSchema {
+  private loadFromFile(): DbSchema {
     try {
       if (fs.existsSync(DB_FILE)) {
         const raw = fs.readFileSync(DB_FILE, "utf8");
@@ -151,15 +163,70 @@ export class JsonDatabase {
     } catch (err) {
       console.error("Error reading database file, resetting to default:", err);
     }
-    this.save(DEFAULT_DB);
     return DEFAULT_DB;
   }
 
-  private save(data: DbSchema) {
+  private saveToFile(data: DbSchema) {
     try {
       fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf8");
     } catch (err) {
       console.error("Error writing database file:", err);
+    }
+  }
+
+  public async init(): Promise<void> {
+    if (!this.pool) {
+      return;
+    }
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
+    this.initPromise = (async () => {
+      try {
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS master_vault_state (
+            id INT PRIMARY KEY,
+            state TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+
+        const res = await this.pool.query("SELECT state FROM master_vault_state WHERE id = 1");
+        if (res.rows.length > 0) {
+          this.data = JSON.parse(res.rows[0].state);
+          console.log("[SMGrade DB] Successfully loaded state from database");
+        } else {
+          const stateStr = JSON.stringify(this.data);
+          await this.pool.query(
+            "INSERT INTO master_vault_state (id, state) VALUES (1, $1) ON CONFLICT (id) DO NOTHING",
+            [stateStr]
+          );
+          console.log("[SMGrade DB] Initialized database state row");
+        }
+      } catch (err) {
+        console.error("[SMGrade DB] Failed to initialize database state:", err);
+      }
+    })();
+
+    return this.initPromise;
+  }
+
+  private save(data: DbSchema) {
+    this.data = data;
+    this.saveToFile(data);
+
+    if (this.pool) {
+      const stateStr = JSON.stringify(data);
+      this.pool.query(
+        `INSERT INTO master_vault_state (id, state, updated_at) 
+         VALUES (1, $1, CURRENT_TIMESTAMP) 
+         ON CONFLICT (id) 
+         DO UPDATE SET state = EXCLUDED.state, updated_at = EXCLUDED.updated_at`,
+        [stateStr]
+      ).catch((err: any) => {
+        console.error("[SMGrade DB] Async save to database failed:", err);
+      });
     }
   }
 

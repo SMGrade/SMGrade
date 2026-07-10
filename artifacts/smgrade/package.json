@@ -75,7 +75,8 @@
     "zod": "catalog:",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6"
+    "@types/express": "^5.0.6",
+    "@types/pg": "^8.20.0"
   },
   "dependencies": {
     "colyseus.js": "~0.14.13",
@@ -88,6 +89,7 @@
     "express": "^5.2.1",
     "openai": "^6.44.0",
     "pino": "^9.14.0",
-    "pino-http": "^10.5.0"
+    "pino-http": "^10.5.0",
+    "pg": "^8.22.0"
   }
 }
