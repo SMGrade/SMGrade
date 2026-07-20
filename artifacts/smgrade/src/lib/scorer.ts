@@ -478,9 +478,13 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     const ownedLevel = isEquipped ? currentEquippedLevel : getOwnedLevel(item.name, isShield);
     const maxLvl = item.maxLevel || 10;
 
-    const startLvl = Math.max(1, ownedLevel);
+    // If not equipped but owned in inventory, we evaluate from ownedLevel (cost = 0) to equip it.
+    // If equipped, we evaluate from ownedLevel + 1.
+    // If not owned, we only evaluate Level 1 to buy it.
+    const startLvl = ownedLevel === 0 ? 1 : (isEquipped ? ownedLevel + 1 : ownedLevel);
+    const limitLvl = ownedLevel === 0 ? 1 : maxLvl;
 
-    for (let lvl = startLvl; lvl <= maxLvl; lvl++) {
+    for (let lvl = startLvl; lvl <= limitLvl; lvl++) {
       if (lvl === ownedLevel && isEquipped) {
         continue;
       }
@@ -490,6 +494,12 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
         for (let l = Math.max(1, ownedLevel) + 1; l <= lvl; l++) {
           cost += getPriceRawFromMarket(item.name, l);
         }
+      }
+
+      // Cap cost to 3x current power (minimum baseline of 10M for early game progression)
+      const maxAllowedCost = Math.max(player.powerRaw * 3.0, 1e7);
+      if (cost > maxAllowedCost) {
+        break;
       }
 
       let dsVal = curDs;

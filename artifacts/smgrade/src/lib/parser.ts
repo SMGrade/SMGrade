@@ -72,17 +72,32 @@ function extractField(lines: string[], label: string): string {
 }
 
 function parseGearString(raw: string): { name: string; level: number; progress: number } {
-  // e.g. "Divinity Edge, Level 3  0%" or "Empty, Level 0  100%"
-  const match = raw.match(/^(.+?),\s*Level\s*(\d+)\s+(\d+)%/i);
-  if (match) {
-    return {
-      name: match[1].trim(),
-      level: parseInt(match[2]),
-      progress: parseInt(match[3]),
-    };
+  // e.g. "Divinity Edge, Level 3  0%" or "Empty, Level 0  100%" or "Solbrand, Level 4"
+  let name = raw.trim();
+  let level = 1;
+  let progress = 100;
+
+  const fullMatch = raw.match(/^(.+?),\s*Level\s*(\d+)(?:\s+(\d+)%)?/i);
+  if (fullMatch) {
+    name = fullMatch[1].trim();
+    level = parseInt(fullMatch[2], 10);
+    if (fullMatch[3] !== undefined) {
+      progress = parseInt(fullMatch[3], 10);
+    }
+    return { name: name || "Old Sword", level, progress };
   }
-  // Fallback: just the name
-  return { name: raw.trim() || "Unknown", level: 0, progress: 100 };
+
+  const noCommaMatch = raw.match(/^(.+?)\s+Level\s*(\d+)(?:\s+(\d+)%)?/i);
+  if (noCommaMatch) {
+    name = noCommaMatch[1].trim();
+    level = parseInt(noCommaMatch[2], 10);
+    if (noCommaMatch[3] !== undefined) {
+      progress = parseInt(noCommaMatch[3], 10);
+    }
+    return { name: name || "Old Sword", level, progress };
+  }
+
+  return { name: name || "Old Sword", level, progress };
 }
 
 function parseKilledEnemies(lines: string[], startIdx: number): Record<string, number> {

@@ -177,7 +177,6 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
           <feDropShadow dx="0" dy="5" stdDeviation="4" floodOpacity="0.5" />
         </filter>
         <filter id="dwarf-glow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="3.0" result="blur" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
 
@@ -199,6 +198,12 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
           <stop offset="0%" stopColor="#3e2723" />
           <stop offset="50%" stopColor="#5d4037" />
           <stop offset="100%" stopColor="#1c0d0a" />
+        </linearGradient>
+
+        <linearGradient id="dwarfHammerHeadGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#64748b" />
+          <stop offset="50%" stopColor="#475569" />
+          <stop offset="100%" stopColor="#1e293b" />
         </linearGradient>
 
         <linearGradient id="dwarfCapGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -247,12 +252,19 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
         }}
         style={{ originX: "100px", originY: "220px" }}
       >
+        {/* Massive Stone/Iron Hammer Head behind shoulder */}
+        <g filter="url(#dwarf-shadow)">
+          <path d="M 12 18 L 44 34 L 36 50 L 4 34 Z" fill="url(#dwarfHammerHeadGrad)" stroke="#1e293b" strokeWidth="1.2" />
+        </g>
         {/* Wooden handle stick behind back */}
         <path d="M 54 85 L 26 35 L 38 29 L 66 79 Z" fill="url(#dwarfHandleGrad)" stroke="#1c0d0a" strokeWidth="1.2" filter="url(#dwarf-shadow)" />
 
-        {/* Tunic (White Tank Top Sleeveless Shirt) */}
+        {/* Tunic (White Tank Top Sleeveless Shirt) with U-neck details */}
         <g filter="url(#dwarf-shadow)">
-          <path d="M 62 110 L 138 110 L 140 205 L 60 205 Z" fill="url(#dwarfTunic)" stroke="#d4d4d4" strokeWidth="1" />
+          {/* Skin neck & shoulders visible under tank top */}
+          <rect x="74" y="105" width="52" height="25" fill="url(#dwarfSkinGrad)" />
+          {/* Tank top path with U-shaped neckline */}
+          <path d="M 60 122 L 72 106 H 82 Q 100 128 118 106 H 128 L 140 122 V 205 H 60 Z" fill="url(#dwarfTunic)" stroke="#d4d4d4" strokeWidth="1" />
         </g>
 
         {/* Trousers (Brown pants) */}
@@ -290,12 +302,12 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
           <circle cx="148" cy="195" r="10" fill="#fddbb0" stroke="#ea580c" strokeWidth="1.2" />
         </g>
 
-        {/* Large Back Beard layer */}
-        <path d="M 54 90 L 146 90 L 142 190 L 122 215 L 100 195 L 78 215 L 58 190 Z" fill="#1c0e0b" />
+        {/* Large Back Beard layer - tapered to point */}
+        <path d="M 54 90 L 146 90 L 138 185 Q 120 220 100 224 Q 80 220 62 185 Z" fill="#1c0e0b" />
 
         {/* Front Beard (Vertical lock details) - tapered to point */}
         <g filter="url(#dwarf-shadow)">
-          <path d="M 58 92 L 142 92 L 138 185 L 120 210 L 100 220 L 80 210 L 62 185 Z" fill="url(#dwarfBeardGrad)" />
+          <path d="M 58 92 L 142 92 L 136 182 Q 120 216 100 220 Q 80 216 64 182 Z" fill="url(#dwarfBeardGrad)" />
           {/* Shading/lighting lines on beard */}
           <path d="M 80 102 L 85 195" stroke="#78584c" strokeWidth="2.0" opacity="0.35" strokeLinecap="round" />
           <path d="M 120 102 L 115 195" stroke="#78584c" strokeWidth="2.0" opacity="0.35" strokeLinecap="round" />
@@ -316,10 +328,7 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
           <path d="M 144 64 C 130 54, 106 62, 106 72 C 116 72, 130 70, 144 64 Z" fill="#2d1a12" stroke="#1c0d0a" strokeWidth="1" />
         </g>
 
-        {/* Orange nose */}
-        <ellipse cx="100" cy="84" rx="6" ry="4" fill="#ea580c" stroke="#b45309" strokeWidth="0.8" />
-
-        {/* Eyes (Round black circular beads, spaced apart as in reference) */}
+        {/* Eyes (Round black circular beads, spaced apart as in reference) - NO NOSE rendered here */}
         <g>
           {isDead || isCrit ? (
             <>
@@ -353,11 +362,16 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
           )}
         </g>
 
-        {/* Burgundy Cap/Bandanna with Drooping Left Tail */}
+        {/* Burgundy Cap/Bandanna with Drooping Left Tail tie */}
         <g filter="url(#dwarf-shadow)">
+          {/* Cap dome */}
           <path d="M 64 70 C 64 30, 136 30, 136 70 Z" fill="url(#dwarfCapGrad)" stroke="#450a0a" strokeWidth="1" />
-          {/* Drooping left cap tail next to face */}
-          <path d="M 64 65 Q 40 70, 36 100 Q 42 110, 48 95 Q 52 80, 64 74 Z" fill="url(#dwarfCapGrad)" stroke="#450a0a" strokeWidth="1" />
+          {/* Bandanna knot */}
+          <circle cx="62" cy="70" r="5" fill="#ef4444" stroke="#450a0a" strokeWidth="1" />
+          {/* Drooping bandanna tail 1 */}
+          <path d="M 62 70 Q 42 75, 34 105 Q 42 110, 48 95 Q 52 82, 62 74 Z" fill="url(#dwarfCapGrad)" stroke="#450a0a" strokeWidth="1" />
+          {/* Drooping bandanna tail 2 */}
+          <path d="M 60 72 Q 46 85, 42 115 Q 48 118, 54 105 Q 56 92, 60 76 Z" fill="url(#dwarfCapGrad)" stroke="#450a0a" strokeWidth="1" />
         </g>
 
         {/* Mouth/Expression */}

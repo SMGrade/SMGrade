@@ -206,6 +206,14 @@ ${itemsContext}`;
     const shieldLevel = playerData.shieldLevel || 1;
     const activePets = (playerData as any).activePets || (playerData as any).rawPayload?.inv?.activePets || [];
     
+    let petsList = activePets.map((p: any) => `Type ${p.type} (item: ${p.itemId})`).join(", ");
+    if (!petsList && playerData.pet) {
+      petsList = playerData.pet;
+    }
+    if (!petsList) {
+      petsList = "None";
+    }
+
     const swData = getSwordData(swordName);
     const shData = getShieldData(shieldName);
     const dsVal = swData ? scaledSwordDamage(swData.baseDamage, swordLevel) * 1e9 : 0;
@@ -230,7 +238,7 @@ PLAYER CONTEXT:
 - Gold: ${playerData.gold} (raw: ${playerData.goldRaw})
 - Equipped Sword: ${swordName} (Level ${swordLevel}, base stat: ${swData ? formatNumber(swData.baseDamage) : "N/A"})
 - Equipped Shield: ${shieldName} (Level ${shieldLevel}, base stat: ${shData ? shData.baseDM : "N/A"})
-- Active Pets: ${activePets.map((p: any) => `Type ${p.type} (item: ${p.itemId})`).join(", ") || "None"}
+- Active Pets: ${petsList}
 - Combat Calculator stats:
   * Damage per Hit: ${formatNumber(dmg.damagePerHit)}
   * Power per Hit: ${formatNumber(dmg.powerPerHit)}

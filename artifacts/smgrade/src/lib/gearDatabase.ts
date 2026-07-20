@@ -2704,57 +2704,27 @@ export function resolveItemByGameType(type: number, category: "sword" | "shield"
              : category === "shield" ? mappings.shields[type] 
              : mappings.pets[type];
              
-  if (!name) {
-    console.warn(`[SMGrade] Missing type mapping for ${category} type ID: ${type}`);
-    try {
-      const loggedRaw = localStorage.getItem("smg_unmapped_types_logged");
-      const logged = loggedRaw ? JSON.parse(loggedRaw) : [];
-      const entryStr = `${category}:${type}`;
-      if (!logged.includes(entryStr)) {
-        logged.push(entryStr);
-        localStorage.setItem("smg_unmapped_types_logged", JSON.stringify(logged));
-      }
-    } catch (e) {}
-
-    const label = `Unknown ${category === "sword" ? "Sword" : category === "shield" ? "Shield" : "Pet"} (Type ${type})`;
-    return {
-      name: label,
-      type: category,
-      rarity: "Common",
-      baseValue: category === "sword" ? 0.00000001 : 1.0,
-      maxLevel: 10,
-      passive: "None",
-      image: category === "sword" ? "🗡️" : category === "shield" ? "🛡️" : "🐹",
-      recommendationScore: 0,
-      prices: {},
-      world: "Unknown",
-      dropSource: "Unknown",
-      tierRank: 0,
-      minLevel: 0
-    };
+  const items = loadItems();
+  
+  // 1. Direct typeId lookup in active or default items DB
+  let found = items.find((i) => i.type === category && i.typeId === type);
+  if (!found) {
+    found = DEFAULT_ITEMS.find((i) => i.type === category && i.typeId === type);
   }
 
-  const items = loadItems();
-  let found = items.find((i) => i.type === category && i.name.toLowerCase() === name.toLowerCase());
-  if (!found) {
-    found = DEFAULT_ITEMS.find((i) => i.type === category && i.name.toLowerCase() === name.toLowerCase());
+  // 2. Fallback to name-based lookup using loaded mappings
+  if (!found && name) {
+    found = items.find((i) => i.type === category && i.name.toLowerCase() === name.toLowerCase());
+    if (!found) {
+      found = DEFAULT_ITEMS.find((i) => i.type === category && i.name.toLowerCase() === name.toLowerCase());
+    }
   }
 
   if (found) return found;
 
+  const defaultFallback = DEFAULT_ITEMS.find((i) => i.type === category) || DEFAULT_ITEMS[0];
   return {
-    name: name,
-    type: category,
-    rarity: "Common",
-    baseValue: category === "sword" ? 0.00000001 : 1.0,
-    maxLevel: 10,
-    passive: "None",
-    image: category === "sword" ? "🗡️" : category === "shield" ? "🛡️" : "🐹",
-    recommendationScore: 0,
-    prices: {},
-    world: "Unknown",
-    dropSource: "Unknown",
-    tierRank: 0,
-    minLevel: 0
+    ...defaultFallback,
+    name: defaultFallback.name
   };
 }
