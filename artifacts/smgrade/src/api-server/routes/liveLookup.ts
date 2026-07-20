@@ -49,7 +49,7 @@ export async function queryLivePlayer(username: string): Promise<any> {
     throw new Error("Matchmaker response payload is missing reservation data.");
   }
 
-  const wsUrl = `wss://${mmData.room.publicAddress}/?sessionId=${mmData.sessionId}`;
+  const wsUrl = `wss://${mmData.room.publicAddress}/${mmData.room.processId}/${mmData.room.roomId}?sessionId=${mmData.sessionId}`;
 
   return new Promise((resolve, reject) => {
     let ws: any = null;
