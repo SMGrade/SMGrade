@@ -16,6 +16,8 @@ import {
   shieldUpgradeGain,
   loadItems,
   resolveItemByGameType,
+  SWORD_TYPE_MAP,
+  SHIELD_TYPE_MAP,
 } from "./gearDatabase.js";
 import { getPriceRawFromMarket, getPriceNoteFromMarket } from "./marketDatabase.js";
 import { calculateDamageStats } from "./damageCalc.js";
@@ -405,31 +407,33 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   const inventorySwords = (player as any).inventorySwords || (player as any).rawPayload?.inv?.swords || [];
   const inventoryShields = (player as any).inventoryShields || (player as any).rawPayload?.inv?.shields || [];
   
-  const isAlreadyOwned = (itemName: string, isShield: boolean): boolean => {
+  const getOwnedLevel = (itemName: string, isShield: boolean): number => {
     if (isShield) {
-      return inventoryShields.some((s: any) => {
-        const shName = s.name || s.type; // support type or string name
-        return typeof shName === "string" && shName.toLowerCase() === itemName.toLowerCase();
+      const match = inventoryShields.find((s: any) => {
+        const nameFromMap = typeof s.type === "number" ? SHIELD_TYPE_MAP[s.type] : null;
+        const nameStr = nameFromMap || s.name || (typeof s.type === "string" ? s.type : null);
+        return typeof nameStr === "string" && nameStr.toLowerCase() === itemName.toLowerCase();
       });
+      return match ? (match.level || 1) : 0;
     } else {
-      return inventorySwords.some((s: any) => {
-        const swName = s.name || s.type;
-        return typeof swName === "string" && swName.toLowerCase() === itemName.toLowerCase();
+      const match = inventorySwords.find((s: any) => {
+        const nameFromMap = typeof s.type === "number" ? SWORD_TYPE_MAP[s.type] : null;
+        const nameStr = nameFromMap || s.name || (typeof s.type === "string" ? s.type : null);
+        return typeof nameStr === "string" && nameStr.toLowerCase() === itemName.toLowerCase();
       });
+      return match ? (match.level || 1) : 0;
     }
   };
 
+  const isAlreadyOwned = (itemName: string, isShield: boolean): boolean => {
+    return getOwnedLevel(itemName, isShield) > 0;
+  };
+
   const isObtainable = (item: any): boolean => {
-    // Already in inventory is always obtainable
     if (isAlreadyOwned(item.name, item.type === "shield")) return true;
-    
-    // Check level requirement
     if (player.level < (item.minLevel || 0)) return false;
-    
-    // Check world lock
     const itemWorldNum = getWorldNumberFromName(item.world);
     if (playerWorld < itemWorldNum) return false;
-    
     return true;
   };
 
@@ -454,209 +458,70 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     cost: number;
     priceNote: string | null;
     isUpgradeCurrent: boolean;
+    isOwnedInInventory: boolean;
     resultingDps: number;
   }
 
   const candidates: Candidate[] = [];
 
-  // 1. Evaluate Sword Upgrade/Replacement Candidates
   items.forEach((item: any) => {
-    if (item.type !== "sword") return;
+    if (item.type !== "sword" && item.type !== "shield") return;
+    if (!isObtainable(item)) return;
+
+    const isShield = item.type === "shield";
+    const isEquipped = isShield
+      ? !!(curSh && item.name.toLowerCase() === curSh.name.toLowerCase())
+      : !!(curSw && item.name.toLowerCase() === curSw.name.toLowerCase());
     
-    // Check obtainability
-    if (!isObtainable(item)) return;
-
-    const isCurrent = curSw && item.name.toLowerCase() === curSw.name.toLowerCase();
+    const currentEquippedLevel = isShield ? shLevel : swLevel;
+    const ownedLevel = isEquipped ? currentEquippedLevel : getOwnedLevel(item.name, isShield);
     const maxLvl = item.maxLevel || 10;
 
-    if (isCurrent) {
-      for (let lvl = swLevel + 1; lvl <= maxLvl; lvl++) {
-        // Upgrade current item realistic checks:
-        if (lvl > swLevel + 2) continue; // next practical progression step is +1 or +2 levels
-        if (item.rarity === "Epic" && lvl >= 8) continue;
-        if (item.rarity === "Legendary" && lvl >= 6) continue;
+    const startLvl = Math.max(1, ownedLevel);
 
-        let cumulativeCost = 0;
-        for (let l = swLevel + 1; l <= lvl; l++) {
-          cumulativeCost += getPriceRawFromMarket(item.name, l);
-        }
-        if (cumulativeCost > 0) {
-          const ds = scaledSwordDamage(item.baseValue, lvl) * 1e9;
-          const canStats = calculateDamageStats({
-            ds,
-            swordDamageMultiplier: curMs,
-            power: player.powerRaw,
-            petPowerBonus: 0,
-            armorPowerBonus: 0,
-            attackSpeed: 2.77
-          });
-          const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
-          if (gain > 0) {
-            // Rare level 7 Epic / level 5 Legendary check
-            if (item.rarity === "Epic" && lvl === 7 && gain < 10) continue;
-            if (item.rarity === "Legendary" && lvl === 5 && gain < 10) continue;
+    for (let lvl = startLvl; lvl <= maxLvl; lvl++) {
+      if (lvl === ownedLevel && isEquipped) {
+        continue;
+      }
 
-            candidates.push({
-              name: item.name,
-              level: lvl,
-              type: "Sword",
-              damageGainPct: gain,
-              cost: cumulativeCost,
-              priceNote: getPriceNoteFromMarket(item.name, lvl),
-              isUpgradeCurrent: true,
-              resultingDps: canStats.damagePerSecond
-            });
-          }
+      let cost = 0;
+      if (lvl > ownedLevel) {
+        for (let l = Math.max(1, ownedLevel) + 1; l <= lvl; l++) {
+          cost += getPriceRawFromMarket(item.name, l);
         }
       }
-    } else {
-      // Transition to a different obtainable sword
-      for (let lvl = 1; lvl <= maxLvl; lvl++) {
-        // Replacement item realistic checks:
-        if (item.rarity === "Epic" && lvl >= 8) continue;
-        if (item.rarity === "Legendary" && lvl >= 6) continue;
-        // A new replacement item next progression step is level 1 to 4 normally (6 for Epic)
-        if (item.rarity === "Epic" && lvl > 6) {
-          // lvl 7 is allowed if gain is >= 10, otherwise skip
-        } else if (item.rarity === "Legendary" && lvl > 4) {
-          // lvl 5 is allowed if gain is >= 10, otherwise skip
-        } else if (lvl > 4 && item.rarity !== "Epic") {
-          continue; // other non-epic/legendary new replacement items cap at lvl 4
-        }
 
-        let cumulativeCost = 0;
-        for (let l = 1; l <= lvl; l++) {
-          cumulativeCost += getPriceRawFromMarket(item.name, l);
-        }
-        if (cumulativeCost > 0) {
-          const ds = scaledSwordDamage(item.baseValue, lvl) * 1e9;
-          const canStats = calculateDamageStats({
-            ds,
-            swordDamageMultiplier: curMs,
-            power: player.powerRaw,
-            petPowerBonus: 0,
-            armorPowerBonus: 0,
-            attackSpeed: 2.77
-          });
-          const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
-          if (gain > 0) {
-            // Rare level 7 Epic / level 5 Legendary check
-            if (item.rarity === "Epic" && lvl === 7 && gain < 10) continue;
-            if (item.rarity === "Legendary" && lvl === 5 && gain < 10) continue;
-
-            candidates.push({
-              name: item.name,
-              level: lvl,
-              type: "Sword",
-              damageGainPct: gain,
-              cost: cumulativeCost,
-              priceNote: getPriceNoteFromMarket(item.name, lvl),
-              isUpgradeCurrent: false,
-              resultingDps: canStats.damagePerSecond
-            });
-          }
-        }
+      let dsVal = curDs;
+      let msVal = curMs;
+      if (isShield) {
+        msVal = scaledShieldDM(item.baseValue, lvl);
+      } else {
+        dsVal = scaledSwordDamage(item.baseValue, lvl) * 1e9;
       }
-    }
-  });
 
-  // 2. Evaluate Shield Upgrade/Replacement Candidates
-  items.forEach((item: any) => {
-    if (item.type !== "shield") return;
+      const canStats = calculateDamageStats({
+        ds: dsVal,
+        swordDamageMultiplier: msVal,
+        power: player.powerRaw,
+        petPowerBonus: 0,
+        armorPowerBonus: 0,
+        attackSpeed: 2.77
+      });
 
-    // Check obtainability
-    if (!isObtainable(item)) return;
+      const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
 
-    const isCurrent = curSh && item.name.toLowerCase() === curSh.name.toLowerCase();
-    const maxLvl = item.maxLevel || 10;
-
-    if (isCurrent) {
-      for (let lvl = shLevel + 1; lvl <= maxLvl; lvl++) {
-        // Upgrade current item realistic checks:
-        if (lvl > shLevel + 2) continue; // next practical progression step is +1 or +2 levels
-        if (item.rarity === "Epic" && lvl >= 8) continue;
-        if (item.rarity === "Legendary" && lvl >= 6) continue;
-
-        let cumulativeCost = 0;
-        for (let l = shLevel + 1; l <= lvl; l++) {
-          cumulativeCost += getPriceRawFromMarket(item.name, l);
-        }
-        if (cumulativeCost > 0) {
-          const ms = scaledShieldDM(item.baseValue, lvl);
-          const canStats = calculateDamageStats({
-            ds: curDs,
-            swordDamageMultiplier: ms,
-            power: player.powerRaw,
-            petPowerBonus: 0,
-            armorPowerBonus: 0,
-            attackSpeed: 2.77
-          });
-          const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
-          if (gain > 0) {
-            // Rare level 7 Epic / level 5 Legendary check
-            if (item.rarity === "Epic" && lvl === 7 && gain < 10) continue;
-            if (item.rarity === "Legendary" && lvl === 5 && gain < 10) continue;
-
-            candidates.push({
-              name: item.name,
-              level: lvl,
-              type: "Shield",
-              damageGainPct: gain,
-              cost: cumulativeCost,
-              priceNote: getPriceNoteFromMarket(item.name, lvl),
-              isUpgradeCurrent: true,
-              resultingDps: canStats.damagePerSecond
-            });
-          }
-        }
-      }
-    } else {
-      // Transition to a different obtainable shield
-      for (let lvl = 1; lvl <= maxLvl; lvl++) {
-        // Replacement item realistic checks:
-        if (item.rarity === "Epic" && lvl >= 8) continue;
-        if (item.rarity === "Legendary" && lvl >= 6) continue;
-        // A new replacement item next progression step is level 1 to 4 normally (6 for Epic)
-        if (item.rarity === "Epic" && lvl > 6) {
-          // lvl 7 is allowed if gain is >= 10, otherwise skip
-        } else if (item.rarity === "Legendary" && lvl > 4) {
-          // lvl 5 is allowed if gain is >= 10, otherwise skip
-        } else if (lvl > 4 && item.rarity !== "Epic") {
-          continue; // other non-epic/legendary new replacement items cap at lvl 4
-        }
-
-        let cumulativeCost = 0;
-        for (let l = 1; l <= lvl; l++) {
-          cumulativeCost += getPriceRawFromMarket(item.name, l);
-        }
-        if (cumulativeCost > 0) {
-          const ms = scaledShieldDM(item.baseValue, lvl);
-          const canStats = calculateDamageStats({
-            ds: curDs,
-            swordDamageMultiplier: ms,
-            power: player.powerRaw,
-            petPowerBonus: 0,
-            armorPowerBonus: 0,
-            attackSpeed: 2.77
-          });
-          const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
-          if (gain > 0) {
-            // Rare level 7 Epic / level 5 Legendary check
-            if (item.rarity === "Epic" && lvl === 7 && gain < 10) continue;
-            if (item.rarity === "Legendary" && lvl === 5 && gain < 10) continue;
-
-            candidates.push({
-              name: item.name,
-              level: lvl,
-              type: "Shield",
-              damageGainPct: gain,
-              cost: cumulativeCost,
-              priceNote: getPriceNoteFromMarket(item.name, lvl),
-              isUpgradeCurrent: false,
-              resultingDps: canStats.damagePerSecond
-            });
-          }
-        }
+      if (gain > 0) {
+        candidates.push({
+          name: item.name,
+          level: lvl,
+          type: isShield ? "Shield" : "Sword",
+          damageGainPct: gain,
+          cost,
+          priceNote: getPriceNoteFromMarket(item.name, lvl),
+          isUpgradeCurrent: isEquipped,
+          isOwnedInInventory: !isEquipped && ownedLevel > 0,
+          resultingDps: canStats.damagePerSecond
+        });
       }
     }
   });
@@ -681,7 +546,6 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     };
   }
 
-  // Group candidates into affordable vs unaffordable using Player Power
   const affordable = candidates.filter(c => player.powerRaw >= c.cost);
   const unaffordable = candidates.filter(c => player.powerRaw < c.cost);
 
@@ -690,9 +554,8 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   let lateGameGoals: UpgradeGoal[] = [];
 
   if (affordable.length > 0) {
-    // Sort affordable candidates by resulting player DPS descending (highest overall performance improvement)
     affordable.sort((a, b) => b.resultingDps - a.resultingDps);
-    
+
     const uniqueSelected: Candidate[] = [];
     affordable.forEach(c => {
       if (!uniqueSelected.some(u => u.name === c.name && u.level === c.level)) {
@@ -701,23 +564,36 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     });
 
     recommendations = uniqueSelected.slice(0, 3).map((c, index) => {
-      const typeLabel = c.isUpgradeCurrent ? "Upgrading" : "Replacing with";
-      const reason = `[Best Value] ${typeLabel} ${c.name} Lv${c.level} yields a solid +${c.damageGainPct}% combat value increase within your current Power limits.`;
+      const rankLabels = ["#1 Best Combat Upgrade", "#2 Second Best Upgrade", "#3 Third Best Upgrade"];
+      const label = rankLabels[index] || `Upgrade #${index + 1}`;
       
+      let reason = "";
+      if (c.isUpgradeCurrent) {
+        reason = `Upgrade equipped ${c.name} to Lv${c.level} for a massive +${c.damageGainPct}% DPS increase.`;
+      } else if (c.isOwnedInInventory) {
+        const ownedLvl = getOwnedLevel(c.name, c.type === "Shield");
+        if (c.level === ownedLvl) {
+          reason = `Equip ${c.name} Lv${c.level} from your inventory for a completely free +${c.damageGainPct}% DPS increase!`;
+        } else {
+          reason = `Retrieve ${c.name} from inventory and upgrade to Lv${c.level} (requires ${formatNumber(c.cost)} Power) for a +${c.damageGainPct}% DPS increase.`;
+        }
+      } else {
+        reason = `Buy and upgrade ${c.name} to Lv${c.level} (requires ${formatNumber(c.cost)} Power total) for a +${c.damageGainPct}% DPS increase.`;
+      }
+
       return {
         name: c.name,
         level: c.level,
         type: c.type,
         damageGainPct: c.damageGainPct,
-        marketPriceNote: c.priceNote,
+        marketPriceNote: c.cost === 0 ? "Free (Owned)" : c.priceNote,
         estimatedRequirements: `Level ~${benchmark.minLevel.toLocaleString()}, Power ~${formatNumber(benchmark.avgPower)}`,
         affordable: true,
         status: "Affordable Now",
-        reason
+        reason: `[${label}] ${reason}`
       };
     });
   } else {
-    // Nothing is affordable. Calculate the shortage based on the cheapest candidate overall
     const sortedCheapest = [...candidates].sort((a, b) => a.cost - b.cost);
     const cheapest = sortedCheapest[0];
     const shortage = cheapest.cost - player.powerRaw;
@@ -725,9 +601,8 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   }
 
   if (unaffordable.length > 0) {
-    // Sort unaffordable candidates by resulting player DPS descending (highest overall performance improvement)
     unaffordable.sort((a, b) => b.resultingDps - a.resultingDps);
-    
+
     const uniqueLate: Candidate[] = [];
     unaffordable.forEach(c => {
       if (!uniqueLate.some(u => u.name === c.name && u.level === c.level)) {
@@ -737,7 +612,15 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
 
     lateGameGoals = uniqueLate.slice(0, 3).map(c => {
       const shortage = c.cost - player.powerRaw;
-      const typeLabel = c.isUpgradeCurrent ? "Upgrading to" : "Replacing with";
+      let typeLabel = "";
+      if (c.isUpgradeCurrent) {
+        typeLabel = `Upgrading equipped ${c.name} to Lv${c.level}`;
+      } else if (c.isOwnedInInventory) {
+        typeLabel = `Upgrading inventory ${c.name} to Lv${c.level}`;
+      } else {
+        typeLabel = `Buying and upgrading ${c.name} to Lv${c.level}`;
+      }
+
       return {
         name: c.name,
         level: c.level,
@@ -747,7 +630,7 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
         estimatedRequirements: `Level ~${benchmark.minLevel.toLocaleString()}, Power ~${formatNumber(benchmark.avgPower)}`,
         affordable: false,
         status: `Short ${formatNumber(shortage)} Power`,
-        reason: `[Late Game Goal] ${typeLabel} ${c.name} Lv${c.level} delivers +${c.damageGainPct}% combat value but requires ${formatNumber(c.cost)} Power total.`
+        reason: `[Late Game Goal] ${typeLabel} delivers +${c.damageGainPct}% combat value but requires ${formatNumber(c.cost)} Power total.`
       };
     });
   }

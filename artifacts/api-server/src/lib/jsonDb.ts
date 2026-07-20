@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import pg from "pg";
+const { Pool } = pg;
 
 const isVercel = process.env.VERCEL === "1" || !!process.env.VERCEL;
 const READ_ONLY_DB_FILE = path.join(process.cwd(), "db_storage.json");
@@ -101,6 +103,19 @@ export interface ActivityLog {
   username: string;
   action: string;
   details: string;
+  status?: string;
+  responseTimeMs?: number;
+}
+
+export interface ArcadeScore {
+  id: string;
+  username: string;
+  dwarfKills: number;
+  elfKills: number;
+  totalKills: number;
+  highestCombo: number;
+  highestDps: number;
+  timestamp: string;
 }
 
 export interface DbSchema {
@@ -116,6 +131,11 @@ export interface DbSchema {
   };
   lookupLogs: LookupLog[];
   activityLogs: ActivityLog[];
+  arcadeScores?: ArcadeScore[];
+  customItems?: any[];
+  customPrices?: any[];
+  customBenchmarks?: any[];
+  customConstants?: any;
 }
 
 const DEFAULT_DB: DbSchema = {
@@ -131,16 +151,31 @@ const DEFAULT_DB: DbSchema = {
   },
   lookupLogs: [],
   activityLogs: [],
+  arcadeScores: [],
+  customItems: [],
+  customPrices: [],
+  customBenchmarks: [],
+  customConstants: null,
 };
 
 export class JsonDatabase {
   private data: DbSchema;
+  private pool: any = null;
+  private tableCreated = false;
 
   constructor() {
-    this.data = this.load();
+    this.data = this.loadFromFile();
+    if (process.env.DATABASE_URL) {
+      this.pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+          rejectUnauthorized: false
+        }
+      });
+    }
   }
 
-  private load(): DbSchema {
+  private loadFromFile(): DbSchema {
     try {
       if (fs.existsSync(DB_FILE)) {
         const raw = fs.readFileSync(DB_FILE, "utf8");
@@ -149,11 +184,10 @@ export class JsonDatabase {
     } catch (err) {
       console.error("Error reading database file, resetting to default:", err);
     }
-    this.save(DEFAULT_DB);
     return DEFAULT_DB;
   }
 
-  private save(data: DbSchema) {
+  private saveToFile(data: DbSchema) {
     try {
       fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf8");
     } catch (err) {
@@ -161,11 +195,66 @@ export class JsonDatabase {
     }
   }
 
+  public async init(): Promise<void> {
+    if (!this.pool) {
+      return;
+    }
+    try {
+      if (!this.tableCreated) {
+        await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS master_vault_state (
+            id INT PRIMARY KEY,
+            state TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+        this.tableCreated = true;
+      }
+
+      const res = await this.pool.query("SELECT state FROM master_vault_state WHERE id = 1");
+      if (res.rows.length > 0) {
+        this.data = JSON.parse(res.rows[0].state);
+        this.saveToFile(this.data);
+        console.log("[SMGrade DB] State synchronized from database successfully");
+      } else {
+        const stateStr = JSON.stringify(this.data);
+        await this.pool.query(
+          "INSERT INTO master_vault_state (id, state) VALUES (1, $1) ON CONFLICT (id) DO NOTHING",
+          [stateStr]
+        );
+        console.log("[SMGrade DB] Initialized state in PostgreSQL database");
+      }
+    } catch (err) {
+      console.error("[SMGrade DB] Failed to synchronize state from database:", err);
+    }
+  }
+
+  private async save(data: DbSchema): Promise<void> {
+    this.data = data;
+    this.saveToFile(data);
+
+    if (this.pool) {
+      const stateStr = JSON.stringify(data);
+      try {
+        await this.pool.query(
+          `INSERT INTO master_vault_state (id, state, updated_at) 
+           VALUES (1, $1, CURRENT_TIMESTAMP) 
+           ON CONFLICT (id) 
+           DO UPDATE SET state = EXCLUDED.state, updated_at = EXCLUDED.updated_at`,
+          [stateStr]
+        );
+      } catch (err: any) {
+        console.error("[SMGrade DB] Save to database failed:", err);
+        throw err;
+      }
+    }
+  }
+
   public getRawData(): DbSchema {
     return this.data;
   }
 
-  public restoreRawData(newData: DbSchema) {
+  public async restoreRawData(newData: DbSchema): Promise<void> {
     this.data = {
       users: newData.users || [],
       history: newData.history || [],
@@ -175,8 +264,13 @@ export class JsonDatabase {
       settings: newData.settings || DEFAULT_DB.settings,
       lookupLogs: (newData as any).lookupLogs || [],
       activityLogs: (newData as any).activityLogs || [],
+      arcadeScores: (newData as any).arcadeScores || [],
+      customItems: (newData as any).customItems || [],
+      customPrices: (newData as any).customPrices || [],
+      customBenchmarks: (newData as any).customBenchmarks || [],
+      customConstants: (newData as any).customConstants || null,
     };
-    this.save(this.data);
+    await this.save(this.data);
   }
 
   public hashPassword(password: string): string {
@@ -196,7 +290,7 @@ export class JsonDatabase {
     return this.data.users.find((u) => u.username.toLowerCase() === username.toLowerCase());
   }
 
-  public createUser(username: string, passwordHash: string, role: "owner" | "admin" | "moderator" | "viewer"): User {
+  public async createUser(username: string, passwordHash: string, role: "owner" | "admin" | "moderator" | "viewer"): Promise<User> {
     const newUser: User = {
       id: crypto.randomUUID(),
       username,
@@ -214,24 +308,25 @@ export class JsonDatabase {
       notes: "",
     };
     this.data.users.push(newUser);
-    this.save(this.data);
+    await this.save(this.data);
     return newUser;
   }
 
-  public updateUser(user: User) {
+  public async updateUser(user: User): Promise<void> {
     const idx = this.data.users.findIndex((u) => u.id === user.id);
     if (idx !== -1) {
       this.data.users[idx] = user;
-      this.save(this.data);
+      await this.save(this.data);
     }
   }
 
-  public deleteUser(userId: string) {
+  public async deleteUser(userId: string): Promise<void> {
+    const user = this.getUserById(userId);
     this.data.users = this.data.users.filter((u) => u.id !== userId);
     this.data.history = this.data.history.filter((h) => h.userId !== userId);
     this.data.achievements = this.data.achievements.filter((a) => a.userId !== userId);
     this.data.loginHistory = this.data.loginHistory.filter((lh) => lh.userId !== userId);
-    this.save(this.data);
+    await this.save(this.data);
   }
 
   // History
@@ -239,7 +334,7 @@ export class JsonDatabase {
     return this.data.history.filter((h) => h.userId === userId);
   }
 
-  public addHistory(userId: string, level: number, grade: string, score: number, power: string, dps: number): ProgressHistory {
+  public async addHistory(userId: string, level: number, grade: string, score: number, power: string, dps: number): Promise<ProgressHistory> {
     const entry: ProgressHistory = {
       id: crypto.randomUUID(),
       userId,
@@ -257,20 +352,18 @@ export class JsonDatabase {
     if (user) {
       user.totalAnalyses += 1;
       
-      // Compute highest grade
       const gradesOrder = ["D", "C", "C+", "B", "B+", "A", "A+", "S", "S+"];
       const currentHighestIdx = gradesOrder.indexOf(user.highestGrade);
       const newGradeIdx = gradesOrder.indexOf(grade);
       if (newGradeIdx > currentHighestIdx) {
         user.highestGrade = grade;
       }
-      this.updateUser(user);
+      await this.updateUser(user);
 
-      // Check achievements
-      this.checkAchievementsForUser(userId, user, grade);
+      await this.checkAchievementsForUser(userId, user, grade);
     }
 
-    this.save(this.data);
+    await this.save(this.data);
     return entry;
   }
 
@@ -279,7 +372,7 @@ export class JsonDatabase {
     return this.data.achievements.filter((a) => a.userId === userId);
   }
 
-  private checkAchievementsForUser(userId: string, user: User, latestGrade: string) {
+  private async checkAchievementsForUser(userId: string, user: User, latestGrade: string): Promise<void> {
     const userAchievements = this.getAchievementsByUserId(userId);
     const existingCodes = new Set(userAchievements.map((a) => a.badgeCode));
 
@@ -294,25 +387,20 @@ export class JsonDatabase {
       }
     };
 
-    // First Analysis
     unlock("first_analysis");
 
-    // 100 Analyses
     if (user.totalAnalyses >= 100) {
       unlock("analyses_100");
     }
 
-    // Legendary Grade (A/A+/S)
     if (["A", "A+", "S", "S+"].includes(latestGrade)) {
       unlock("legendary_grade");
     }
 
-    // Mythic Grade (S+)
     if (latestGrade === "S+") {
       unlock("mythic_grade");
     }
 
-    // Shield Collector & Weapon Expert can be unlocked based on scanning items (mocked for game metrics)
     if (user.totalAnalyses >= 5) {
       unlock("weapon_expert");
     }
@@ -326,7 +414,7 @@ export class JsonDatabase {
     return this.data.auditLogs;
   }
 
-  public addAuditLog(actor: string, action: string, details: string) {
+  public async addAuditLog(actor: string, action: string, details: string): Promise<void> {
     this.data.auditLogs.unshift({
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
@@ -334,11 +422,10 @@ export class JsonDatabase {
       action,
       details,
     });
-    // Keep max 500 audit logs
     if (this.data.auditLogs.length > 500) {
       this.data.auditLogs = this.data.auditLogs.slice(0, 500);
     }
-    this.save(this.data);
+    await this.save(this.data);
   }
 
   // Login History
@@ -346,7 +433,7 @@ export class JsonDatabase {
     return this.data.loginHistory;
   }
 
-  public addLoginHistory(userId: string, username: string, ip: string, userAgent: string) {
+  public async addLoginHistory(userId: string, username: string, ip: string, userAgent: string): Promise<void> {
     this.data.loginHistory.unshift({
       id: crypto.randomUUID(),
       userId,
@@ -358,7 +445,7 @@ export class JsonDatabase {
     if (this.data.loginHistory.length > 200) {
       this.data.loginHistory = this.data.loginHistory.slice(0, 200);
     }
-    this.save(this.data);
+    await this.save(this.data);
   }
 
   // Lookup Logs
@@ -366,7 +453,7 @@ export class JsonDatabase {
     return this.data.lookupLogs || [];
   }
 
-  public addLookupLog(log: Omit<LookupLog, "id" | "timestamp">) {
+  public async addLookupLog(log: Omit<LookupLog, "id" | "timestamp">): Promise<LookupLog> {
     const entry: LookupLog = {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
@@ -379,7 +466,7 @@ export class JsonDatabase {
     if (this.data.lookupLogs.length > 5000) {
       this.data.lookupLogs = this.data.lookupLogs.slice(0, 5000);
     }
-    this.save(this.data);
+    await this.save(this.data);
     return entry;
   }
 
@@ -388,13 +475,15 @@ export class JsonDatabase {
     return this.data.activityLogs || [];
   }
 
-  public addActivityLog(username: string, action: string, details: string) {
+  public async addActivityLog(username: string, action: string, details: string, status?: string, responseTimeMs?: number): Promise<ActivityLog> {
     const entry: ActivityLog = {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
       username,
       action,
-      details
+      details,
+      status,
+      responseTimeMs
     };
     if (!this.data.activityLogs) {
       this.data.activityLogs = [];
@@ -403,8 +492,64 @@ export class JsonDatabase {
     if (this.data.activityLogs.length > 2000) {
       this.data.activityLogs = this.data.activityLogs.slice(0, 2000);
     }
-    this.save(this.data);
+    await this.save(this.data);
     return entry;
+  }
+
+  // Arcade leaderboards
+  public getArcadeScores(): ArcadeScore[] {
+    return this.data.arcadeScores || [];
+  }
+
+  public async addArcadeScore(score: Omit<ArcadeScore, "id" | "timestamp">): Promise<ArcadeScore> {
+    const entry: ArcadeScore = {
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      ...score
+    };
+    if (!this.data.arcadeScores) {
+      this.data.arcadeScores = [];
+    }
+    this.data.arcadeScores.push(entry);
+    await this.save(this.data);
+    return entry;
+  }
+
+  // Custom configurations (Admin Syncing)
+  public getCustomItems(): any[] | undefined {
+    return this.data.customItems;
+  }
+
+  public async saveCustomItems(items: any[]): Promise<void> {
+    this.data.customItems = items;
+    await this.save(this.data);
+  }
+
+  public getCustomPrices(): any[] | undefined {
+    return this.data.customPrices;
+  }
+
+  public async saveCustomPrices(prices: any[]): Promise<void> {
+    this.data.customPrices = prices;
+    await this.save(this.data);
+  }
+
+  public getCustomBenchmarks(): any[] | undefined {
+    return this.data.customBenchmarks;
+  }
+
+  public async saveCustomBenchmarks(benchmarks: any[]): Promise<void> {
+    this.data.customBenchmarks = benchmarks;
+    await this.save(this.data);
+  }
+
+  public getCustomConstants(): any | undefined {
+    return this.data.customConstants;
+  }
+
+  public async saveCustomConstants(constants: any): Promise<void> {
+    this.data.customConstants = constants;
+    await this.save(this.data);
   }
 }
 

@@ -1,0 +1,591 @@
+=========================================
+STARTING INSPECTION FOR USER: Harrison
+=========================================
+[1] Calling loadbalancer findServer...
+findServer Status: 200 (took 509ms)
+findServer Response payload:
+ {
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWdpc3RlckRhdGUiOjE3ODM3MTQyNzkzNzksInJhbmRvbSI6ImFlNGE1ODU2LTdhZTctNDBmYy05N2NkLTMyYWQ3YWZkMTcyNyIsImlhdCI6MTc4MzcxNDI3OX0.rYmegIKfA8gaIXZMMna7kpn_hErVDNgaIsH9_Ije6_8",
+  "data": {
+    "foundServer": "eu1",
+    "alternativeServer": "eu1"
+  }
+}
+
+[2] Calling matchmaking joinOrCreate/world_1 on host: eu1...
+joinOrCreate Status: 200 (took 498ms)
+joinOrCreate Response payload:
+ {
+  "room": {
+    "clients": 11,
+    "createdAt": "2026-06-27T10:02:54.836Z",
+    "maxClients": 8,
+    "name": "world_1",
+    "publicAddress": "eu8.swordmasters.io",
+    "processId": "3vDZ8BdI1",
+    "roomId": "4Nj38XtKc"
+  },
+  "sessionId": "11vaJdZN8"
+}
+
+[3] Instantiating Colyseus client to wss://eu8.swordmasters.io...
+Consuming seat reservation...
+WebSocket connected successfully.
+
+[4] Sending Client:SkinStatue:GetPlayerInfo request for "Harrison"...
+[WS OUTGOING FRAME (raw)]: 52 bytes
+Listening for messages...
+
+[COLyseus INCOMING EVENT: "Server:SkinStatue:GetPlayerInfo"]
+{
+  "username": "Harrison",
+  "inv": {
+    "level": 139,
+    "experience": 383926809,
+    "health": 4134822.5,
+    "maxHealth": 4134822.5,
+    "gold": 3822093202,
+    "power": 564461070,
+    "goldMultiplier": 18.5,
+    "powerMultiplier": 14.5,
+    "attackSpeed": 1.9265030522092899,
+    "activeSword": {
+      "itemId": "_IGBNBzxjc",
+      "type": 22,
+      "level": 1,
+      "enchantments": []
+    },
+    "swords": [
+      {
+        "itemId": "IJzSzh0qY2",
+        "type": 2,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "cDx1XV330n",
+        "type": 2,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "g5M8RDsIfn",
+        "type": 2,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "wMn20JlJV8",
+        "type": 2,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "CqzhXijlYP",
+        "type": 1,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "X1TEacDoeb",
+        "type": 2,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "o33ZxppTMZ",
+        "type": 2,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "vTz70gvVqU",
+        "type": 18,
+        "level": 2,
+        "enchantments": []
+      },
+      {
+        "itemId": "_IGBNBzxjc",
+        "type": 22,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "qv-buKz0qN",
+        "type": 2,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "SIUWAqkbJy",
+        "type": 12,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "2HRhmitRr8",
+        "type": 12,
+        "level": 2,
+        "enchantments": []
+      },
+      {
+        "itemId": "3xfIMwoVCP",
+        "type": 7,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "By25DfDVeO",
+        "type": 1,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "1VtkURrUBA",
+        "type": 7,
+        "level": 1,
+        "enchantments": []
+      }
+    ],
+    "activeShield": {
+      "itemId": "ROtI515pBz",
+      "type": 21,
+      "level": 2,
+      "enchantments": []
+    },
+    "shields": [
+      {
+        "itemId": "bJv5e4XUfH",
+        "type": 9,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "ZuYPNBMsll",
+        "type": 6,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "dhWZoIp1qQ",
+        "type": 1,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "irMTvEa_pm",
+        "type": 1,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "k7Km_CzK27",
+        "type": 1,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "ytDN9gVmTd",
+        "type": 1,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "kVJuZn1eI2",
+        "type": 1,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "HIvLLp0YAV",
+        "type": 6,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "CwXlLrBsp1",
+        "type": 1,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "NVJbGgWdrN",
+        "type": 2,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "C1EL9qjZmZ",
+        "type": 2,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "6UPfTEk9Xk",
+        "type": 1,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "8cNpRwW3T6",
+        "type": 2,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "9Eby4h8Lbq",
+        "type": 18,
+        "level": 2,
+        "enchantments": []
+      },
+      {
+        "itemId": "TYA0uTLfmu",
+        "type": 18,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "x6RxDegKGu",
+        "type": 16,
+        "level": 2,
+        "enchantments": []
+      },
+      {
+        "itemId": "bzr1Z029mQ",
+        "type": 22,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "2NGAplRXly",
+        "type": 3,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "AmJ937fruF",
+        "type": 21,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "ROtI515pBz",
+        "type": 21,
+        "level": 2,
+        "enchantments": []
+      },
+      {
+        "itemId": "erPTSq0INz",
+        "type": 18,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "T8fIbI7Ff2",
+        "type": 16,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "QvmQkI6G3D",
+        "type": 7,
+        "level": 1,
+        "enchantments": []
+      },
+      {
+        "itemId": "vtaQ8TNKYS",
+        "type": 8,
+        "level": 1,
+        "enchantments": []
+      }
+    ],
+    "skinColors": [
+      0,
+      0,
+      0
+    ],
+    "activeSkinColor": 0,
+    "faces": [
+      8,
+      0
+    ],
+    "activeFace": 8,
+    "hairs": [
+      3
+    ],
+    "activeHair": 3,
+    "helmets": [
+      2,
+      3,
+      6
+    ],
+    "activeHelmet": 6,
+    "torsos": [
+      6
+    ],
+    "activeTorso": 6,
+    "pants": [
+      2,
+      6,
+      9
+    ],
+    "activePant": 9,
+    "shoes": [
+      6
+    ],
+    "activeShoe": 6,
+    "books": [],
+    "activeBooks": [
+      0,
+      0,
+      0
+    ],
+    "maxActivePetCount": 3,
+    "activePets": [
+      {
+        "itemId": "h4vhbe65E1",
+        "type": 13
+      },
+      {
+        "itemId": "ZBN1L4nAJd",
+        "type": 12
+      },
+      {
+        "itemId": "GBcZVvxGPJ",
+        "type": 12
+      }
+    ],
+    "pets": [
+      {
+        "itemId": "GBcZVvxGPJ",
+        "type": 12
+      },
+      {
+        "itemId": "ZBN1L4nAJd",
+        "type": 12
+      },
+      {
+        "itemId": "h4vhbe65E1",
+        "type": 13
+      }
+    ],
+    "ores": [],
+    "oreLimit": 18,
+    "helmetEnabled": true,
+    "killedEnemyTypes": {
+      "0": 95,
+      "1": 169,
+      "2": 86,
+      "3": 50,
+      "4": 56,
+      "5": 7,
+      "6": 13,
+      "7": 21,
+      "8": 14,
+      "9": 26,
+      "10": 44,
+      "11": 17,
+      "12": 3
+    },
+    "activeQuest": -1,
+    "questStatus": {
+      "0": {
+        "questId": 0,
+        "enemyType": 0,
+        "killedEnemyAmount": 34,
+        "enemyAmount": 30,
+        "isCompleted": true
+      },
+      "1": {
+        "questId": 1,
+        "enemyType": 1,
+        "killedEnemyAmount": 17,
+        "enemyAmount": 20,
+        "isCompleted": true
+      },
+      "2": {
+        "questId": 2,
+        "enemyType": 2,
+        "killedEnemyAmount": 5,
+        "enemyAmount": 10,
+        "isCompleted": true
+      },
+      "3": {
+        "questId": 3,
+        "enemyType": 3,
+        "killedEnemyAmount": 20,
+        "enemyAmount": 15,
+        "isCompleted": true
+      },
+      "4": {
+        "questId": 4,
+        "enemyType": 4,
+        "killedEnemyAmount": 33,
+        "enemyAmount": 20,
+        "isCompleted": true
+      },
+      "5": {
+        "questId": 5,
+        "enemyType": 5,
+        "killedEnemyAmount": 5,
+        "enemyAmount": 3,
+        "isCompleted": true
+      },
+      "6": {
+        "questId": 6,
+        "enemyType": 6,
+        "killedEnemyAmount": 0,
+        "enemyAmount": 2,
+        "isCompleted": true
+      },
+      "7": {
+        "questId": 7,
+        "enemyType": 7,
+        "killedEnemyAmount": 2,
+        "enemyAmount": 2,
+        "isCompleted": true
+      },
+      "8": {
+        "questId": 8,
+        "enemyType": 8,
+        "killedEnemyAmount": 0,
+        "enemyAmount": 2,
+        "isCompleted": true
+      },
+      "9": {
+        "questId": 9,
+        "enemyType": 9,
+        "killedEnemyAmount": 5,
+        "enemyAmount": 2,
+        "isCompleted": true
+      },
+      "10": {
+        "questId": 10,
+        "enemyType": 10,
+        "killedEnemyAmount": 7,
+        "enemyAmount": 20,
+        "isCompleted": true
+      },
+      "11": {
+        "questId": 11,
+        "enemyType": 11,
+        "killedEnemyAmount": 0,
+        "enemyAmount": 10,
+        "isCompleted": true
+      },
+      "12": {
+        "questId": 12,
+        "enemyType": 12,
+        "killedEnemyAmount": 0,
+        "enemyAmount": 3,
+        "isCompleted": true
+      }
+    },
+    "canClaimChestTypes": {},
+    "storage": [],
+    "dailyQuestList": {
+      "quests": []
+    },
+    "socialInfo": {
+      "isOnline": false,
+      "friendList": []
+    }
+  }
+}
+
+[COLyseus INCOMING EVENT: "Server:EnemyController:attack"]
+{
+  "enemyId": "6"
+}
+
+[COLyseus INCOMING EVENT: "Server:EnemyController:getDamage"]
+{
+  "damagers": [
+    "xE0CvE40L"
+  ],
+  "enemyId": "6",
+  "damageAmount": 1265,
+  "coinDropCount": 5,
+  "coinDrop": 50,
+  "dropPower": 1581
+}
+
+[COLyseus INCOMING EVENT: "Server:EnemyController:attack"]
+{
+  "enemyId": "7"
+}
+
+[COLyseus INCOMING EVENT: "Server:EnemyController:getDamage"]
+{
+  "damagers": [
+    "xE0CvE40L"
+  ],
+  "enemyId": "6",
+  "damageAmount": 1235,
+  "coinDropCount": 5,
+  "coinDrop": 20,
+  "dropPower": 1544
+}
+
+[COLyseus INCOMING EVENT: "Server:EnemyController:getDamage"]
+{
+  "damagers": [
+    "xE0CvE40L"
+  ],
+  "enemyId": "7",
+  "damageAmount": 1271,
+  "coinDropCount": 5,
+  "coinDrop": 63,
+  "dropPower": 1589
+}
+
+[COLyseus INCOMING EVENT: "Server:EnemyController:getDamage"]
+{
+  "damagers": [
+    "xE0CvE40L"
+  ],
+  "enemyId": "7",
+  "damageAmount": 1229,
+  "coinDropCount": 5,
+  "coinDrop": 20,
+  "dropPower": 1536
+}
+
+[COLyseus INCOMING EVENT: "Server:EnemyController:attack"]
+{
+  "enemyId": "8"
+}
+
+[COLyseus INCOMING EVENT: "Server:EnemyController:getDamage"]
+{
+  "damagers": [
+    "xE0CvE40L"
+  ],
+  "enemyId": "8",
+  "damageAmount": 1275,
+  "coinDropCount": 5,
+  "coinDrop": 49,
+  "dropPower": 1594
+}
+
+[COLyseus INCOMING EVENT: "Server:PlayerController:getDamage"]
+"xE0CvE40L"
+
+[COLyseus INCOMING EVENT: "Server:EnemyController:getDamage"]
+{
+  "damagers": [
+    "xE0CvE40L"
+  ],
+  "enemyId": "8",
+  "damageAmount": 1225,
+  "coinDropCount": 5,
+  "coinDrop": 20,
+  "dropPower": 1531
+}
+
+[COLyseus INCOMING EVENT: "Server:EnemyController:attack"]
+{
+  "enemyId": "5"
+}
+Leaving room...
+[WS OUTGOING FRAME (raw)]: 1 bytes

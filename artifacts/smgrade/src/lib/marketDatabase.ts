@@ -44,7 +44,7 @@ export function loadMarketData(): MarketItem[] {
     return initializeMarketData();
   }
   try {
-    const rawNew = localStorage.getItem(MARKET_STORAGE_KEY);
+    const rawNew = window.localStorage.getItem(MARKET_STORAGE_KEY);
     if (rawNew) {
       const parsed = JSON.parse(rawNew) as MarketItem[];
       if (parsed.length > 0) {
@@ -82,7 +82,7 @@ export function loadMarketData(): MarketItem[] {
           }
         });
         if (updated && typeof window !== "undefined" && window.localStorage) {
-          localStorage.setItem(MARKET_STORAGE_KEY, JSON.stringify(parsed));
+          window.localStorage.setItem(MARKET_STORAGE_KEY, JSON.stringify(parsed));
         }
         return parsed;
       }
@@ -95,7 +95,7 @@ export function loadMarketData(): MarketItem[] {
 
 export function saveMarketData(data: MarketItem[]): void {
   if (typeof window !== "undefined" && window.localStorage) {
-    localStorage.setItem(MARKET_STORAGE_KEY, JSON.stringify(data));
+    window.localStorage.setItem(MARKET_STORAGE_KEY, JSON.stringify(data));
   }
 }
 
@@ -138,7 +138,7 @@ export function initializeMarketData(): MarketItem[] {
   });
 
   if (typeof window !== "undefined" && window.localStorage) {
-    localStorage.setItem(MARKET_STORAGE_KEY, JSON.stringify(list));
+    window.localStorage.setItem(MARKET_STORAGE_KEY, JSON.stringify(list));
   }
   return list;
 }

@@ -22,17 +22,17 @@ function checkMasterSession(req: any, res: any, next: () => void) {
 }
 
 // 1. Unlock Master Vault
-router.post("/unlock", (req: any, res: any) => {
+router.post("/unlock", async (req: any, res: any) => {
   const { password } = req.body;
   if (password === MASTER_PASSWORD) {
     const token = crypto.randomBytes(32).toString("hex");
     masterSessions.add(token);
-    jsonDb.addAuditLog("System", "Master Vault Unlocked", "Access granted to Master settings terminal.");
-    jsonDb.addActivityLog("Master Admin", "Admin Login", "Master Vault session unlocked.");
+    await jsonDb.addAuditLog("System", "Master Vault Unlocked", "Access granted to Master settings terminal.");
+    await jsonDb.addActivityLog("Master Admin", "Admin Login", "Master Vault session unlocked.");
     res.json({ success: true, token });
   } else {
-    jsonDb.addAuditLog("System", "Master Vault Attempt Failed", "Incorrect password attempt.");
-    jsonDb.addActivityLog("System", "Admin Login Attempt Failed", "Incorrect password attempt on Master Vault.");
+    await jsonDb.addAuditLog("System", "Master Vault Attempt Failed", "Incorrect password attempt.");
+    await jsonDb.addActivityLog("System", "Admin Login Attempt Failed", "Incorrect password attempt on Master Vault.");
     res.status(400).json({ error: "Invalid master credentials." });
   }
 });
@@ -56,7 +56,7 @@ router.get("/users", checkMasterSession, (req: any, res: any) => {
 });
 
 // 3. User Management: Suspend / Activate
-router.post("/users/status", checkMasterSession, (req: any, res: any) => {
+router.post("/users/status", checkMasterSession, async (req: any, res: any) => {
   const { userId, status } = req.body;
   if (!userId || !["active", "suspended"].includes(status)) {
     res.status(400).json({ error: "Invalid parameters." });
@@ -75,13 +75,13 @@ router.post("/users/status", checkMasterSession, (req: any, res: any) => {
   }
 
   user.status = status;
-  jsonDb.updateUser(user);
-  jsonDb.addAuditLog("Master Admin", "User Status Updated", `User ${user.username} status set to ${status}`);
+  await jsonDb.updateUser(user);
+  await jsonDb.addAuditLog("Master Admin", "User Status Updated", `User ${user.username} status set to ${status}`);
   res.json({ success: true, message: `User status changed to ${status}` });
 });
 
 // 4. User Management: Change Role
-router.post("/users/role", checkMasterSession, (req: any, res: any) => {
+router.post("/users/role", checkMasterSession, async (req: any, res: any) => {
   const { userId, role } = req.body;
   if (!userId || !["owner", "admin", "moderator", "viewer"].includes(role)) {
     res.status(400).json({ error: "Invalid role." });
@@ -95,13 +95,13 @@ router.post("/users/role", checkMasterSession, (req: any, res: any) => {
   }
 
   user.role = role;
-  jsonDb.updateUser(user);
-  jsonDb.addAuditLog("Master Admin", "User Role Updated", `User ${user.username} role set to ${role}`);
+  await jsonDb.updateUser(user);
+  await jsonDb.addAuditLog("Master Admin", "User Role Updated", `User ${user.username} role set to ${role}`);
   res.json({ success: true, message: `User role changed to ${role}` });
 });
 
 // 5. User Management: Reset password
-router.post("/users/reset-password", checkMasterSession, (req: any, res: any) => {
+router.post("/users/reset-password", checkMasterSession, async (req: any, res: any) => {
   const { userId, newPassword } = req.body;
   if (!userId || !newPassword || newPassword.trim().length < 6) {
     res.status(400).json({ error: "Password must be at least 6 characters." });
@@ -115,13 +115,13 @@ router.post("/users/reset-password", checkMasterSession, (req: any, res: any) =>
   }
 
   user.passwordHash = jsonDb.hashPassword(newPassword);
-  jsonDb.updateUser(user);
-  jsonDb.addAuditLog("Master Admin", "Password Reset", `Password reset for user ${user.username}`);
+  await jsonDb.updateUser(user);
+  await jsonDb.addAuditLog("Master Admin", "Password Reset", `Password reset for user ${user.username}`);
   res.json({ success: true, message: "Password reset successfully." });
 });
 
 // 6. User Management: Change Username
-router.post("/users/change-username", checkMasterSession, (req: any, res: any) => {
+router.post("/users/change-username", checkMasterSession, async (req: any, res: any) => {
   const { userId, newUsername } = req.body;
   if (!userId || !newUsername || newUsername.trim().length < 3) {
     res.status(400).json({ error: "Username must be at least 3 characters." });
@@ -142,13 +142,13 @@ router.post("/users/change-username", checkMasterSession, (req: any, res: any) =
 
   const oldName = user.username;
   user.username = newUsername.trim();
-  jsonDb.updateUser(user);
-  jsonDb.addAuditLog("Master Admin", "Username Changed", `Username for ${oldName} set to ${newUsername}`);
+  await jsonDb.updateUser(user);
+  await jsonDb.addAuditLog("Master Admin", "Username Changed", `Username for ${oldName} set to ${newUsername}`);
   res.json({ success: true, message: "Username updated successfully." });
 });
 
 // 7. User Management: Delete User
-router.delete("/users", checkMasterSession, (req: any, res: any) => {
+router.delete("/users", checkMasterSession, async (req: any, res: any) => {
   const { userId } = req.body;
   if (!userId) {
     res.status(400).json({ error: "User ID is required." });
@@ -166,8 +166,8 @@ router.delete("/users", checkMasterSession, (req: any, res: any) => {
     return;
   }
 
-  jsonDb.deleteUser(userId);
-  jsonDb.addAuditLog("Master Admin", "User Deleted", `User ${user.username} has been permanently deleted.`);
+  await jsonDb.deleteUser(userId);
+  await jsonDb.addAuditLog("Master Admin", "User Deleted", `User ${user.username} has been permanently deleted.`);
   res.json({ success: true, message: "User deleted successfully." });
 });
 
@@ -196,89 +196,86 @@ router.get("/health", checkMasterSession, (req: any, res: any) => {
 });
 
 // 11. Database Export / Backup
-router.get("/backup", checkMasterSession, (req: any, res: any) => {
+router.get("/backup", checkMasterSession, async (req: any, res: any) => {
   const raw = jsonDb.getRawData();
-  jsonDb.addAuditLog("Master Admin", "Database Backup", "Full database exported.");
+  await jsonDb.addAuditLog("Master Admin", "Database Backup", "Full database exported.");
   res.json(raw);
 });
 
 // 12. Database Import / Restore
-router.post("/restore", checkMasterSession, (req: any, res: any) => {
+router.post("/restore", checkMasterSession, async (req: any, res: any) => {
   const { dbData } = req.body;
-  if (!dbData || !Array.isArray(dbData.users) || !Array.isArray(dbData.history)) {
+  if (!dbData || !dbData.users || !dbData.history) {
     res.status(400).json({ error: "Invalid backup database content." });
     return;
   }
 
-  jsonDb.restoreRawData(dbData);
-  jsonDb.addAuditLog("Master Admin", "Database Restored", "Full database restored from backup.");
-  jsonDb.addActivityLog("Master Admin", "Database Restored", "Full database restored from backup.");
+  await jsonDb.restoreRawData(dbData);
+  await jsonDb.addAuditLog("Master Admin", "Database Restored", "Full database restored from backup.");
+  await jsonDb.addActivityLog("Master Admin", "Database Restored", "Full database restored from backup.");
   res.json({ success: true, message: "Database restored successfully." });
 });
 
 // 13. Public: Asynchronously log player lookup analytics
-router.post("/log-lookup", (req: any, res: any) => {
-  // Execute logging asynchronously to avoid blocking the main server thread
-  setImmediate(() => {
-    try {
-      const logData = req.body;
-      const ipAddress = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "127.0.0.1";
-      
-      const responseTimeMs = Number(logData.responseTimeMs) || 0;
-      const gearScore = Number(logData.gearScore) || 0;
-      const wealthScore = Number(logData.wealthScore) || 0;
-      const powerScore = Number(logData.powerScore) || 0;
-      const progressionScore = Number(logData.progressionScore) || 0;
-      const playerLevel = Number(logData.playerLevel) || 0;
-      const playerPower = Number(logData.playerPower) || 0;
-      const playerGold = Number(logData.playerGold) || 0;
-      const worldNumber = Number(logData.worldNumber) || 1;
+router.post("/log-lookup", async (req: any, res: any) => {
+  try {
+    const logData = req.body;
+    const ipAddress = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "127.0.0.1";
+    
+    const responseTimeMs = Number(logData.responseTimeMs) || 0;
+    const gearScore = Number(logData.gearScore) || 0;
+    const wealthScore = Number(logData.wealthScore) || 0;
+    const powerScore = Number(logData.powerScore) || 0;
+    const progressionScore = Number(logData.progressionScore) || 0;
+    const playerLevel = Number(logData.playerLevel) || 0;
+    const playerPower = Number(logData.playerPower) || 0;
+    const playerGold = Number(logData.playerGold) || 0;
+    const worldNumber = Number(logData.worldNumber) || 1;
 
-      jsonDb.addLookupLog({
-        usernameSearched: logData.usernameSearched || "Unknown",
-        ipAddress,
-        sessionId: logData.sessionId || "anonymous-session",
-        userAccount: logData.userAccount || null,
-        userType: logData.userType || "Guest",
-        status: logData.status || "Success",
-        responseTimeMs,
-        grade: logData.grade || "B+",
-        gearScore,
-        wealthScore,
-        powerScore,
-        progressionScore,
-        recommendedUpgrade: logData.recommendedUpgrade || "None",
-        playerLevel,
-        playerPower,
-        playerGold,
-        equippedSword: logData.equippedSword || "Unknown",
-        equippedShield: logData.equippedShield || "Unknown",
-        worldNumber
-      });
+    await jsonDb.addLookupLog({
+      usernameSearched: logData.usernameSearched || "Unknown",
+      ipAddress,
+      sessionId: logData.sessionId || "anonymous-session",
+      userAccount: logData.userAccount || null,
+      userType: logData.userType || "Guest",
+      status: logData.status || "Success",
+      responseTimeMs,
+      grade: logData.grade || "B+",
+      gearScore,
+      wealthScore,
+      powerScore,
+      progressionScore,
+      recommendedUpgrade: logData.recommendedUpgrade || "None",
+      playerLevel,
+      playerPower,
+      playerGold,
+      equippedSword: logData.equippedSword || "Unknown",
+      equippedShield: logData.equippedShield || "Unknown",
+      worldNumber
+    });
 
-      jsonDb.addActivityLog(
-        logData.usernameSearched || "Unknown",
-        "Player Analysis",
-        logData.status === "Success"
-          ? `Successful player analysis of ${logData.usernameSearched || "Unknown"}`
-          : `Failed player analysis of ${logData.usernameSearched || "Unknown"}`,
-        logData.status || "Success",
-        responseTimeMs
-      );
-    } catch (err) {
-      console.error("Error logging player lookup:", err);
-    }
-  });
+    await jsonDb.addActivityLog(
+      logData.usernameSearched || "Unknown",
+      "Player Analysis",
+      logData.status === "Success"
+        ? `Successful player analysis of ${logData.usernameSearched || "Unknown"}`
+        : `Failed player analysis of ${logData.usernameSearched || "Unknown"}`,
+      logData.status || "Success",
+      responseTimeMs
+    );
+  } catch (err) {
+    console.error("Error logging player lookup:", err);
+  }
   res.json({ success: true });
 });
 
 // 14. Public: Log administrative/user activity
-router.post("/log-activity", (req: any, res: any) => {
+router.post("/log-activity", async (req: any, res: any) => {
   const { username, action, details } = req.body;
   const session = getSession(req);
   const actor = session ? session.username : (username || "Guest");
   
-  jsonDb.addActivityLog(actor, action, details);
+  await jsonDb.addActivityLog(actor, action, details);
   res.json({ success: true });
 });
 
@@ -493,6 +490,125 @@ router.get("/export-logs", checkMasterSession, (req: any, res: any) => {
   } else {
     res.json(logs);
   }
+});
+
+// 17. Public / Admin Config Syncing (Section 6)
+router.get("/admin/config", (req: any, res: any) => {
+  res.json({
+    items: jsonDb.getCustomItems(),
+    prices: jsonDb.getCustomPrices(),
+    benchmarks: jsonDb.getCustomBenchmarks(),
+    constants: jsonDb.getCustomConstants()
+  });
+});
+
+router.post("/admin/config", async (req: any, res: any) => {
+  const adminPassword = req.headers["x-admin-password"];
+  if (adminPassword !== "harrison@smgrade2026") {
+    res.status(401).json({ error: "Unauthorized admin access." });
+    return;
+  }
+
+  try {
+    const { items, prices, benchmarks, constants } = req.body;
+    if (items) await jsonDb.saveCustomItems(items);
+    if (prices) await jsonDb.saveCustomPrices(prices);
+    if (benchmarks) await jsonDb.saveCustomBenchmarks(benchmarks);
+    if (constants) await jsonDb.saveCustomConstants(constants);
+    
+    await jsonDb.addAuditLog("Admin Panel", "Configuration Updated", "Admin updated game items, prices, or constants settings.");
+    res.json({ success: true, message: "Configuration persisted successfully." });
+  } catch (err: any) {
+    console.error("Failed to save admin configuration:", err);
+    res.status(500).json({ error: "Database save failure." });
+  }
+});
+
+// 18. Arcade leaderboard endpoints (Section 8-10)
+router.post("/arcade/score", async (req: any, res: any) => {
+  const { username, dwarfKills, elfKills, totalKills, highestCombo, highestDps } = req.body;
+  if (!username) {
+    res.status(400).json({ error: "Username is required." });
+    return;
+  }
+  try {
+    const entry = await jsonDb.addArcadeScore({
+      username,
+      dwarfKills: Number(dwarfKills) || 0,
+      elfKills: Number(elfKills) || 0,
+      totalKills: Number(totalKills) || 0,
+      highestCombo: Number(highestCombo) || 0,
+      highestDps: Number(highestDps) || 0
+    });
+    res.json({ success: true, entry });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to save score." });
+  }
+});
+
+router.get("/arcade/leaderboard", (req: any, res: any) => {
+  const windowStr = req.query.window || "all-time";
+  const scores = jsonDb.getArcadeScores();
+
+  const now = Date.now();
+  const filtered = scores.filter(s => {
+    const time = new Date(s.timestamp).getTime();
+    if (windowStr === "daily") {
+      return now - time <= 24 * 60 * 60 * 1000;
+    }
+    if (windowStr === "weekly") {
+      return now - time <= 7 * 24 * 60 * 60 * 1000;
+    }
+    return true;
+  });
+
+  const userMap = new Map<string, {
+    username: string;
+    dwarfKills: number;
+    elfKills: number;
+    totalKills: number;
+    highestCombo: number;
+    highestDps: number;
+  }>();
+
+  filtered.forEach(s => {
+    const userKey = s.username.toLowerCase();
+    const existing = userMap.get(userKey);
+    if (existing) {
+      existing.dwarfKills += s.dwarfKills;
+      existing.elfKills += s.elfKills;
+      existing.totalKills += s.totalKills;
+      existing.highestCombo = Math.max(existing.highestCombo, s.highestCombo);
+      existing.highestDps = Math.max(existing.highestDps, s.highestDps);
+    } else {
+      userMap.set(userKey, {
+        username: s.username,
+        dwarfKills: s.dwarfKills,
+        elfKills: s.elfKills,
+        totalKills: s.totalKills,
+        highestCombo: s.highestCombo,
+        highestDps: s.highestDps
+      });
+    }
+  });
+
+  const aggregated = Array.from(userMap.values());
+
+  const getTop = (field: "dwarfKills" | "elfKills" | "totalKills" | "highestCombo" | "highestDps") => {
+    return aggregated
+      .filter(u => u[field] > 0)
+      .sort((a, b) => b[field] - a[field])
+      .slice(0, 10)
+      .map(u => ({ username: u.username, score: u[field] }));
+  };
+
+  res.json({
+    dwarfKills: getTop("dwarfKills"),
+    elfKills: getTop("elfKills"),
+    totalKills: getTop("totalKills"),
+    highestCombo: getTop("highestCombo"),
+    highestDps: getTop("highestDps")
+  });
 });
 
 export default router;

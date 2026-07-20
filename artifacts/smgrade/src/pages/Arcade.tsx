@@ -31,6 +31,106 @@ interface Achievement {
   unlocked: boolean;
 }
 
+// Retro Web Audio Synthesizer for Arcade
+const playSound = (type: "hit" | "crit" | "combo" | "kill" | "rage" | "upgrade" | "click" | "transition" | "nuke" | "bazooka") => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    const now = ctx.currentTime;
+    
+    if (type === "hit") {
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } else if (type === "crit") {
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.18);
+      gain.gain.setValueAtTime(0.45, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.18);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    } else if (type === "combo") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.setValueAtTime(900, now + 0.05);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    } else if (type === "kill") {
+      osc.type = "square";
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.linearRampToValueAtTime(60, now + 0.4);
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.45);
+      osc.start(now);
+      osc.stop(now + 0.45);
+    } else if (type === "rage") {
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(100, now);
+      osc.frequency.linearRampToValueAtTime(250, now + 0.3);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } else if (type === "upgrade") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.setValueAtTime(554.37, now + 0.08);
+      osc.frequency.setValueAtTime(659.25, now + 0.16);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } else if (type === "click") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(800, now);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === "transition") {
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.linearRampToValueAtTime(440, now + 0.25);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } else if (type === "nuke") {
+      osc.type = "square";
+      osc.frequency.setValueAtTime(60, now);
+      osc.frequency.exponentialRampToValueAtTime(15, now + 0.8);
+      gain.gain.setValueAtTime(0.6, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.85);
+      osc.start(now);
+      osc.stop(now + 0.85);
+    } else if (type === "bazooka") {
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.linearRampToValueAtTime(80, now + 0.25);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+  } catch (_) {
+    // AudioContext blocked
+  }
+};
+
 function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: boolean; isCrit: boolean; blink: boolean }) {
   return (
     <motion.svg
@@ -525,8 +625,26 @@ export default function Arcade() {
   const [totalHits, setTotalHits] = useState(0);
   const [defeats, setDefeats] = useState(0);
 
-  // Weapon selected: 'punch' | 'slipper' | 'hammer'
-  const [activeWeapon, setActiveWeapon] = useState<"punch" | "slipper" | "hammer">("punch");
+  const [arcadeUsername, setArcadeUsername] = useState<string>(() => localStorage.getItem("smg_arcade_username") || "");
+  const [leaderboardWindow, setLeaderboardWindow] = useState<"daily" | "weekly" | "all-time">("all-time");
+  const [leaderboardData, setLeaderboardData] = useState<any>(null);
+
+  const fetchLeaderboard = () => {
+    fetch(`/api/master/arcade/leaderboard?window=${leaderboardWindow}`)
+      .then(res => {
+        if (!res.ok) throw new Error("Leaderboard offline");
+        return res.json();
+      })
+      .then(data => setLeaderboardData(data))
+      .catch(err => console.warn(err.message));
+  };
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [leaderboardWindow]);
+
+  // Weapon selected: 'punch' | 'slipper' | 'hammer' | 'bazooka' | 'nuke'
+  const [activeWeapon, setActiveWeapon] = useState<"punch" | "slipper" | "hammer" | "bazooka" | "nuke">("punch");
   const [blink, setBlink] = useState(false);
 
   useEffect(() => {
@@ -564,6 +682,7 @@ export default function Arcade() {
     { id: "combo_king", title: "⚡ Combo King", description: "Achieve a 20x hit combo", unlocked: false },
     { id: "rage_overload", title: "🔥 Rage Overload", description: "Reach 100% on the Rage Meter", unlocked: false },
     { id: "slipper_master", title: "🩴 Slipper Master", description: "Unlock and attack with the legendary slipper", unlocked: false },
+    { id: "bazooka_master", title: "🚀 Rocket Launcher", description: "Attack with the heavy Bazooka rocket", unlocked: false },
     { id: "tactical_nuke", title: "☢️ Nuclear Option", description: "Unleash the Tactical Upgrade Nuke", unlocked: false },
     { id: "unstoppable", title: "🏆 Refund Expert", description: "Defeat the target 5 times", unlocked: false },
   ]);
@@ -733,6 +852,16 @@ export default function Arcade() {
       rageGain = 6;
       shakeStrength = true;
       hitStopDuration = 80;
+    } else if (activeWeapon === "bazooka") {
+      dmg = 18;
+      rageGain = 12;
+      shakeStrength = true;
+      hitStopDuration = 120;
+    } else if (activeWeapon === "nuke") {
+      dmg = 45;
+      rageGain = 25;
+      shakeStrength = true;
+      hitStopDuration = 200;
     }
 
     // Critical check (15% base rate)
@@ -762,6 +891,15 @@ export default function Arcade() {
       setTimeout(() => setScreenShake(false), 200);
     }
 
+    // Audio Playback
+    if (isCrit) {
+      playSound("crit");
+    } else {
+      if (activeWeapon === "bazooka") playSound("bazooka");
+      else if (activeWeapon === "nuke") playSound("nuke");
+      else playSound("hit");
+    }
+
     // Update HP
     const nextHp = Math.max(targetHp - dmg, 0);
     setTargetHp(nextHp);
@@ -775,26 +913,32 @@ export default function Arcade() {
     if (nextCombo > maxCombo) {
       setMaxCombo(nextCombo);
     }
+    // Combo blip sound every 5 combo ticks
+    if (nextCombo % 5 === 0) {
+      playSound("combo");
+    }
 
     // Rage
     const nextRage = Math.min(rage + rageGain, 100);
     setRage(nextRage);
 
-    // Spawns
+    // Container-relative Spawns
     const targetEl = document.getElementById("target-dummy-char");
-    let spawnX = 580;
-    let spawnY = 220;
-    if (targetEl) {
+    const containerEl = document.getElementById("battle-stage-container");
+    let spawnX = 200;
+    let spawnY = 150;
+    if (targetEl && containerEl) {
       const rect = targetEl.getBoundingClientRect();
-      spawnX = rect.left + rect.width / 2 + Math.random() * 20 - 10;
-      spawnY = rect.top + rect.height / 2 + Math.random() * 20 - 10;
+      const cRect = containerEl.getBoundingClientRect();
+      spawnX = (rect.left + rect.width / 2) - cRect.left + (Math.random() * 20 - 10);
+      spawnY = (rect.top + rect.height / 2) - cRect.top + (Math.random() * 20 - 10);
     }
 
     // Spawn Particles & Damage numbers
-    spawnParticles(spawnX - 100, spawnY - 100, isCrit ? "#ffbf00" : "#ffffff", isCrit ? 15 : 6);
+    spawnParticles(spawnX, spawnY, isCrit ? "#ffbf00" : "#ffffff", isCrit ? 15 : 6);
     triggerFloatingText(
-      spawnX - 100 + (Math.random() * 30 - 15), 
-      spawnY - 140, 
+      spawnX + (Math.random() * 30 - 15), 
+      spawnY - 30, 
       Math.round(dmg * 10).toString(), 
       isCrit ? "#ffd700" : "#ffffff", 
       isCrit ? 26 : 16, 
@@ -803,10 +947,13 @@ export default function Arcade() {
 
     // Floating combat word
     triggerFloatingText(
-      spawnX - 150 + (Math.random() * 40 - 20),
-      spawnY - 180,
+      spawnX - 50 + (Math.random() * 40 - 20),
+      spawnY - 60,
       getActionWord(activeWeapon),
-      activeWeapon === "slipper" ? "#e05a5a" : (activeWeapon === "hammer" ? "#c9a84c" : "#8ab4c9"),
+      activeWeapon === "slipper" ? "#e05a5a" : 
+      (activeWeapon === "hammer" ? "#c9a84c" : 
+      (activeWeapon === "bazooka" ? "#4ade80" : 
+      (activeWeapon === "nuke" ? "#ef4444" : "#8ab4c9"))),
       isCrit ? 15 : 11
     );
 
@@ -817,25 +964,31 @@ export default function Arcade() {
     if (nextCombo >= 20) unlockAchievement("combo_king");
     if (nextRage >= 100) unlockAchievement("rage_overload");
     if (activeWeapon === "slipper") unlockAchievement("slipper_master");
+    if (activeWeapon === "bazooka") unlockAchievement("bazooka_master");
 
     saveStats(nextHits, defeats, Math.max(nextCombo, maxCombo), achievements);
 
     // Check defeat
     if (nextHp <= 0) {
-      handleTargetDefeat();
+      handleTargetDefeat(dmg);
     }
   };
 
   // Target defeat animation sequence
-  const handleTargetDefeat = () => {
+  const handleTargetDefeat = (finalDmg: number) => {
     setTargetDead(true);
     setReactionBubble("ARGH! Refund authorized!");
+    playSound("kill");
     
     // Spawn massive gold coin particles
     const targetEl = document.getElementById("target-dummy-char");
-    if (targetEl) {
+    const containerEl = document.getElementById("battle-stage-container");
+    if (targetEl && containerEl) {
       const rect = targetEl.getBoundingClientRect();
-      spawnParticles(rect.left + rect.width / 2 - 100, rect.top + rect.height / 2 - 100, "#ffd700", 35);
+      const cRect = containerEl.getBoundingClientRect();
+      const spawnX = (rect.left + rect.width / 2) - cRect.left;
+      const spawnY = (rect.top + rect.height / 2) - cRect.top;
+      spawnParticles(spawnX, spawnY, "#ffd700", 35);
     }
 
     const nextDefs = defeats + 1;
@@ -847,6 +1000,26 @@ export default function Arcade() {
     }
 
     saveStats(totalHits, nextDefs, maxCombo, achievements);
+
+    // Post score to backend Leaderboard
+    if (arcadeUsername && arcadeUsername.trim().length > 0) {
+      fetch("/api/master/arcade/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: arcadeUsername,
+          dwarfKills: playerChar === "dwarf" ? 1 : 0,
+          elfKills: playerChar === "elf" ? 1 : 0,
+          totalKills: 1,
+          highestCombo: Math.max(combo + 1, maxCombo),
+          highestDps: Math.round(finalDmg * 10)
+        })
+      })
+      .then(() => {
+        fetchLeaderboard();
+      })
+      .catch(err => console.error("Failed to submit score:", err));
+    }
 
     // Autoreset loop
     setTimeout(() => {
@@ -921,7 +1094,7 @@ export default function Arcade() {
       setTargetHurtAnim(false);
 
       if (nextHp <= 0) {
-        handleTargetDefeat();
+        handleTargetDefeat(dmg);
       }
     }, spell === "nuke" ? 300 : 150);
 
@@ -962,13 +1135,47 @@ export default function Arcade() {
           </span>
           <span className="text-white font-extrabold text-sm tracking-tight font-display">Arcade</span>
         </div>
-        <Link href="/" className="text-white/40 hover:text-amber-400 text-xs font-bold uppercase tracking-widest transition-colors">
-          ← Back to grading
-        </Link>
+        <div className="flex items-center gap-4">
+          {arcadeUsername && (
+            <div className="text-xs text-white/60 font-bold hidden md:block">
+              Player: <span className="text-amber-400 font-extrabold">{arcadeUsername}</span>
+              <button 
+                onClick={() => {
+                  localStorage.removeItem("smg_arcade_username");
+                  setArcadeUsername("");
+                  playSound("click");
+                }}
+                className="text-[10px] text-white/30 hover:text-red-400 font-black uppercase tracking-wider ml-2 transition-colors cursor-pointer"
+              >
+                (Edit Name)
+              </button>
+            </div>
+          )}
+          <Link href="/" className="text-white/40 hover:text-amber-400 text-xs font-bold uppercase tracking-widest transition-colors">
+            ← Back to grading
+          </Link>
+        </div>
       </header>
 
       {/* Main Container */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8 flex flex-col gap-6 z-10 relative">
+        <style>{`
+          @keyframes screen-shake {
+            0%, 100% { transform: translate(0, 0); }
+            10% { transform: translate(-2px, 1.5px) rotate(-0.5deg); }
+            20% { transform: translate(2px, -1.5px) rotate(0.5deg); }
+            30% { transform: translate(-2px, -1.5px) rotate(-0.5deg); }
+            40% { transform: translate(2px, 1.5px) rotate(0.5deg); }
+            50% { transform: translate(-2px, 1.5px) rotate(-0.5deg); }
+            60% { transform: translate(2px, -1.5px) rotate(0.5deg); }
+            70% { transform: translate(-2px, -1.5px) rotate(-0.5deg); }
+            80% { transform: translate(2px, 1.5px) rotate(0.5deg); }
+            90% { transform: translate(-2px, 1.5px) rotate(-0.5deg); }
+          }
+          .animate-shake {
+            animation: screen-shake 0.25s ease-in-out infinite;
+          }
+        `}</style>
         
         {/* Slow Mo Overlay */}
         <AnimatePresence>
@@ -994,7 +1201,63 @@ export default function Arcade() {
           )}
         </AnimatePresence>
 
-        {gameState === "select" ? (
+        {!arcadeUsername ? (
+          /* NICKNAME ENTRY CARD */
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex-1 flex flex-col justify-center items-center py-12 max-w-md mx-auto w-full space-y-8"
+          >
+            <div className="text-center space-y-2">
+              <span className="text-amber-400 font-black text-[9px] uppercase tracking-widest font-mono font-display">Setup Player Profile</span>
+              <h1 className="text-4xl font-black tracking-tight text-white font-display">WHO ARE YOU?</h1>
+              <p className="text-white/40 text-xs max-w-xs mx-auto leading-relaxed">
+                Enter a nickname to track your dwarf-bashing kills and compete on the global arcade leaderboards!
+              </p>
+            </div>
+
+            <div className="w-full p-6 rounded-2xl border border-white/[0.04] bg-[#0c1020]/40 space-y-4 shadow-[0_0_50px_rgba(0,0,0,0.4)]">
+              <div className="space-y-1">
+                <label className="text-[10px] text-white/40 font-black uppercase tracking-wider font-mono">Arcade Nickname</label>
+                <input 
+                  id="arcade-username-input"
+                  type="text"
+                  placeholder="Enter username (3+ chars)..."
+                  className="w-full px-4 py-3 rounded-xl border border-white/[0.05] bg-black/40 text-white font-extrabold text-sm focus:border-amber-500/50 outline-none transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const val = (e.target as HTMLInputElement).value.trim();
+                      if (val.length >= 3) {
+                        localStorage.setItem("smg_arcade_username", val);
+                        setArcadeUsername(val);
+                        playSound("upgrade");
+                      } else {
+                        alert("Nickname must be at least 3 characters.");
+                      }
+                    }
+                  }}
+                />
+              </div>
+
+              <button 
+                onClick={() => {
+                  const input = document.getElementById("arcade-username-input") as HTMLInputElement;
+                  const val = input?.value.trim() || "";
+                  if (val.length >= 3) {
+                    localStorage.setItem("smg_arcade_username", val);
+                    setArcadeUsername(val);
+                    playSound("upgrade");
+                  } else {
+                    alert("Nickname must be at least 3 characters.");
+                  }
+                }}
+                className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-black text-xs uppercase tracking-widest transition-all shadow-[0_4px_20px_rgba(245,158,11,0.25)] cursor-pointer"
+              >
+                Enter Arena
+              </button>
+            </div>
+          </motion.div>
+        ) : gameState === "select" ? (
           /* CHARACTER SELECTION */
           <motion.div 
             initial={{ opacity: 0, y: 15 }}
@@ -1012,7 +1275,7 @@ export default function Arcade() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-2xl">
               {/* Dwarf Card */}
               <div 
-                onClick={() => { setPlayerChar("dwarf"); setGameState("play"); }}
+                onClick={() => { setPlayerChar("dwarf"); setGameState("play"); playSound("transition"); }}
                 className="group relative p-6 rounded-2xl border border-white/[0.04] hover:border-amber-500/50 cursor-pointer bg-[#0c1020]/40 transition-all hover:shadow-[0_0_25px_rgba(245,158,11,0.15)] text-center flex flex-col justify-between"
               >
                 <div>
@@ -1026,14 +1289,14 @@ export default function Arcade() {
                     A stocky, grumpy fantasy dwarf. Fails your 99% upgrades and hoards your gold. Bash him to get a full refund!
                   </p>
                 </div>
-                <button className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-black text-xs uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(245,158,11,0.15)]">
+                <button className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-black text-xs uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(245,158,11,0.15)] cursor-pointer">
                   Play as Dwarf
                 </button>
               </div>
 
               {/* Elf Card */}
               <div 
-                onClick={() => { setPlayerChar("elf"); setGameState("play"); }}
+                onClick={() => { setPlayerChar("elf"); setGameState("play"); playSound("transition"); }}
                 className="group relative p-6 rounded-2xl border border-white/[0.04] hover:border-emerald-500/50 cursor-pointer bg-[#0c1020]/40 transition-all hover:shadow-[0_0_25px_rgba(16,185,129,0.15)] text-center flex flex-col justify-between"
               >
                 <div>
@@ -1047,7 +1310,7 @@ export default function Arcade() {
                     A slim, mischievous elf. Smugs constantly and wastes your valuable materials. Give him a good slap!
                   </p>
                 </div>
-                <button className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                <button className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] cursor-pointer">
                   Play as Elf
                 </button>
               </div>
@@ -1200,6 +1463,30 @@ export default function Arcade() {
                       🔨
                     </motion.div>
                   )}
+                  {playerAttackAnim && activeWeapon === "bazooka" && (
+                    <motion.div
+                      key="baz"
+                      initial={{ scale: 0.2, y: 80, x: -80, opacity: 0 }}
+                      animate={{ scale: [0.2, 1.5, 1], y: [ 80, -20, 0 ], x: [ -80, 20, 0 ], opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute pointer-events-none z-40 text-7xl"
+                    >
+                      🚀
+                    </motion.div>
+                  )}
+                  {playerAttackAnim && activeWeapon === "nuke" && (
+                    <motion.div
+                      key="nuk"
+                      initial={{ scale: 0.1, y: -150, opacity: 0 }}
+                      animate={{ scale: [0.1, 1.8, 1], y: [ -150, 0, 0 ], opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute pointer-events-none z-40 text-8xl"
+                    >
+                      ☢️
+                    </motion.div>
+                  )}
                 </AnimatePresence>
 
                 {/* Dizzy stars above head */}
@@ -1272,9 +1559,9 @@ export default function Arcade() {
                 {/* WEAPONS SELECTION */}
                 <div className="p-5 rounded-xl border border-white/[0.04] bg-[#070b13]/60 glass-panel space-y-3">
                   <div className="text-[10px] text-white/40 font-black uppercase tracking-wider font-mono">Select Weapon</div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 xl:grid-cols-5 gap-2">
                     <button 
-                      onClick={() => setActiveWeapon("punch")}
+                      onClick={() => { setActiveWeapon("punch"); playSound("click"); }}
                       className={`p-3 rounded-lg border text-center transition-all cursor-pointer ${
                         activeWeapon === "punch" 
                           ? "border-[#8ab4c9] bg-[#8ab4c9]/10 text-white font-extrabold" 
@@ -1287,7 +1574,7 @@ export default function Arcade() {
                     </button>
 
                     <button 
-                      onClick={() => setActiveWeapon("slipper")}
+                      onClick={() => { setActiveWeapon("slipper"); playSound("click"); }}
                       disabled={totalHits < 40 && defeats === 0}
                       className={`p-3 rounded-lg border text-center transition-all cursor-pointer ${
                         activeWeapon === "slipper" 
@@ -1301,7 +1588,7 @@ export default function Arcade() {
                     </button>
 
                     <button 
-                      onClick={() => setActiveWeapon("hammer")}
+                      onClick={() => { setActiveWeapon("hammer"); playSound("click"); }}
                       disabled={totalHits < 120 && defeats < 2}
                       className={`p-3 rounded-lg border text-center transition-all cursor-pointer ${
                         activeWeapon === "hammer" 
@@ -1312,6 +1599,34 @@ export default function Arcade() {
                       <div className="text-xl">🔨</div>
                       <div className="text-[9px] uppercase tracking-wider mt-1">Hammer</div>
                       <div className="text-[8px] text-[#c9a84c]">{totalHits < 120 && defeats < 2 ? "120 Hits / 2 Wins" : "Smash · 3.5x"}</div>
+                    </button>
+
+                    <button 
+                      onClick={() => { setActiveWeapon("bazooka"); playSound("click"); }}
+                      disabled={totalHits < 200 && defeats < 3}
+                      className={`p-3 rounded-lg border text-center transition-all cursor-pointer ${
+                        activeWeapon === "bazooka" 
+                          ? "border-[#4ade80] bg-[#4ade80]/10 text-white font-extrabold" 
+                          : "border-white/[0.03] bg-white/[0.01] hover:bg-white/[0.03] disabled:opacity-20 disabled:cursor-not-allowed"
+                      }`}
+                    >
+                      <div className="text-xl">🚀</div>
+                      <div className="text-[9px] uppercase tracking-wider mt-1">Bazooka</div>
+                      <div className="text-[8px] text-[#4ade80]">{totalHits < 200 && defeats < 3 ? "200 Hits / 3 Wins" : "Blast · 9.0x"}</div>
+                    </button>
+
+                    <button 
+                      onClick={() => { setActiveWeapon("nuke"); playSound("click"); }}
+                      disabled={totalHits < 350 && defeats < 5}
+                      className={`p-3 rounded-lg border text-center transition-all cursor-pointer ${
+                        activeWeapon === "nuke" 
+                          ? "border-[#ef4444] bg-[#ef4444]/10 text-white font-extrabold" 
+                          : "border-white/[0.03] bg-white/[0.01] hover:bg-white/[0.03] disabled:opacity-20 disabled:cursor-not-allowed"
+                      }`}
+                    >
+                      <div className="text-xl">☢️</div>
+                      <div className="text-[9px] uppercase tracking-wider mt-1">Nuke</div>
+                      <div className="text-[8px] text-[#ef4444]">{totalHits < 350 && defeats < 5 ? "350 Hits / 5 Wins" : "Doomsday · 22.5x"}</div>
                     </button>
                   </div>
                 </div>
@@ -1388,6 +1703,103 @@ export default function Arcade() {
                 >
                   Change Target
                 </button>
+              </div>
+
+              {/* LIVE LEADERBOARDS */}
+              <div className="p-5 rounded-xl border border-white/[0.04] bg-[#070b13]/60 glass-panel space-y-3">
+                <div className="flex items-center justify-between border-b border-white/[0.04] pb-2">
+                  <div className="text-xs font-black text-white uppercase tracking-widest">LEADERBOARDS</div>
+                  <div className="flex gap-1">
+                    {(["daily", "weekly", "all-time"] as const).map(w => (
+                      <button
+                        key={w}
+                        onClick={(e) => { e.stopPropagation(); setLeaderboardWindow(w); playSound("click"); }}
+                        className={`px-1.5 py-0.5 rounded text-[8px] uppercase font-black tracking-wider transition-all cursor-pointer ${
+                          leaderboardWindow === w 
+                            ? "bg-amber-500/25 border border-amber-500/35 text-amber-400" 
+                            : "bg-white/[0.02] border border-white/[0.03] text-white/40 hover:text-white"
+                        }`}
+                      >
+                        {w === "all-time" ? "All" : (w === "weekly" ? "Week" : "Day")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Categories */}
+                <div className="space-y-3">
+                  {/* Total Kills */}
+                  <div className="space-y-1">
+                    <div className="text-[9px] text-white/40 font-extrabold uppercase tracking-wider flex items-center gap-1 font-mono">
+                      ☠️ Total Kills
+                    </div>
+                    <div className="bg-black/20 rounded-lg p-2.5 space-y-1 min-h-[75px] max-h-[140px] overflow-y-auto pr-1">
+                      {leaderboardData?.totalKills && leaderboardData.totalKills.length > 0 ? (
+                        leaderboardData.totalKills.map((entry: any, index: number) => (
+                          <div key={index} className="flex items-center justify-between text-[11px] py-0.5 border-b border-white/[0.02] last:border-0 font-mono">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-3.5 font-black text-center ${
+                                index === 0 ? "text-[#ffd700]" : (index === 1 ? "text-[#c0c0c0]" : (index === 2 ? "text-[#cd7f32]" : "text-white/20"))
+                              }`}>{index + 1}</span>
+                              <span className="font-bold text-white/80">{entry.username}</span>
+                            </div>
+                            <span className="font-black text-amber-400">{entry.score}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-[10px] text-white/20 text-center py-4">No records yet</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Highest Combo */}
+                  <div className="space-y-1">
+                    <div className="text-[9px] text-white/40 font-extrabold uppercase tracking-wider flex items-center gap-1 font-mono">
+                      ⚡ Max Combo
+                    </div>
+                    <div className="bg-black/20 rounded-lg p-2.5 space-y-1 min-h-[75px] max-h-[140px] overflow-y-auto pr-1">
+                      {leaderboardData?.highestCombo && leaderboardData.highestCombo.length > 0 ? (
+                        leaderboardData.highestCombo.map((entry: any, index: number) => (
+                          <div key={index} className="flex items-center justify-between text-[11px] py-0.5 border-b border-white/[0.02] last:border-0 font-mono">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-3.5 font-black text-center ${
+                                index === 0 ? "text-[#ffd700]" : (index === 1 ? "text-[#c0c0c0]" : (index === 2 ? "text-[#cd7f32]" : "text-white/20"))
+                              }`}>{index + 1}</span>
+                              <span className="font-bold text-white/80">{entry.username}</span>
+                            </div>
+                            <span className="font-black text-cyan-400">{entry.score}x</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-[10px] text-white/20 text-center py-4">No records yet</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Highest Hit */}
+                  <div className="space-y-1">
+                    <div className="text-[9px] text-white/40 font-extrabold uppercase tracking-wider flex items-center gap-1 font-mono">
+                      🔥 Highest Hit
+                    </div>
+                    <div className="bg-black/20 rounded-lg p-2.5 space-y-1 min-h-[75px] max-h-[140px] overflow-y-auto pr-1">
+                      {leaderboardData?.highestDps && leaderboardData.highestDps.length > 0 ? (
+                        leaderboardData.highestDps.map((entry: any, index: number) => (
+                          <div key={index} className="flex items-center justify-between text-[11px] py-0.5 border-b border-white/[0.02] last:border-0 font-mono">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-3.5 font-black text-center ${
+                                index === 0 ? "text-[#ffd700]" : (index === 1 ? "text-[#c0c0c0]" : (index === 2 ? "text-[#cd7f32]" : "text-white/20"))
+                              }`}>{index + 1}</span>
+                              <span className="font-bold text-white/80">{entry.username}</span>
+                            </div>
+                            <span className="font-black text-rose-400">{entry.score}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-[10px] text-white/20 text-center py-4">No records yet</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* REVENGE ACHIEVEMENTS */}

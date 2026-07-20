@@ -1530,6 +1530,27 @@ export default function Admin() {
     saveBenchmarkTiers(tiers);
     saveTypeMappings(typeMappings);
     saveMarketData(marketItems);
+
+    fetch("/api/master/admin/config", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-password": "harrison@smgrade2026"
+      },
+      body: JSON.stringify({
+        items,
+        prices: marketItems,
+        benchmarks: tiers,
+        constants: settings
+      })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to persist changes to the shared backend database.");
+    })
+    .catch(err => {
+      console.error(err);
+    });
+
     setSaved(true);
     setTimeout(() => navigate("/"), 800);
   }
@@ -1543,11 +1564,33 @@ export default function Admin() {
     saveBenchmarkTiers(DEFAULT_BENCHMARKS);
     saveItems(DEFAULT_ITEMS);
     localStorage.removeItem("smg_market_database_v1");
-    setMarketItems(initializeMarketData());
+    const defaultMarket = initializeMarketData();
+    setMarketItems(defaultMarket);
     localStorage.removeItem("smg_type_mappings_v1");
     setTypeMappings({ swords: {}, shields: {}, pets: {} });
     localStorage.removeItem("smg_unmapped_types_logged");
     setUnmappedAlerts([]);
+
+    fetch("/api/master/admin/config", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-password": "harrison@smgrade2026"
+      },
+      body: JSON.stringify({
+        items: DEFAULT_ITEMS,
+        prices: defaultMarket,
+        benchmarks: DEFAULT_BENCHMARKS,
+        constants: DEFAULT_CONSTANTS
+      })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to reset changes in the shared backend database.");
+    })
+    .catch(err => {
+      console.error(err);
+    });
+
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }

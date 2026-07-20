@@ -12,6 +12,7 @@ class DummySerializer {
 registerSerializer("j6CSBEPV_", DummySerializer);
 registerSerializer("CFQ2R9YEZ", DummySerializer);
 registerSerializer("9qPNKmk1V", DummySerializer);
+registerSerializer("GPkSQyZ3y", DummySerializer);
 registerSerializer("none", DummySerializer);
 import { formatNumber } from "./numberParser.js";
 import { resolveItemByGameType } from "./gearDatabase.js";
@@ -36,7 +37,7 @@ export async function fetchLivePlayerInfo(
     headers: { "Content-Type": "application/json" }
   });
   if (!fsRes.ok) throw new Error(`Load balancer returned status ${fsRes.status}`);
-  const fsData = await fsRes.json();
+  const fsData = (await fsRes.json()) as any;
   if (!fsData.token) throw new Error("Load balancer did not provide authentication token.");
 
   // Step 2: joinOrCreate
@@ -54,7 +55,7 @@ export async function fetchLivePlayerInfo(
     })
   });
   if (!mmRes.ok) throw new Error(`Matchmaker request failed with status ${mmRes.status}`);
-  const mmData = await mmRes.json();
+  const mmData = (await mmRes.json()) as any;
 
   if (!mmData.room || !mmData.room.publicAddress || !mmData.sessionId) {
     throw new Error("Matchmaker response payload is missing reservation data.");

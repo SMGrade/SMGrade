@@ -17,6 +17,7 @@ class DummySerializer {
 registerSerializer("j6CSBEPV_", DummySerializer);
 registerSerializer("CFQ2R9YEZ", DummySerializer);
 registerSerializer("9qPNKmk1V", DummySerializer);
+registerSerializer("GPkSQyZ3y", DummySerializer);
 registerSerializer("none", DummySerializer);
 
 interface StepItem {

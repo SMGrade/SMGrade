@@ -1,22 +1,27 @@
-import { Router, type Request, type Response } from "express";
+import express from "express";
 import crypto from "crypto";
 import jsonDb from "../lib/jsonDb.js";
 
-const router = Router();
+const router = express.Router();
 
-// In-memory sessions store
+// Active sessions: map sessionToken -> { userId, role, username }
 export const activeSessions = new Map<string, { userId: string; role: string; username: string }>();
 
-// Helper to authenticate user from auth header
+// Helper to get active session
 export function getSession(req: any) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-  const token = authHeader.split(" ")[1];
-  return activeSessions.get(token) || null;
+  const authHeader = req.headers["authorization"];
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.substring(7);
+    return activeSessions.get(token);
+  }
+  if (req.cookies && req.cookies.sessionToken) {
+    return activeSessions.get(req.cookies.sessionToken);
+  }
+  return null;
 }
 
-// 1. Create Account
-router.post("/register", (req: any, res: any) => {
+// 1. Register Account
+router.post("/register", async (req: any, res: any) => {
   const { username, password } = req.body;
   if (!username || !password || username.trim().length < 3 || password.trim().length < 6) {
     res.status(400).json({ error: "Username (min 3 chars) and Password (min 6 chars) are required." });
@@ -34,15 +39,15 @@ router.post("/register", (req: any, res: any) => {
   // First user is owner, subsequent users are viewers
   const role = totalUsers === 0 ? "owner" : "viewer";
 
-  const user = jsonDb.createUser(username.trim(), hash, role);
-  jsonDb.addAuditLog("System", "User Registered", `New user ${username} created with role ${role}`);
-  jsonDb.addActivityLog("System", "Registration", `New user ${username} created with role ${role}`);
+  const user = await jsonDb.createUser(username.trim(), hash, role);
+  await jsonDb.addAuditLog("System", "User Registered", `New user ${username} created with role ${role}`);
+  await jsonDb.addActivityLog("System", "Registration", `New user ${username} created with role ${role}`);
 
   res.status(201).json({ success: true, message: "Account created successfully." });
 });
 
 // 2. Log In
-router.post("/login", (req: any, res: any) => {
+router.post("/login", async (req: any, res: any) => {
   const { username, password } = req.body;
   if (!username || !password) {
     res.status(400).json({ error: "Username and Password are required." });
@@ -72,14 +77,14 @@ router.post("/login", (req: any, res: any) => {
 
   // Update last login
   user.lastLogin = new Date().toISOString();
-  jsonDb.updateUser(user);
+  await jsonDb.updateUser(user);
 
   // Add login log
   const ip = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "127.0.0.1";
   const userAgent = req.headers["user-agent"] || "Unknown";
-  jsonDb.addLoginHistory(user.id, user.username, ip, userAgent);
-  jsonDb.addAuditLog(user.username, "User Logged In", `Logged in from IP: ${ip}`);
-  jsonDb.addActivityLog(user.username, "Login", `Logged in from IP: ${ip}`);
+  await jsonDb.addLoginHistory(user.id, user.username, ip, userAgent);
+  await jsonDb.addAuditLog(user.username, "User Logged In", `Logged in from IP: ${ip}`);
+  await jsonDb.addActivityLog(user.username, "Login", `Logged in from IP: ${ip}`);
 
   res.json({
     success: true,
@@ -130,7 +135,7 @@ router.get("/me", (req: any, res: any) => {
 });
 
 // 4. Save User Custom Profile Details (notes, favorites)
-router.post("/profile", (req: any, res: any) => {
+router.post("/profile", async (req: any, res: any) => {
   const session = getSession(req);
   if (!session) {
     res.status(401).json({ error: "Unauthorized" });
@@ -149,8 +154,8 @@ router.post("/profile", (req: any, res: any) => {
   if (favoritePet !== undefined) user.favoritePet = favoritePet;
   if (notes !== undefined) user.notes = notes;
 
-  jsonDb.updateUser(user);
-  jsonDb.addActivityLog(user.username, "Profile Update", `Updated profile fields: ${Object.keys(req.body).filter(k => req.body[k] !== undefined).join(", ")}`);
+  await jsonDb.updateUser(user);
+  await jsonDb.addActivityLog(user.username, "Profile Update", `Updated profile fields: ${Object.keys(req.body).filter(k => req.body[k] !== undefined).join(", ")}`);
   res.json({ success: true, message: "Profile updated successfully." });
 });
 
@@ -167,7 +172,7 @@ router.get("/history", (req: any, res: any) => {
 });
 
 // 6. Save Grading Result in History
-router.post("/history", (req: any, res: any) => {
+router.post("/history", async (req: any, res: any) => {
   const session = getSession(req);
   if (!session) {
     res.status(401).json({ error: "Unauthorized" });
@@ -180,7 +185,7 @@ router.post("/history", (req: any, res: any) => {
     return;
   }
 
-  const entry = jsonDb.addHistory(session.userId, level, grade, score, power || "—", dps || 0);
+  const entry = await jsonDb.addHistory(session.userId, level, grade, score, power || "—", dps || 0);
   res.json({ success: true, entry });
 });
 

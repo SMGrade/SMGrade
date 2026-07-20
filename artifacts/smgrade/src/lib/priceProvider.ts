@@ -19,7 +19,7 @@ export async function ensurePricesLoaded(): Promise<any> {
   if (!priceLoadPromise) {
     priceLoadPromise = fetch("/price_estimated.json")
       .then((res) => res.json())
-      .then((data) => {
+      .then((data: any) => {
         priceDataCache = data.p || {};
         return priceDataCache;
       })

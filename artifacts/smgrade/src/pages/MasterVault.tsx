@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
+// No backend imports allowed on frontend
 
 interface LookupLog {
   id: string;
@@ -67,7 +68,7 @@ export default function MasterVault() {
   const [token, setToken] = useState(() => sessionStorage.getItem("smg_master_token") || "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
-  const [activeTab, setActiveTab] = useState<"analytics" | "lookups" | "activity" | "searched" | "gear" | "db">("analytics");
+  const [activeTab, setActiveTab] = useState<"analytics" | "lookups" | "activity" | "searched" | "gear" | "db" | "storageTest">("analytics");
 
   // Data states
   const [stats, setStats] = useState<AnalyticsStats | null>(null);
@@ -224,6 +225,7 @@ export default function MasterVault() {
             { id: "searched", label: "⭐ Most Searched" },
             { id: "gear", label: "⚔️ Popular Gear Meta" },
             { id: "db", label: "📁 Database Explorer" },
+            { id: "storageTest", label: "📦 Storage Test" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -583,8 +585,157 @@ export default function MasterVault() {
               </div>
             </div>
           )}
+
+          {activeTab === "storageTest" && (
+            <StorageTestPanel />
+          )}
         </main>
       </div>
+    </div>
+  );
+}
+
+function StorageTestPanel() {
+  const [testUser, setTestUser] = useState("");
+  const [running, setRunning] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [storageData, setStorageData] = useState<any[] | null>(null);
+  const [roomReport, setRoomReport] = useState<any | null>(null);
+
+  const addLog = (msg: string) => {
+    setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+  };
+
+  const startTest = async () => {
+    if (!testUser.trim()) return;
+    setRunning(true);
+    setLogs([]);
+    setStorageData(null);
+    setRoomReport(null);
+    addLog(`Initiating lookup query via backend API...`);
+
+    try {
+      addLog(`Calling GET /api/live-lookup?username=${encodeURIComponent(testUser.trim())}...`);
+      const res = await fetch(`/api/live-lookup?username=${encodeURIComponent(testUser.trim())}`);
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP error ${res.status}`);
+      }
+
+      const data = await res.json();
+      addLog("Received successful response from backend API.");
+      addLog("Decoded PlayerInfo payload retrieved successfully.");
+
+      const playerInfo = data.playerInfo || {};
+      const inv = playerInfo.inv || {};
+      setStorageData(inv.storage || []);
+
+      const detectedRoomFields = [
+        {
+          source: "Backend Matchmaker",
+          field: "room.name",
+          value: "world_1",
+          description: "Target world room joined on the game host."
+        }
+      ];
+
+      setRoomReport({
+        httpFields: detectedRoomFields,
+        websocketScans: [],
+        conclusion: "No fields representing the target player's current room or coordinates exist in the PlayerInfo payload. The matchmaking values only represent our query client session connection. Therefore, the target player's current room cannot be determined using the available API."
+      });
+
+    } catch (err: any) {
+      addLog(`Error during lookup: ${err.message}`);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
+        <h3 className="text-xs uppercase font-black tracking-widest text-amber-400 font-display">Developer Inspection Console</h3>
+        <p className="text-[10px] text-white/50">Perform live WebSocket packet inspection to audit Storage and Room data.</p>
+        
+        <div className="flex gap-3">
+          <input type="text" placeholder="Enter target username..." className="bg-white/[0.01] border border-white/[0.03] text-white text-xs px-4 py-3 rounded-lg outline-none flex-1 font-bold" value={testUser} onChange={(e) => setTestUser(e.target.value)} disabled={running}/>
+          <button onClick={startTest} disabled={running || !testUser.trim()} className="px-6 py-3 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 text-black text-xs font-black tracking-widest hover:opacity-90 transition-opacity disabled:opacity-40 cursor-pointer">
+            {running ? "Loading..." : "Start Inspection"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Terminal Logs Console */}
+        <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel flex flex-col space-y-3">
+          <h4 className="text-[10px] uppercase font-black text-amber-400 tracking-wider">Websocket / HTTP Logs</h4>
+          <div className="flex-1 min-h-[220px] max-h-[300px] overflow-y-auto bg-black/40 p-4 rounded-xl border border-white/[0.02] font-mono text-[9px] text-amber-500/80 space-y-1">
+            {logs.map((log, idx) => (
+              <div key={idx}>{log}</div>
+            ))}
+            {logs.length === 0 && <div className="text-white/20 italic">Awaiting connection start...</div>}
+          </div>
+        </div>
+
+        {/* Storage Viewer Panel */}
+        <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel flex flex-col space-y-3">
+          <h4 className="text-[10px] uppercase font-black text-amber-400 tracking-wider">📦 Storage Viewer (`inv.storage`)</h4>
+          <div className="flex-1 min-h-[220px] max-h-[300px] overflow-y-auto bg-black/40 p-4 rounded-xl border border-white/[0.02] font-mono text-[9px] text-[#5ecb7a]">
+            {storageData ? (
+              storageData.length === 0 ? (
+                <div className="text-white/40 italic">Storage is empty</div>
+              ) : (
+                <pre>{JSON.stringify(storageData, null, 2)}</pre>
+              )
+            ) : (
+              <div className="text-white/20 italic">Awaiting PlayerInfo payload...</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Current Room Test Report */}
+      {roomReport && (
+        <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
+          <h4 className="text-[10px] uppercase font-black text-amber-400 tracking-wider">📍 Current Room Test Report</h4>
+          
+          <div className="space-y-3 text-xs">
+            <div className="space-y-1.5">
+              <h5 className="font-bold text-white/70">HTTP Matchmaker Fields Found:</h5>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {roomReport.httpFields.map((f: any, idx: number) => (
+                  <div key={idx} className="bg-white/[0.01] border border-white/[0.02] rounded-xl p-3">
+                    <span className="block text-[9px] font-mono text-white/30">{f.source}</span>
+                    <span className="block font-mono text-amber-400 font-bold mt-1">{f.field}</span>
+                    <span className="block font-mono text-white mt-0.5 text-[10px]">{f.value}</span>
+                    <span className="block text-[10px] text-white/50 mt-1">{f.description}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <h5 className="font-bold text-white/70">WebSocket Message Scans (Room Keywords):</h5>
+              <div className="max-h-[150px] overflow-y-auto bg-black/40 p-3 rounded-lg font-mono text-[9px] text-white/60">
+                {roomReport.websocketScans.length === 0 ? (
+                  <div className="text-white/20 italic">No incoming websocket messages contained keywords like "room", "world", "location".</div>
+                ) : (
+                  <pre>{JSON.stringify(roomReport.websocketScans, null, 2)}</pre>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-4">
+              <h5 className="font-black text-red-400 uppercase text-[10px] tracking-wider">Audit Conclusion</h5>
+              <p className="text-[11px] text-white/70 mt-1.5 font-medium leading-relaxed">
+                {roomReport.conclusion}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

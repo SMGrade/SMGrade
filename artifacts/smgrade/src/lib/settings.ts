@@ -35,7 +35,7 @@ const STORAGE_KEY = "smg_grading_settings_v1";
 export function loadGradingConstants(): GradingConstants {
   try {
     if (typeof window !== "undefined" && window.localStorage) {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         return {
@@ -53,7 +53,7 @@ export function loadGradingConstants(): GradingConstants {
 export function saveGradingConstants(constants: GradingConstants): void {
   try {
     if (typeof window !== "undefined" && window.localStorage) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(constants));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(constants));
     }
   } catch {
     // Ignore

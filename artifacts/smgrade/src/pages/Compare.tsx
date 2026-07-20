@@ -113,8 +113,8 @@ export default function Compare() {
       overallGrade: sc1.overallGrade,
       gearScore: sc1.gearScore,
       powerScore: sc1.powerScore,
-      damagePerHit: dmg1,
-      dps: dmg1 * 2.77,
+      damagePerHit: dmgStats1.damagePerHit,
+      dps: dmgStats1.damagePerSecond,
     });
 
     setPlayer2({
@@ -133,8 +133,8 @@ export default function Compare() {
       overallGrade: sc2.overallGrade,
       gearScore: sc2.gearScore,
       powerScore: sc2.powerScore,
-      damagePerHit: dmg2,
-      dps: dmg2 * 2.77,
+      damagePerHit: dmgStats2.damagePerHit,
+      dps: dmgStats2.damagePerSecond,
     });
   }
 
