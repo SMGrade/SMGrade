@@ -136,6 +136,7 @@ export interface DbSchema {
   customPrices?: any[];
   customBenchmarks?: any[];
   customConstants?: any;
+  masterSessions?: string[];
 }
 
 const DEFAULT_DB: DbSchema = {
@@ -156,12 +157,14 @@ const DEFAULT_DB: DbSchema = {
   customPrices: [],
   customBenchmarks: [],
   customConstants: null,
+  masterSessions: [],
 };
 
 export class JsonDatabase {
   private data: DbSchema;
   private pool: any = null;
   private tableCreated = false;
+  private queue: Promise<any> = Promise.resolve();
 
   constructor() {
     this.data = this.loadFromFile();
@@ -173,6 +176,15 @@ export class JsonDatabase {
         }
       });
     }
+  }
+
+  private async executeAtomic<T>(fn: () => Promise<T> | T): Promise<T> {
+    const next = this.queue.then(async () => {
+      await this.syncFromDb();
+      return fn();
+    });
+    this.queue = next.catch(() => {});
+    return next;
   }
 
   private loadFromFile(): DbSchema {
@@ -199,8 +211,8 @@ export class JsonDatabase {
     if (!this.pool) {
       return;
     }
-    try {
-      if (!this.tableCreated) {
+    if (!this.tableCreated) {
+      try {
         await this.pool.query(`
           CREATE TABLE IF NOT EXISTS master_vault_state (
             id INT PRIMARY KEY,
@@ -209,20 +221,28 @@ export class JsonDatabase {
           );
         `);
         this.tableCreated = true;
+      } catch (err) {
+        console.error("[SMGrade DB] Failed to create master_vault_state table:", err);
       }
+    }
+    await this.syncFromDb();
+  }
 
+  private async syncFromDb(): Promise<void> {
+    if (!this.pool) {
+      return;
+    }
+    try {
       const res = await this.pool.query("SELECT state FROM master_vault_state WHERE id = 1");
       if (res.rows.length > 0) {
         this.data = JSON.parse(res.rows[0].state);
         this.saveToFile(this.data);
-        console.log("[SMGrade DB] State synchronized from database successfully");
       } else {
         const stateStr = JSON.stringify(this.data);
         await this.pool.query(
           "INSERT INTO master_vault_state (id, state) VALUES (1, $1) ON CONFLICT (id) DO NOTHING",
           [stateStr]
         );
-        console.log("[SMGrade DB] Initialized state in PostgreSQL database");
       }
     } catch (err) {
       console.error("[SMGrade DB] Failed to synchronize state from database:", err);
@@ -255,22 +275,24 @@ export class JsonDatabase {
   }
 
   public async restoreRawData(newData: DbSchema): Promise<void> {
-    this.data = {
-      users: newData.users || [],
-      history: newData.history || [],
-      achievements: newData.achievements || [],
-      auditLogs: newData.auditLogs || [],
-      loginHistory: newData.loginHistory || [],
-      settings: newData.settings || DEFAULT_DB.settings,
-      lookupLogs: (newData as any).lookupLogs || [],
-      activityLogs: (newData as any).activityLogs || [],
-      arcadeScores: (newData as any).arcadeScores || [],
-      customItems: (newData as any).customItems || [],
-      customPrices: (newData as any).customPrices || [],
-      customBenchmarks: (newData as any).customBenchmarks || [],
-      customConstants: (newData as any).customConstants || null,
-    };
-    await this.save(this.data);
+    await this.executeAtomic(async () => {
+      this.data = {
+        users: newData.users || [],
+        history: newData.history || [],
+        achievements: newData.achievements || [],
+        auditLogs: newData.auditLogs || [],
+        loginHistory: newData.loginHistory || [],
+        settings: newData.settings || DEFAULT_DB.settings,
+        lookupLogs: (newData as any).lookupLogs || [],
+        activityLogs: (newData as any).activityLogs || [],
+        arcadeScores: (newData as any).arcadeScores || [],
+        customItems: (newData as any).customItems || [],
+        customPrices: (newData as any).customPrices || [],
+        customBenchmarks: (newData as any).customBenchmarks || [],
+        customConstants: (newData as any).customConstants || null,
+      };
+      await this.save(this.data);
+    });
   }
 
   public hashPassword(password: string): string {
@@ -291,42 +313,48 @@ export class JsonDatabase {
   }
 
   public async createUser(username: string, passwordHash: string, role: "owner" | "admin" | "moderator" | "viewer"): Promise<User> {
-    const newUser: User = {
-      id: crypto.randomUUID(),
-      username,
-      passwordHash,
-      role,
-      status: "active",
-      profilePic: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`,
-      highestGrade: "—",
-      totalAnalyses: 0,
-      favoriteWeapon: "—",
-      favoriteShield: "—",
-      favoritePet: "—",
-      lastLogin: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      notes: "",
-    };
-    this.data.users.push(newUser);
-    await this.save(this.data);
-    return newUser;
+    return this.executeAtomic(async () => {
+      const newUser: User = {
+        id: crypto.randomUUID(),
+        username,
+        passwordHash,
+        role,
+        status: "active",
+        profilePic: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`,
+        highestGrade: "—",
+        totalAnalyses: 0,
+        favoriteWeapon: "—",
+        favoriteShield: "—",
+        favoritePet: "—",
+        lastLogin: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        notes: "",
+      };
+      this.data.users.push(newUser);
+      await this.save(this.data);
+      return newUser;
+    });
   }
 
   public async updateUser(user: User): Promise<void> {
-    const idx = this.data.users.findIndex((u) => u.id === user.id);
-    if (idx !== -1) {
-      this.data.users[idx] = user;
-      await this.save(this.data);
-    }
+    await this.executeAtomic(async () => {
+      const idx = this.data.users.findIndex((u) => u.id === user.id);
+      if (idx !== -1) {
+        this.data.users[idx] = user;
+        await this.save(this.data);
+      }
+    });
   }
 
   public async deleteUser(userId: string): Promise<void> {
-    const user = this.getUserById(userId);
-    this.data.users = this.data.users.filter((u) => u.id !== userId);
-    this.data.history = this.data.history.filter((h) => h.userId !== userId);
-    this.data.achievements = this.data.achievements.filter((a) => a.userId !== userId);
-    this.data.loginHistory = this.data.loginHistory.filter((lh) => lh.userId !== userId);
-    await this.save(this.data);
+    await this.executeAtomic(async () => {
+      const user = this.getUserById(userId);
+      this.data.users = this.data.users.filter((u) => u.id !== userId);
+      this.data.history = this.data.history.filter((h) => h.userId !== userId);
+      this.data.achievements = this.data.achievements.filter((a) => a.userId !== userId);
+      this.data.loginHistory = this.data.loginHistory.filter((lh) => lh.userId !== userId);
+      await this.save(this.data);
+    });
   }
 
   // History
@@ -335,36 +363,37 @@ export class JsonDatabase {
   }
 
   public async addHistory(userId: string, level: number, grade: string, score: number, power: string, dps: number): Promise<ProgressHistory> {
-    const entry: ProgressHistory = {
-      id: crypto.randomUUID(),
-      userId,
-      date: new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
-      level,
-      grade,
-      score,
-      power,
-      dps,
-    };
-    this.data.history.push(entry);
+    return this.executeAtomic(async () => {
+      const entry: ProgressHistory = {
+        id: crypto.randomUUID(),
+        userId,
+        date: new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+        level,
+        grade,
+        score,
+        power,
+        dps,
+      };
+      this.data.history.push(entry);
 
-    // Update user aggregates
-    const user = this.getUserById(userId);
-    if (user) {
-      user.totalAnalyses += 1;
-      
-      const gradesOrder = ["D", "C", "C+", "B", "B+", "A", "A+", "S", "S+"];
-      const currentHighestIdx = gradesOrder.indexOf(user.highestGrade);
-      const newGradeIdx = gradesOrder.indexOf(grade);
-      if (newGradeIdx > currentHighestIdx) {
-        user.highestGrade = grade;
+      // Update user aggregates in memory
+      const user = this.getUserById(userId);
+      if (user) {
+        user.totalAnalyses += 1;
+        
+        const gradesOrder = ["D", "C", "C+", "B", "B+", "A", "A+", "S", "S+"];
+        const currentHighestIdx = gradesOrder.indexOf(user.highestGrade);
+        const newGradeIdx = gradesOrder.indexOf(grade);
+        if (newGradeIdx > currentHighestIdx) {
+          user.highestGrade = grade;
+        }
+
+        await this.checkAchievementsForUser(userId, user, grade);
       }
-      await this.updateUser(user);
 
-      await this.checkAchievementsForUser(userId, user, grade);
-    }
-
-    await this.save(this.data);
-    return entry;
+      await this.save(this.data);
+      return entry;
+    });
   }
 
   // Achievements
@@ -415,17 +444,19 @@ export class JsonDatabase {
   }
 
   public async addAuditLog(actor: string, action: string, details: string): Promise<void> {
-    this.data.auditLogs.unshift({
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      actor,
-      action,
-      details,
+    await this.executeAtomic(async () => {
+      this.data.auditLogs.unshift({
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        actor,
+        action,
+        details,
+      });
+      if (this.data.auditLogs.length > 500) {
+        this.data.auditLogs = this.data.auditLogs.slice(0, 500);
+      }
+      await this.save(this.data);
     });
-    if (this.data.auditLogs.length > 500) {
-      this.data.auditLogs = this.data.auditLogs.slice(0, 500);
-    }
-    await this.save(this.data);
   }
 
   // Login History
@@ -434,18 +465,20 @@ export class JsonDatabase {
   }
 
   public async addLoginHistory(userId: string, username: string, ip: string, userAgent: string): Promise<void> {
-    this.data.loginHistory.unshift({
-      id: crypto.randomUUID(),
-      userId,
-      username,
-      timestamp: new Date().toISOString(),
-      ip,
-      userAgent,
+    await this.executeAtomic(async () => {
+      this.data.loginHistory.unshift({
+        id: crypto.randomUUID(),
+        userId,
+        username,
+        timestamp: new Date().toISOString(),
+        ip,
+        userAgent,
+      });
+      if (this.data.loginHistory.length > 200) {
+        this.data.loginHistory = this.data.loginHistory.slice(0, 200);
+      }
+      await this.save(this.data);
     });
-    if (this.data.loginHistory.length > 200) {
-      this.data.loginHistory = this.data.loginHistory.slice(0, 200);
-    }
-    await this.save(this.data);
   }
 
   // Lookup Logs
@@ -454,20 +487,22 @@ export class JsonDatabase {
   }
 
   public async addLookupLog(log: Omit<LookupLog, "id" | "timestamp">): Promise<LookupLog> {
-    const entry: LookupLog = {
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      ...log
-    };
-    if (!this.data.lookupLogs) {
-      this.data.lookupLogs = [];
-    }
-    this.data.lookupLogs.unshift(entry);
-    if (this.data.lookupLogs.length > 5000) {
-      this.data.lookupLogs = this.data.lookupLogs.slice(0, 5000);
-    }
-    await this.save(this.data);
-    return entry;
+    return this.executeAtomic(async () => {
+      const entry: LookupLog = {
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        ...log
+      };
+      if (!this.data.lookupLogs) {
+        this.data.lookupLogs = [];
+      }
+      this.data.lookupLogs.unshift(entry);
+      if (this.data.lookupLogs.length > 5000) {
+        this.data.lookupLogs = this.data.lookupLogs.slice(0, 5000);
+      }
+      await this.save(this.data);
+      return entry;
+    });
   }
 
   // Activity Logs
@@ -476,24 +511,26 @@ export class JsonDatabase {
   }
 
   public async addActivityLog(username: string, action: string, details: string, status?: string, responseTimeMs?: number): Promise<ActivityLog> {
-    const entry: ActivityLog = {
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      username,
-      action,
-      details,
-      status,
-      responseTimeMs
-    };
-    if (!this.data.activityLogs) {
-      this.data.activityLogs = [];
-    }
-    this.data.activityLogs.unshift(entry);
-    if (this.data.activityLogs.length > 2000) {
-      this.data.activityLogs = this.data.activityLogs.slice(0, 2000);
-    }
-    await this.save(this.data);
-    return entry;
+    return this.executeAtomic(async () => {
+      const entry: ActivityLog = {
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        username,
+        action,
+        details,
+        status,
+        responseTimeMs
+      };
+      if (!this.data.activityLogs) {
+        this.data.activityLogs = [];
+      }
+      this.data.activityLogs.unshift(entry);
+      if (this.data.activityLogs.length > 2000) {
+        this.data.activityLogs = this.data.activityLogs.slice(0, 2000);
+      }
+      await this.save(this.data);
+      return entry;
+    });
   }
 
   // Arcade leaderboards
@@ -502,17 +539,19 @@ export class JsonDatabase {
   }
 
   public async addArcadeScore(score: Omit<ArcadeScore, "id" | "timestamp">): Promise<ArcadeScore> {
-    const entry: ArcadeScore = {
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      ...score
-    };
-    if (!this.data.arcadeScores) {
-      this.data.arcadeScores = [];
-    }
-    this.data.arcadeScores.push(entry);
-    await this.save(this.data);
-    return entry;
+    return this.executeAtomic(async () => {
+      const entry: ArcadeScore = {
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        ...score
+      };
+      if (!this.data.arcadeScores) {
+        this.data.arcadeScores = [];
+      }
+      this.data.arcadeScores.push(entry);
+      await this.save(this.data);
+      return entry;
+    });
   }
 
   // Custom configurations (Admin Syncing)
@@ -521,8 +560,10 @@ export class JsonDatabase {
   }
 
   public async saveCustomItems(items: any[]): Promise<void> {
-    this.data.customItems = items;
-    await this.save(this.data);
+    await this.executeAtomic(async () => {
+      this.data.customItems = items;
+      await this.save(this.data);
+    });
   }
 
   public getCustomPrices(): any[] | undefined {
@@ -530,8 +571,10 @@ export class JsonDatabase {
   }
 
   public async saveCustomPrices(prices: any[]): Promise<void> {
-    this.data.customPrices = prices;
-    await this.save(this.data);
+    await this.executeAtomic(async () => {
+      this.data.customPrices = prices;
+      await this.save(this.data);
+    });
   }
 
   public getCustomBenchmarks(): any[] | undefined {
@@ -539,8 +582,10 @@ export class JsonDatabase {
   }
 
   public async saveCustomBenchmarks(benchmarks: any[]): Promise<void> {
-    this.data.customBenchmarks = benchmarks;
-    await this.save(this.data);
+    await this.executeAtomic(async () => {
+      this.data.customBenchmarks = benchmarks;
+      await this.save(this.data);
+    });
   }
 
   public getCustomConstants(): any | undefined {
@@ -548,8 +593,35 @@ export class JsonDatabase {
   }
 
   public async saveCustomConstants(constants: any): Promise<void> {
-    this.data.customConstants = constants;
-    await this.save(this.data);
+    await this.executeAtomic(async () => {
+      this.data.customConstants = constants;
+      await this.save(this.data);
+    });
+  }
+
+  public async addMasterSession(token: string): Promise<void> {
+    await this.executeAtomic(async () => {
+      if (!this.data.masterSessions) {
+        this.data.masterSessions = [];
+      }
+      if (!this.data.masterSessions.includes(token)) {
+        this.data.masterSessions.push(token);
+      }
+      await this.save(this.data);
+    });
+  }
+
+  public hasMasterSession(token: string): boolean {
+    return this.data.masterSessions?.includes(token) || false;
+  }
+
+  public async removeMasterSession(token: string): Promise<void> {
+    await this.executeAtomic(async () => {
+      if (this.data.masterSessions) {
+        this.data.masterSessions = this.data.masterSessions.filter(t => t !== token);
+      }
+      await this.save(this.data);
+    });
   }
 }
 

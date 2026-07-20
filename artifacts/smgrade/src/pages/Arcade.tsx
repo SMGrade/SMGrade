@@ -138,232 +138,235 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
       height="260"
       viewBox="0 0 200 250"
       className="overflow-visible"
+      key={isDead ? "dead" : "alive"}
+      initial={isDead ? { scale: 1, opacity: 1, y: 0, rotate: 0, x: 0 } : { y: -250, opacity: 0, scale: 0.7, rotate: 0, x: 0 }}
       animate={isDead ? {
         scaleY: 0.12,
         scaleX: 1.45,
-        y: 95,
+        y: 110,
         rotate: 90,
-        filter: "grayscale(0.7) brightness(0.5)"
+        filter: "grayscale(0.8) brightness(0.4)",
+        opacity: [1, 1, 0]
+      } : isCrit ? {
+        scaleY: [1, 0.40, 1.50, 0.70, 1.20, 1],
+        scaleX: [1, 1.60, 0.45, 1.30, 0.80, 1],
+        rotate: [0, -25, 20, -10, 5, 0],
+        y: [0, 15, -12, 4, 0],
+        filter: "brightness(2) contrast(1.5)",
+        opacity: 1,
+        scale: 1
       } : isHurt ? {
-        scaleY: [1, 0.62, 1.32, 0.88, 1.05, 1],
-        scaleX: [1, 1.38, 0.68, 1.12, 0.95, 1],
-        rotate: [0, -15, 12, -6, 3, 0],
-        y: [0, 8, -6, 2, 0]
+        scaleY: [1, 0.60, 1.35, 0.85, 1.05, 1],
+        scaleX: [1, 1.40, 0.65, 1.15, 0.95, 1],
+        rotate: [0, -18, 14, -7, 3, 0],
+        y: [0, 8, -6, 2, 0],
+        opacity: 1,
+        scale: 1
       } : {
-        y: [0, -4, 0],
-        scaleY: [1, 1.04, 1],
-        scaleX: [1, 0.98, 1]
+        y: 0,
+        x: 0,
+        scale: 1,
+        opacity: 1,
+        rotate: 0
       }}
-      transition={isDead ? { duration: 0.4 } : isHurt ? { duration: 0.28, ease: "easeOut" } : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+      transition={isDead ? { duration: 0.45 } : isCrit ? { duration: 0.5, ease: "easeOut" } : isHurt ? { duration: 0.3, ease: "easeOut" } : { type: "spring", stiffness: 90, damping: 12 }}
     >
       <defs>
-        {/* Soft Drop Shadows */}
+        {/* Soft Drop Shadows for 3D depth */}
         <filter id="dwarf-shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="4" stdDeviation="4" floodOpacity="0.45" />
+          <feDropShadow dx="0" dy="5" stdDeviation="4" floodOpacity="0.5" />
         </filter>
         <filter id="dwarf-glow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="2.5" result="blur" />
+          <feGaussianBlur stdDeviation="3.0" result="blur" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
 
         {/* Shading Gradients */}
         <radialGradient id="dwarfFaceGrad" cx="35%" cy="30%" r="65%">
-          <stop offset="0%" stopColor="#fff5eb" />
-          <stop offset="45%" stopColor="#fed7aa" />
-          <stop offset="85%" stopColor="#f97316" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#c2410c" />
+          <stop offset="0%" stopColor="#fff6ee" />
+          <stop offset="60%" stopColor="#fddbb0" />
+          <stop offset="90%" stopColor="#f97316" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="#b45309" />
         </radialGradient>
 
         <linearGradient id="dwarfSkinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#ffe4e6" />
-          <stop offset="60%" stopColor="#fed7aa" />
-          <stop offset="100%" stopColor="#f97316" stopOpacity="0.9" />
+          <stop offset="0%" stopColor="#ffeedd" />
+          <stop offset="60%" stopColor="#fddbb0" />
+          <stop offset="100%" stopColor="#ea580c" />
         </linearGradient>
 
         <linearGradient id="dwarfHandleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#4e271b" />
-          <stop offset="50%" stopColor="#803e29" />
-          <stop offset="100%" stopColor="#2c140d" />
+          <stop offset="0%" stopColor="#3e2723" />
+          <stop offset="50%" stopColor="#5d4037" />
+          <stop offset="100%" stopColor="#1c0d0a" />
         </linearGradient>
-
-        <radialGradient id="dwarfNoseGrad" cx="35%" cy="35%" r="55%">
-          <stop offset="0%" stopColor="#ffedd5" />
-          <stop offset="70%" stopColor="#f97316" />
-          <stop offset="100%" stopColor="#9a3412" />
-        </radialGradient>
 
         <linearGradient id="dwarfCapGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#ef4444" />
-          <stop offset="40%" stopColor="#b91c1c" />
+          <stop offset="60%" stopColor="#991b1b" />
           <stop offset="100%" stopColor="#450a0a" />
         </linearGradient>
 
         <linearGradient id="dwarfBeardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#a1887f" />
-          <stop offset="25%" stopColor="#6d4c41" />
-          <stop offset="75%" stopColor="#4e342e" />
-          <stop offset="100%" stopColor="#271510" />
-        </linearGradient>
-
-        <linearGradient id="dwarfBeardHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#bcaaa4" />
-          <stop offset="100%" stopColor="#5d4037" />
+          <stop offset="0%" stopColor="#5c3f34" />
+          <stop offset="30%" stopColor="#452c24" />
+          <stop offset="75%" stopColor="#2e1a14" />
+          <stop offset="100%" stopColor="#1c0e0b" />
         </linearGradient>
 
         <linearGradient id="dwarfTunic" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#3e2723" />
-          <stop offset="100%" stopColor="#1d0c08" />
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor="#e5e5e5" />
         </linearGradient>
 
         <linearGradient id="dwarfApron" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#d7ccc8" />
-          <stop offset="100%" stopColor="#8d6e63" />
-        </linearGradient>
-
-        <linearGradient id="dwarfGoldBuckle" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#fef08a" />
-          <stop offset="60%" stopColor="#ca8a04" />
-          <stop offset="100%" stopColor="#854d0e" />
+          <stop offset="0%" stopColor="#54372e" />
+          <stop offset="100%" stopColor="#35201b" />
         </linearGradient>
 
         <linearGradient id="dwarfBoot" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#5d4037" />
-          <stop offset="100%" stopColor="#1c0d0a" />
+          <stop offset="0%" stopColor="#50352c" />
+          <stop offset="100%" stopColor="#1f110c" />
         </linearGradient>
       </defs>
 
       {/* Ground shadow (3D drop shadow) */}
       <ellipse cx="100" cy="236" rx="66" ry="11" fill="rgba(0,0,0,0.5)" filter="blur(1px)" />
 
-      {/* Wooden handle stick behind back */}
-      <path d="M 54 85 L 26 35 L 38 29 L 66 79 Z" fill="url(#dwarfHandleGrad)" stroke="#1d0c08" strokeWidth="1.2" filter="url(#dwarf-shadow)" />
-
-      {/* Cream Undershirt at Neckline */}
-      <path d="M 68 110 L 132 110 L 116 138 L 84 138 Z" fill="#efebe9" stroke="#bcaaa4" strokeWidth="0.8" />
-
-      {/* Tunic (Wide stocky clothing) */}
-      <g filter="url(#dwarf-shadow)">
-        <path d="M 58 122 Q 100 115 142 122 L 148 205 Q 100 212 52 205 Z" fill="url(#dwarfTunic)" />
-        
-        {/* Pocket patches as in reference image */}
-        <rect x="110" y="152" width="14" height="12" fill="#3e2723" rx="2" opacity="0.85" />
-        <line x1="112" y1="152" x2="112" y2="164" stroke="#1d0c08" strokeWidth="1" />
-        <line x1="122" y1="152" x2="122" y2="164" stroke="#1d0c08" strokeWidth="1" />
-      </g>
-
-      {/* Green pants trousers */}
-      <rect x="74" y="205" width="16" height="20" fill="#2e7d32" stroke="#1b5e20" strokeWidth="1" />
-      <rect x="110" y="205" width="16" height="20" fill="#2e7d32" stroke="#1b5e20" strokeWidth="1" />
-
-      {/* Cuff Boots */}
-      <g filter="url(#dwarf-shadow)">
-        {/* Left boot folded cuff */}
-        <ellipse cx="82" cy="222" rx="14" ry="5.5" fill="#5d4037" stroke="#3e2723" strokeWidth="1" />
-        {/* Left boot base */}
-        <path d="M 68 222 C 68 214, 96 214, 96 222 L 98 244 Q 83 248 68 244 Z" fill="url(#dwarfBoot)" stroke="#1c0d0a" strokeWidth="1" />
-
-        {/* Right boot folded cuff */}
-        <ellipse cx="118" cy="222" rx="14" ry="5.5" fill="#5d4037" stroke="#3e2723" strokeWidth="1" />
-        {/* Right boot base */}
-        <path d="M 104 222 C 104 214, 132 214, 132 222 L 134 244 Q 119 248 104 244 Z" fill="url(#dwarfBoot)" stroke="#1c0d0a" strokeWidth="1" />
-      </g>
-
-      {/* Thick skin arms hanging straight down */}
-      <g filter="url(#dwarf-shadow)">
-        <path d="M 52 122 L 52 200" stroke="url(#dwarfSkinGrad)" strokeWidth="20" strokeLinecap="round" />
-        <circle cx="52" cy="200" r="12" fill="#fed7aa" stroke="#f97316" strokeWidth="1.2" />
-
-        <path d="M 148 122 L 148 200" stroke="url(#dwarfSkinGrad)" strokeWidth="20" strokeLinecap="round" />
-        <circle cx="148" cy="200" r="12" fill="#fed7aa" stroke="#f97316" strokeWidth="1.2" />
-      </g>
-
-      {/* Back Beard */}
-      <path d="M 54 90 L 146 90 L 142 185 L 122 210 L 100 190 L 78 210 L 58 185 Z" fill="#1d0c08" />
-
-      {/* Front Beard (Vertical lock details) */}
+      {/* IDLE BREATHING GROUP */}
       <motion.g
-        animate={isHurt ? { rotate: [-6, 6, -3, 0] } : { rotate: [-1.2, 1.2, -1.2] }}
-        transition={isHurt ? { duration: 0.28 } : { duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+        animate={(!isDead && !isHurt && !isCrit) ? {
+          y: [0, -3.5, 0],
+          scaleY: [1, 1.02, 1],
+          scaleX: [1, 0.985, 1]
+        } : { y: 0, scaleY: 1, scaleX: 1 }}
+        transition={{
+          duration: 2.8,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+        style={{ originX: "100px", originY: "220px" }}
       >
-        <path d="M 58 92 L 142 92 L 138 180 L 122 205 L 100 185 L 78 205 L 62 180 Z" fill="url(#dwarfBeardGrad)" filter="url(#dwarf-shadow)" />
-        
-        {/* Vertical stripes for lock texture */}
-        <path d="M 80 102 L 83 195" stroke="#2d1d1a" strokeWidth="2.8" opacity="0.65" strokeLinecap="round" />
-        <path d="M 120 102 L 117 195" stroke="#2d1d1a" strokeWidth="2.8" opacity="0.65" strokeLinecap="round" />
-        <path d="M 100 104 L 100 180" stroke="#2d1d1a" strokeWidth="3" opacity="0.75" strokeLinecap="round" />
-      </motion.g>
+        {/* Wooden handle stick behind back */}
+        <path d="M 54 85 L 26 35 L 38 29 L 66 79 Z" fill="url(#dwarfHandleGrad)" stroke="#1c0d0a" strokeWidth="1.2" filter="url(#dwarf-shadow)" />
 
-      {/* Trapezoidal Squared Face Shape */}
-      <path d="M 66 72 L 134 72 Q 140 92 134 94 L 66 94 Q 60 92 66 72 Z" fill="url(#dwarfFaceGrad)" stroke="#1d0c08" strokeWidth="0.8" />
-
-      {/* Large Leaf-like Angled Eyebrows */}
-      <g filter="url(#dwarf-shadow)">
-        <path d="M 56 64 C 70 54, 94 62, 94 72 C 84 72, 70 70, 56 64 Z" fill="#4a2711" stroke="#1d0c08" strokeWidth="0.8" />
-        <path d="M 144 64 C 130 54, 106 62, 106 72 C 116 72, 130 70, 144 64 Z" fill="#4a2711" stroke="#1d0c08" strokeWidth="0.8" />
-      </g>
-
-      {/* Small orange triangle nose */}
-      <polygon points="98,82 102,82 100,87" fill="#f97316" stroke="#c2410c" strokeWidth="0.5" />
-
-      {/* Eyes (Sleepy slit shape) */}
-      <g>
-        {isDead || isCrit ? (
-          <>
-            <path d="M 74 76 L 86 84 M 86 76 L 74 84" stroke="#1d0c08" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M 114 76 L 126 84 M 126 76 L 114 84" stroke="#1d0c08" strokeWidth="2.5" strokeLinecap="round" />
-          </>
-        ) : isHurt ? (
-          <>
-            <path d="M 73 83 L 83 79 L 73 75" fill="none" stroke="#1d0c08" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M 127 83 L 117 79 L 127 75" fill="none" stroke="#1d0c08" strokeWidth="2.5" strokeLinecap="round" />
-          </>
-        ) : (
-          <>
-            <ellipse cx="80" cy="80" rx="9" ry="4" fill="#111111" />
-            <circle cx="78" cy="78" r="1.5" fill="#ffffff" />
-            <ellipse cx="120" cy="80" rx="9" ry="4" fill="#111111" />
-            <circle cx="118" cy="78" r="1.5" fill="#ffffff" />
-            
-            {/* Blink Eyelids */}
-            <motion.path 
-              d="M 70 76 Q 80 84 90 76 Z" 
-              fill="url(#dwarfFaceGrad)"
-              animate={blink ? { scaleY: 1 } : { scaleY: 0 }}
-              style={{ originY: 0 }}
-            />
-            <motion.path 
-              d="M 110 76 Q 120 84 130 76 Z" 
-              fill="url(#dwarfFaceGrad)"
-              animate={blink ? { scaleY: 1 } : { scaleY: 0 }}
-              style={{ originY: 0 }}
-            />
-          </>
-        )}
-      </g>
-
-      {/* Winged mustache */}
-      <path d="M 60 92 Q 100 110 140 92 Q 120 100 100 98 Q 80 100 60 92 Z" fill="#4a2711" stroke="#2d1d1a" strokeWidth="1.2" />
-
-      {/* Flat-sided Burgundy Beanie Cap */}
-      <motion.path 
-        d="M 64 74 C 64 32, 136 32, 136 74 Z" 
-        fill="url(#dwarfCapGrad)" 
-        stroke="#1d0c08" 
-        strokeWidth="1" 
-        filter="url(#dwarf-shadow)"
-        animate={isHurt ? { y: [-10, 0], rotate: [-6, 3, 0] } : {}}
-        transition={{ duration: 0.28 }}
-      />
-
-      {/* Mouth/Expression */}
-      {isHurt || isDead ? (
+        {/* Tunic (White Tank Top Sleeveless Shirt) */}
         <g filter="url(#dwarf-shadow)">
-          <ellipse cx="100" cy="115" rx="5" ry="7" fill="#1d0c08" />
-          <path d="M 96 118 Q 100 112 104 118 Z" fill="#f43f5e" />
+          <path d="M 62 110 L 138 110 L 140 205 L 60 205 Z" fill="url(#dwarfTunic)" stroke="#d4d4d4" strokeWidth="1" />
         </g>
-      ) : (
-        <path d="M 94 111 Q 100 114 106 111" stroke="#1d0c08" strokeWidth="2.2" strokeLinecap="round" fill="none" />
-      )}
+
+        {/* Trousers (Brown pants) */}
+        <g filter="url(#dwarf-shadow)">
+          <path d="M 64 205 L 136 205 L 132 225 L 68 225 Z" fill="#3b2314" />
+        </g>
+
+        {/* Crotch Apron Pouch with X stitch as in reference image */}
+        <g filter="url(#dwarf-shadow)">
+          <path d="M 88 195 Q 100 188 112 195 L 110 212 Q 100 220 90 212 Z" fill="url(#dwarfApron)" stroke="#1c0d0a" strokeWidth="1.2" />
+          <path d="M 96 200 L 104 208 M 104 200 L 96 208" stroke="#1c0d0a" strokeWidth="1.5" strokeLinecap="round" />
+        </g>
+
+        {/* Green leg cuffs at knees */}
+        <rect x="72" y="218" width="16" height="9" fill="#15803d" stroke="#166534" strokeWidth="0.8" />
+        <rect x="112" y="218" width="16" height="9" fill="#15803d" stroke="#166534" strokeWidth="0.8" />
+
+        {/* Leather folded cuff boots */}
+        <g filter="url(#dwarf-shadow)">
+          {/* Left cuff & boot folded cuff */}
+          <ellipse cx="80" cy="227" rx="12" ry="4.5" fill="#50352c" stroke="#1f110c" strokeWidth="1" />
+          <path d="M 68 227 C 68 220, 92 220, 92 227 L 93 246 Q 80 250 67 246 Z" fill="url(#dwarfBoot)" stroke="#1f110c" strokeWidth="1" />
+
+          {/* Right cuff & boot folded cuff */}
+          <ellipse cx="120" cy="227" rx="12" ry="4.5" fill="#50352c" stroke="#1f110c" strokeWidth="1" />
+          <path d="M 108 227 C 108 220, 132 220, 132 227 L 133 246 Q 120 250 107 246 Z" fill="url(#dwarfBoot)" stroke="#1f110c" strokeWidth="1" />
+        </g>
+
+        {/* Thick skin arms hanging straight down */}
+        <g filter="url(#dwarf-shadow)">
+          <path d="M 52 120 L 52 195" stroke="url(#dwarfSkinGrad)" strokeWidth="18" strokeLinecap="round" />
+          <circle cx="52" cy="195" r="10" fill="#fddbb0" stroke="#ea580c" strokeWidth="1.2" />
+
+          <path d="M 148 120 L 148 195" stroke="url(#dwarfSkinGrad)" strokeWidth="18" strokeLinecap="round" />
+          <circle cx="148" cy="195" r="10" fill="#fddbb0" stroke="#ea580c" strokeWidth="1.2" />
+        </g>
+
+        {/* Large Back Beard layer */}
+        <path d="M 54 90 L 146 90 L 142 190 L 122 215 L 100 195 L 78 215 L 58 190 Z" fill="#1c0e0b" />
+
+        {/* Front Beard (Vertical lock details) - tapered to point */}
+        <g filter="url(#dwarf-shadow)">
+          <path d="M 58 92 L 142 92 L 138 185 L 120 210 L 100 220 L 80 210 L 62 185 Z" fill="url(#dwarfBeardGrad)" />
+          {/* Shading/lighting lines on beard */}
+          <path d="M 80 102 L 85 195" stroke="#78584c" strokeWidth="2.0" opacity="0.35" strokeLinecap="round" />
+          <path d="M 120 102 L 115 195" stroke="#78584c" strokeWidth="2.0" opacity="0.35" strokeLinecap="round" />
+          <path d="M 100 104 L 100 205" stroke="#3d251d" strokeWidth="2.5" opacity="0.65" strokeLinecap="round" />
+        </g>
+
+        {/* Soft Rounded Face Shape */}
+        <rect x="66" y="66" width="68" height="34" rx="10" fill="url(#dwarfFaceGrad)" stroke="#1c0d0a" strokeWidth="1" />
+
+        {/* Mustache curls down on the sides */}
+        <g filter="url(#dwarf-shadow)">
+          <path d="M 60 92 Q 100 114 140 92 Q 100 102 60 92 Z" fill="#301c15" stroke="#1c0d0a" strokeWidth="1" />
+        </g>
+
+        {/* Bushy Angled Eyebrows */}
+        <g filter="url(#dwarf-shadow)">
+          <path d="M 56 64 C 70 54, 94 62, 94 72 C 84 72, 70 70, 56 64 Z" fill="#2d1a12" stroke="#1c0d0a" strokeWidth="1" />
+          <path d="M 144 64 C 130 54, 106 62, 106 72 C 116 72, 130 70, 144 64 Z" fill="#2d1a12" stroke="#1c0d0a" strokeWidth="1" />
+        </g>
+
+        {/* Orange nose */}
+        <ellipse cx="100" cy="84" rx="6" ry="4" fill="#ea580c" stroke="#b45309" strokeWidth="0.8" />
+
+        {/* Eyes (Round black circular beads, spaced apart as in reference) */}
+        <g>
+          {isDead || isCrit ? (
+            <>
+              <path d="M 74 76 L 86 84 M 86 76 L 74 84" stroke="#1c0d0a" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M 114 76 L 126 84 M 126 76 L 114 84" stroke="#1c0d0a" strokeWidth="2.5" strokeLinecap="round" />
+            </>
+          ) : isHurt ? (
+            <>
+              <path d="M 73 83 L 83 79 L 73 75" fill="none" stroke="#1c0d0a" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M 127 83 L 117 79 L 127 75" fill="none" stroke="#1c0d0a" strokeWidth="2.5" strokeLinecap="round" />
+            </>
+          ) : (
+            <>
+              <circle cx="80" cy="80" r="6" fill="#151311" />
+              <circle cx="120" cy="80" r="6" fill="#151311" />
+              
+              {/* Blink Eyelids */}
+              <motion.path 
+                d="M 70 74 Q 80 84 90 74 Z" 
+                fill="url(#dwarfFaceGrad)"
+                animate={blink ? { scaleY: 1 } : { scaleY: 0 }}
+                style={{ originY: 0 }}
+              />
+              <motion.path 
+                d="M 110 74 Q 120 84 130 74 Z" 
+                fill="url(#dwarfFaceGrad)"
+                animate={blink ? { scaleY: 1 } : { scaleY: 0 }}
+                style={{ originY: 0 }}
+              />
+            </>
+          )}
+        </g>
+
+        {/* Burgundy Cap/Bandanna with Drooping Left Tail */}
+        <g filter="url(#dwarf-shadow)">
+          <path d="M 64 70 C 64 30, 136 30, 136 70 Z" fill="url(#dwarfCapGrad)" stroke="#450a0a" strokeWidth="1" />
+          {/* Drooping left cap tail next to face */}
+          <path d="M 64 65 Q 40 70, 36 100 Q 42 110, 48 95 Q 52 80, 64 74 Z" fill="url(#dwarfCapGrad)" stroke="#450a0a" strokeWidth="1" />
+        </g>
+
+        {/* Mouth/Expression */}
+        {isHurt || isDead ? (
+          <ellipse cx="100" cy="108" rx="5" ry="7" fill="#1c0d0a" />
+        ) : (
+          <path d="M 95 106 Q 100 109 105 106" stroke="#1c0d0a" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+        )}
+      </motion.g>
     </motion.svg>
   );
 }
@@ -375,238 +378,278 @@ function ElfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: bo
       height="260"
       viewBox="0 0 200 250"
       className="overflow-visible"
+      key={isDead ? "dead" : "alive"}
+      initial={isDead ? { scale: 1, opacity: 1, y: 0, rotate: 0, x: 0 } : { y: -250, opacity: 0, scale: 0.7, rotate: 0, x: 0 }}
       animate={isDead ? {
         scaleY: 0.12,
         scaleX: 1.45,
-        y: 95,
+        y: 110,
         rotate: -90,
-        filter: "grayscale(0.7) brightness(0.5)"
+        filter: "grayscale(0.8) brightness(0.4)",
+        opacity: [1, 1, 0]
+      } : isCrit ? {
+        scaleY: [1, 0.40, 1.50, 0.70, 1.20, 1],
+        scaleX: [1, 1.60, 0.50, 1.30, 0.80, 1],
+        rotate: [0, 25, -20, 10, -5, 0],
+        y: [0, 15, -12, 4, 0],
+        filter: "brightness(2) contrast(1.5)",
+        opacity: 1,
+        scale: 1
       } : isHurt ? {
         scaleY: [1, 0.65, 1.28, 0.89, 1.04, 1],
         scaleX: [1, 1.34, 0.72, 1.10, 0.96, 1],
         rotate: [0, 15, -12, 6, -3, 0],
-        y: [0, 8, -6, 2, 0]
+        y: [0, 8, -6, 2, 0],
+        opacity: 1,
+        scale: 1
       } : {
-        y: [0, -4, 0],
-        scaleY: [1, 1.04, 1],
-        scaleX: [1, 0.98, 1]
+        y: 0,
+        x: 0,
+        scale: 1,
+        opacity: 1,
+        rotate: 0
       }}
-      transition={isDead ? { duration: 0.4 } : isHurt ? { duration: 0.28, ease: "easeOut" } : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+      transition={isDead ? { duration: 0.45 } : isCrit ? { duration: 0.5, ease: "easeOut" } : isHurt ? { duration: 0.3, ease: "easeOut" } : { type: "spring", stiffness: 90, damping: 12 }}
     >
       <defs>
         {/* Soft Shadows */}
         <filter id="elf-shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="4" stdDeviation="4" floodOpacity="0.45" />
+          <feDropShadow dx="0" dy="5" stdDeviation="4" floodOpacity="0.5" />
         </filter>
         <filter id="elf-glow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="2.5" result="blur" />
+          <feGaussianBlur stdDeviation="3.0" result="blur" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
 
         {/* Shading Gradients */}
         <radialGradient id="elfFaceGrad" cx="35%" cy="30%" r="65%">
-          <stop offset="0%" stopColor="#fffcf9" />
-          <stop offset="50%" stopColor="#ffeed5" />
-          <stop offset="90%" stopColor="#fda4af" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.6" />
+          <stop offset="0%" stopColor="#fffbf4" />
+          <stop offset="60%" stopColor="#ffe7c5" />
+          <stop offset="90%" stopColor="#fda4af" stopOpacity="0.7" />
+          <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.5" />
         </radialGradient>
 
         <linearGradient id="elfHatGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ff8787" />
-          <stop offset="40%" stopColor="#e60000" />
-          <stop offset="100%" stopColor="#7a0000" />
+          <stop offset="0%" stopColor="#ff4d4d" />
+          <stop offset="60%" stopColor="#cc0000" />
+          <stop offset="100%" stopColor="#800000" />
         </linearGradient>
 
         <linearGradient id="elfHatTrimGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#a3e635" />
-          <stop offset="100%" stopColor="#166534" />
+          <stop offset="0%" stopColor="#84cc16" />
+          <stop offset="100%" stopColor="#15803d" />
         </linearGradient>
 
         <linearGradient id="elfBodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#22c55e" />
-          <stop offset="100%" stopColor="#14532d" />
+          <stop offset="0%" stopColor="#4ade80" />
+          <stop offset="100%" stopColor="#166534" />
         </linearGradient>
 
         <linearGradient id="elfCollarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#ef4444" />
-          <stop offset="100%" stopColor="#991b1b" />
+          <stop offset="100%" stopColor="#b91c1c" />
         </linearGradient>
 
         <radialGradient id="goldBellGrad" cx="35%" cy="35%" r="55%">
           <stop offset="0%" stopColor="#fef08a" />
           <stop offset="70%" stopColor="#eab308" />
-          <stop offset="100%" stopColor="#854d0e" />
+          <stop offset="100%" stopColor="#a16207" />
         </radialGradient>
 
         <linearGradient id="elfLegStripe" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#15803d" />
-          <stop offset="50%" stopColor="#4ade80" />
+          <stop offset="0%" stopColor="#166534" />
+          <stop offset="50%" stopColor="#86efac" />
           <stop offset="100%" stopColor="#14532d" />
         </linearGradient>
       </defs>
 
-      {/* Shadow */}
-      <ellipse cx="100" cy="236" rx="50" ry="8" fill="rgba(0,0,0,0.45)" filter="blur(1px)" />
+      {/* Ground shadow (3D drop shadow) */}
+      <ellipse cx="100" cy="236" rx="54" ry="9" fill="rgba(0,0,0,0.5)" filter="blur(1px)" />
 
-      {/* Slim Arms (Behind body) */}
-      <g filter="url(#elf-shadow)">
-        {/* Left slim arm */}
-        <path d="M 72 112 C 54 125, 54 165, 62 175" stroke="url(#elfBodyGrad)" strokeWidth="12" strokeLinecap="round" fill="none" />
-        {/* Right slim arm */}
-        <path d="M 128 112 C 146 125, 146 165, 138 175" stroke="url(#elfBodyGrad)" strokeWidth="12" strokeLinecap="round" fill="none" />
-        {/* Gloves */}
-        <circle cx="62" cy="176" r="8" fill="#ef4444" stroke="#991b1b" strokeWidth="1.2" />
-        <circle cx="138" cy="176" r="8" fill="#ef4444" stroke="#991b1b" strokeWidth="1.2" />
-      </g>
-
-      {/* Elf Body (Slim & Athletic Proportions, longer body) */}
-      <g filter="url(#elf-shadow)">
-        {/* Tunic */}
-        <path d="M 72 110 Q 100 95 128 110 L 132 210 Q 100 220 68 210 Z" fill="url(#elfBodyGrad)" />
-        
-        {/* Spiky Jester Collar */}
-        <path d="M 70 112 L 80 130 L 90 115 L 100 136 L 110 115 L 120 130 L 130 112 L 120 106 L 100 109 L 80 106 Z" fill="url(#elfCollarGrad)" filter="url(#elf-shadow)" />
-
-        {/* Buttons (3D gold bells) */}
-        <circle cx="100" cy="154" r="4" fill="url(#goldBellGrad)" />
-        <circle cx="100" cy="174" r="4" fill="url(#goldBellGrad)" />
-        <circle cx="100" cy="194" r="4" fill="url(#goldBellGrad)" />
-
-        {/* Legs (Striped Green and White Socks) */}
-        <g>
-          {/* Left leg */}
-          <rect x="76" y="210" width="12" height="26" fill="url(#elfLegStripe)" />
-          <rect x="76" y="215" width="12" height="4.5" fill="#ffffff" />
-          <rect x="76" y="223" width="12" height="4.5" fill="#ffffff" />
-
-          {/* Right leg */}
-          <rect x="112" y="210" width="12" height="26" fill="url(#elfLegStripe)" />
-          <rect x="112" y="215" width="12" height="4.5" fill="#ffffff" />
-          <rect x="112" y="223" width="12" height="4.5" fill="#ffffff" />
-        </g>
-
-        {/* Pointy Curled shoes */}
-        <path d="M 76 232 C 76 224, 44 220, 48 234 C 50 239, 76 244, 84 238 Z" fill="url(#elfHatTrimGrad)" />
-        <circle cx="47.5" cy="231" r="2.8" fill="url(#goldBellGrad)" />
-
-        <path d="M 124 232 C 124 224, 156 220, 152 234 C 150 239, 124 244, 116 238 Z" fill="url(#elfHatTrimGrad)" />
-        <circle cx="152.5" cy="231" r="2.8" fill="url(#goldBellGrad)" />
-      </g>
-
-      {/* Pointed Elf Ears (Long and highly prominent/annoying) */}
-      <g filter="url(#elf-shadow)">
-        <path d="M 72 74 C 56 68, 26 44, 40 84 C 48 84, 62 82, 72 74 Z" fill="url(#elfFaceGrad)" />
-        <path d="M 66 73 C 58 70, 38 56, 47 79 Z" fill="#fecdd3" opacity="0.6" />
-
-        <path d="M 128 74 C 144 68, 174 44, 160 84 C 152 84, 138 82, 128 74 Z" fill="url(#elfFaceGrad)" />
-        <path d="M 134 73 C 142 70, 162 56, 153 79 Z" fill="#fecdd3" opacity="0.6" />
-      </g>
-
-      {/* Head Base (Smaller head proportions) */}
-      <circle cx="100" cy="76" r="30" fill="url(#elfFaceGrad)" filter="url(#elf-shadow)" />
-
-      {/* Cheek blush */}
-      <circle cx="80" cy="85" r="6" fill="#f43f5e" opacity="0.22" filter="url(#elf-glow)" />
-      <circle cx="120" cy="85" r="6" fill="#f43f5e" opacity="0.22" filter="url(#elf-glow)" />
-
-      {/* Hair (Blonde locks overlapping face) */}
-      <g filter="url(#elf-shadow)">
-        <path d="M 70 56 C 80 48, 120 48, 130 56 C 120 64, 80 64, 70 56 Z" fill="#facc15" />
-        <path d="M 70 56 Q 60 76, 66 90 Q 72 76, 72 56 Z" fill="#facc15" />
-        <path d="M 130 56 Q 140 76, 134 90 Q 128 76, 128 56 Z" fill="#facc15" />
-      </g>
-
-      {/* Jester Diamond markings above/below eyes */}
-      <g opacity="0.8">
-        <polygon points="79,56 81,62 79,68 77,62" fill="#1b5e20" />
-        <polygon points="79,84 81,90 79,96 77,90" fill="#1b5e20" />
-        <polygon points="121,56 123,62 121,68 119,62" fill="#1b5e20" />
-        <polygon points="121,84 123,90 121,96 119,90" fill="#1b5e20" />
-      </g>
-
-      {/* Cute nose */}
-      <ellipse cx="100" cy="81" rx="4" ry="2.5" fill="#f43f5e" opacity="0.75" />
-
-      {/* Eyes (Mischievous / squinty / smug) */}
-      <g>
-        {isDead || isCrit ? (
-          <>
-            <path d="M 74 70 L 84 78 M 84 70 L 74 78" stroke="#1f2937" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M 116 70 L 126 78 M 126 70 L 116 78" stroke="#1f2937" strokeWidth="2.5" strokeLinecap="round" />
-          </>
-        ) : isHurt ? (
-          <>
-            <path d="M 75 75 L 85 71 L 75 67" fill="none" stroke="#1f2937" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M 125 75 L 115 71 L 125 67" fill="none" stroke="#1f2937" strokeWidth="2.5" strokeLinecap="round" />
-          </>
-        ) : (
-          <>
-            {/* Smug half-closed eyes */}
-            <circle cx="79" cy="74" r="8" fill="#ffffff" stroke="#15803d" strokeWidth="1" />
-            <circle cx="121" cy="74" r="8" fill="#ffffff" stroke="#15803d" strokeWidth="1" />
-            
-            {/* Irises looking sideways/smugly */}
-            <circle cx="82" cy="74" r="4.5" fill="#166534" />
-            <circle cx="118" cy="74" r="4.5" fill="#166534" />
-            
-            {/* Pupils */}
-            <circle cx="82" cy="74" r="2.8" fill="#1f2937" />
-            <circle cx="118" cy="74" r="2.8" fill="#1f2937" />
-            
-            {/* Specular Reflections */}
-            <circle cx="81" cy="72" r="1.5" fill="#ffffff" />
-            <circle cx="117" cy="72" r="1.5" fill="#ffffff" />
-
-            {/* Slanted eyelids for smug expression */}
-            <path d="M 68 68 L 90 73 L 90 68 Z" fill="url(#elfFaceGrad)" />
-            <path d="M 132 68 L 110 73 L 110 68 Z" fill="url(#elfFaceGrad)" />
-
-            {/* Blink Eyelids */}
-            <motion.path 
-              d="M 69 66 Q 79 76 89 66 Z" 
-              fill="url(#elfFaceGrad)"
-              animate={blink ? { scaleY: 1 } : { scaleY: 0 }}
-              style={{ originY: 0 }}
-            />
-            <motion.path 
-              d="M 111 66 Q 121 76 131 66 Z" 
-              fill="url(#elfFaceGrad)"
-              animate={blink ? { scaleY: 1 } : { scaleY: 0 }}
-              style={{ originY: 0 }}
-            />
-          </>
-        )}
-      </g>
-
-      {/* Pointed Elf/Jester Hat (Red Jester curve and Green spiky trim) */}
+      {/* IDLE BREATHING GROUP */}
       <motion.g
-        animate={isHurt ? { y: [-10, 0], rotate: [6, -3, 0] } : {}}
-        transition={{ duration: 0.28 }}
-        filter="url(#elf-shadow)"
+        animate={(!isDead && !isHurt && !isCrit) ? {
+          y: [0, -4.5, 0],
+          scaleY: [1, 1.025, 1],
+          scaleX: [1, 0.98, 1]
+        } : { y: 0, scaleY: 1, scaleX: 1 }}
+        transition={{
+          duration: 2.6,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+        style={{ originX: "100px", originY: "220px" }}
       >
-        {/* Curving Hat Dome */}
-        <path d="M 68 62 C 82 20, 115 2, 136 10 C 146 14, 143 28, 134 26 C 118 22, 96 34, 82 65 Z" fill="url(#elfHatGrad)" />
-        
-        {/* Green Crown Spiky Trim */}
-        <path d="M 68 62 L 76 51 L 86 62 L 96 51 L 106 62 L 116 51 L 126 62 L 132 67 L 100 64 L 68 67 Z" fill="url(#elfHatTrimGrad)" />
-
-        {/* Gold Bell on Tip */}
-        <circle cx="138" cy="13" r="7.5" fill="url(#goldBellGrad)" filter="url(#elf-shadow)" />
-        <circle cx="135.5" cy="10.5" r="2.5" fill="#ffffff" opacity="0.6" />
-      </motion.g>
-
-      {/* Expression / Smug Crooked Smile */}
-      {isHurt || isDead ? (
+        {/* Slim Arms (Behind body) */}
         <g filter="url(#elf-shadow)">
+          {/* Left slim arm */}
+          <path d="M 72 112 C 54 125, 54 165, 62 180" stroke="url(#elfBodyGrad)" strokeWidth="12" strokeLinecap="round" fill="none" />
+          {/* Right slim arm */}
+          <path d="M 128 112 C 146 125, 146 165, 138 180" stroke="url(#elfBodyGrad)" strokeWidth="12" strokeLinecap="round" fill="none" />
+          {/* Red spiky cuffs on gloves */}
+          <circle cx="62" cy="181" r="7.5" fill="#ef4444" stroke="#991b1b" strokeWidth="1.2" />
+          <circle cx="138" cy="181" r="7.5" fill="#ef4444" stroke="#991b1b" strokeWidth="1.2" />
+        </g>
+
+        {/* Elf Body (Slim, athletic jester tunic) */}
+        <g filter="url(#elf-shadow)">
+          <path d="M 72 110 Q 100 95 128 110 L 131 205 Q 100 216 69 205 Z" fill="url(#elfBodyGrad)" />
+        </g>
+
+        {/* Spiky Jester Collar around neck (Red points) */}
+        <g filter="url(#elf-shadow)">
+          <path d="M 68 110 L 78 128 L 88 113 L 98 134 L 108 113 L 118 128 L 132 110 L 120 104 L 100 107 L 80 104 Z" fill="url(#elfCollarGrad)" />
+        </g>
+
+        {/* Gold buttons down the middle of the tunic */}
+        <circle cx="100" cy="142" r="4.5" fill="url(#goldBellGrad)" />
+        <circle cx="100" cy="162" r="4.5" fill="url(#goldBellGrad)" />
+        <circle cx="100" cy="182" r="4.5" fill="url(#goldBellGrad)" />
+
+        {/* Brown Belt with rectangular gold buckle */}
+        <g filter="url(#elf-shadow)">
+          <rect x="69" y="193" width="62" height="10" fill="#3b2314" />
+          {/* Gold belt buckle */}
+          <rect x="92" y="188" width="16" height="20" fill="url(#goldBellGrad)" stroke="#78350f" strokeWidth="1" rx="1.5" />
+          <rect x="96" y="192" width="8" height="12" fill="#3b2314" />
+        </g>
+
+        {/* Striped Green & White Leggings */}
+        <g>
+          {/* Left leg stripes */}
+          <rect x="76" y="205" width="12" height="26" fill="#15803d" />
+          <rect x="76" y="210" width="12" height="4.5" fill="#ffffff" />
+          <rect x="76" y="219" width="12" height="4.5" fill="#ffffff" />
+
+          {/* Right leg stripes */}
+          <rect x="112" y="205" width="12" height="26" fill="#15803d" />
+          <rect x="112" y="210" width="12" height="4.5" fill="#ffffff" />
+          <rect x="112" y="219" width="12" height="4.5" fill="#ffffff" />
+        </g>
+
+        {/* Pointy Curled slippers/shoes with ankle trim */}
+        <g filter="url(#elf-shadow)">
+          {/* Left ankle red cuff */}
+          <ellipse cx="82" cy="226" rx="9" ry="3.5" fill="#ef4444" />
+          {/* Left curly slipper */}
+          <path d="M 76 226 C 76 218, 44 214, 48 228 C 50 233, 76 238, 84 232 Z" fill="#15803d" stroke="#14532d" strokeWidth="0.8" />
+          <circle cx="47.5" cy="225" r="2.8" fill="url(#goldBellGrad)" />
+
+          {/* Right ankle red cuff */}
+          <ellipse cx="118" cy="226" rx="9" ry="3.5" fill="#ef4444" />
+          {/* Right curly slipper */}
+          <path d="M 124 226 C 124 218, 156 214, 152 228 C 150 233, 124 238, 116 232 Z" fill="#15803d" stroke="#14532d" strokeWidth="0.8" />
+          <circle cx="152.5" cy="225" r="2.8" fill="url(#goldBellGrad)" />
+        </g>
+
+        {/* Pointed Elf Ears (Long and highly prominent, pointing upwards/outwards) */}
+        <g filter="url(#elf-shadow)">
+          <path d="M 72 74 C 54 68, 22 42, 38 84 C 48 84, 62 82, 72 74 Z" fill="url(#elfFaceGrad)" stroke="#fda4af" strokeWidth="0.5" />
+          <path d="M 66 73 C 58 70, 36 54, 45 79 Z" fill="#fda4af" opacity="0.5" />
+
+          <path d="M 128 74 C 146 68, 178 42, 162 84 C 152 84, 138 82, 128 74 Z" fill="url(#elfFaceGrad)" stroke="#fda4af" strokeWidth="0.5" />
+          <path d="M 134 73 C 142 70, 164 54, 155 79 Z" fill="#fda4af" opacity="0.5" />
+        </g>
+
+        {/* Round Head Base */}
+        <circle cx="100" cy="76" r="30" fill="url(#elfFaceGrad)" stroke="#fda4af" strokeWidth="0.5" filter="url(#elf-shadow)" />
+
+        {/* Cheek blush */}
+        <circle cx="80" cy="85" r="6" fill="#f43f5e" opacity="0.22" filter="url(#elf-glow)" />
+        <circle cx="120" cy="85" r="6" fill="#f43f5e" opacity="0.22" filter="url(#elf-glow)" />
+
+        {/* Hair (Blonde locks overlapping face) */}
+        <g filter="url(#elf-shadow)">
+          <path d="M 70 56 C 80 48, 120 48, 130 56 C 120 62, 80 62, 70 56 Z" fill="#facc15" />
+          <path d="M 70 56 Q 60 76, 66 90 Q 72 76, 72 56 Z" fill="#facc15" />
+          <path d="M 130 56 Q 140 76, 134 90 Q 128 76, 128 56 Z" fill="#facc15" />
+        </g>
+
+        {/* Green vertical stitches/lines under eyes (jester face markings) */}
+        <g opacity="0.8">
+          <line x1="79" y1="56" x2="79" y2="66" stroke="#166534" strokeWidth="2.2" strokeLinecap="round" />
+          <line x1="79" y1="84" x2="79" y2="94" stroke="#166534" strokeWidth="2.2" strokeLinecap="round" />
+          <line x1="121" y1="56" x2="121" y2="66" stroke="#166534" strokeWidth="2.2" strokeLinecap="round" />
+          <line x1="121" y1="84" x2="121" y2="94" stroke="#166534" strokeWidth="2.2" strokeLinecap="round" />
+        </g>
+
+        {/* Soft pink nose */}
+        <ellipse cx="100" cy="81" rx="4" ry="2.5" fill="#f43f5e" opacity="0.75" />
+
+        {/* Eyes (Mischievous / squinty / smug half-closed eyes) */}
+        <g>
+          {isDead || isCrit ? (
+            <>
+              <path d="M 74 70 L 84 78 M 84 70 L 74 78" stroke="#1f2937" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M 116 70 L 126 78 M 126 70 L 116 78" stroke="#1f2937" strokeWidth="2.5" strokeLinecap="round" />
+            </>
+          ) : isHurt ? (
+            <>
+              <path d="M 75 75 L 85 71 L 75 67" fill="none" stroke="#1f2937" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M 125 75 L 115 71 L 125 67" fill="none" stroke="#1f2937" strokeWidth="2.5" strokeLinecap="round" />
+            </>
+          ) : (
+            <>
+              {/* White background and outline */}
+              <circle cx="79" cy="74" r="8" fill="#ffffff" stroke="#166534" strokeWidth="1" />
+              <circle cx="121" cy="74" r="8" fill="#ffffff" stroke="#166534" strokeWidth="1" />
+              
+              {/* Irises looking smugly sideways */}
+              <circle cx="82" cy="74" r="4.5" fill="#166534" />
+              <circle cx="118" cy="74" r="4.5" fill="#166534" />
+              
+              {/* Pupils */}
+              <circle cx="82" cy="74" r="2.8" fill="#1f2937" />
+              <circle cx="118" cy="74" r="2.8" fill="#1f2937" />
+              
+              {/* Highlights */}
+              <circle cx="81" cy="72" r="1.2" fill="#ffffff" />
+              <circle cx="117" cy="72" r="1.2" fill="#ffffff" />
+
+              {/* Slanted eyelids for smug expression */}
+              <path d="M 68 68 L 90 73 L 90 68 Z" fill="url(#elfFaceGrad)" />
+              <path d="M 132 68 L 110 73 L 110 68 Z" fill="url(#elfFaceGrad)" />
+
+              {/* Blink Eyelids */}
+              <motion.path 
+                d="M 69 66 Q 79 76 89 66 Z" 
+                fill="url(#elfFaceGrad)"
+                animate={blink ? { scaleY: 1 } : { scaleY: 0 }}
+                style={{ originY: 0 }}
+              />
+              <motion.path 
+                d="M 111 66 Q 121 76 131 66 Z" 
+                fill="url(#elfFaceGrad)"
+                animate={blink ? { scaleY: 1 } : { scaleY: 0 }}
+                style={{ originY: 0 }}
+              />
+            </>
+          )}
+        </g>
+
+        {/* Pointed Red Jester Hat with Green Crown Spiky Trim & Gold Bell */}
+        <g filter="url(#elf-shadow)">
+          {/* Curving Hat Dome */}
+          <path d="M 68 62 C 82 20, 115 2, 136 10 C 146 14, 143 28, 134 26 C 118 22, 96 34, 82 65 Z" fill="url(#elfHatGrad)" stroke="#b91c1c" strokeWidth="0.5" />
+          
+          {/* Green Crown Spiky Trim */}
+          <path d="M 68 62 L 76 51 L 86 62 L 96 51 L 106 62 L 116 51 L 126 62 L 132 67 L 100 64 L 68 67 Z" fill="url(#elfHatTrimGrad)" />
+
+          {/* Gold Bell on Tip */}
+          <circle cx="138" cy="13" r="7.5" fill="url(#goldBellGrad)" />
+          <circle cx="135.5" cy="10.5" r="2.5" fill="#ffffff" opacity="0.6" />
+        </g>
+
+        {/* Smug Crooked Smile line */}
+        {isHurt || isDead ? (
           <ellipse cx="100" cy="94" rx="5" ry="7" fill="#1f2937" />
-          <path d="M 96 97 Q 100 92 104 97 Z" fill="#f43f5e" />
-        </g>
-      ) : (
-        <g filter="url(#elf-shadow)">
-          <path d="M 93 93 Q 98 89 108 92" stroke="#1f2937" strokeWidth="2.2" strokeLinecap="round" fill="none" />
-          <path d="M 107 90 L 108 94" stroke="#1f2937" strokeWidth="1.5" strokeLinecap="round" />
-        </g>
-      )}
+        ) : (
+          <g filter="url(#elf-shadow)">
+            <path d="M 93 93 Q 98 89 108 92" stroke="#1f2937" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+            <path d="M 107 90 L 108 94" stroke="#1f2937" strokeWidth="1.5" strokeLinecap="round" />
+          </g>
+        )}
+      </motion.g>
     </motion.svg>
   );
 }
@@ -742,18 +785,20 @@ export default function Arcade() {
 
   // Keep particle physics loop moving
   useEffect(() => {
-    if (particles.length === 0) return;
     const interval = setInterval(() => {
-      setParticles(prev => prev.map(p => ({
-        ...p,
-        x: p.x + p.vx,
-        y: p.y + p.vy,
-        vy: p.vy + 0.15, // gravity
-        alpha: p.alpha - 0.02
-      })).filter(p => p.alpha > 0));
+      setParticles(prev => {
+        if (prev.length === 0) return prev;
+        return prev.map(p => ({
+          ...p,
+          x: p.x + p.vx,
+          y: p.y + p.vy,
+          vy: p.vy + 0.15, // gravity
+          alpha: p.alpha - 0.02
+        })).filter(p => p.alpha > 0);
+      });
     }, 16);
     return () => clearInterval(interval);
-  }, [particles]);
+  }, []);
 
   // Clean combo timer when combo is 0
   useEffect(() => {
@@ -1331,11 +1376,18 @@ export default function Arcade() {
                     <span className="font-extrabold text-white font-display text-sm">{getTargetLabel()}</span>
                     <span className="font-bold text-red-400 font-mono text-xs">{targetHp > 0 ? `${targetHp}% HP` : "DEFEATED"}</span>
                   </div>
-                  <div className="w-56 h-2 bg-black/50 border border-white/5 rounded-full overflow-hidden relative">
+                  <div className="w-56 h-2.5 bg-black/50 border border-white/5 rounded-full overflow-hidden relative">
+                    {/* Ghost/Drain health bar behind */}
                     <motion.div 
                       animate={{ width: `${targetHp}%` }}
-                      transition={{ type: "tween", duration: 0.1 }}
-                      className="h-full bg-gradient-to-r from-red-500 to-orange-400 shadow-[0_0_8px_rgba(239,68,68,0.4)]"
+                      transition={{ type: "tween", duration: 0.6, ease: "easeOut" }}
+                      className="absolute left-0 top-0 h-full bg-red-800/80"
+                    />
+                    {/* Main health bar in front */}
+                    <motion.div 
+                      animate={{ width: `${targetHp}%` }}
+                      transition={{ type: "spring", stiffness: 120, damping: 15 }}
+                      className="absolute left-0 top-0 h-full bg-gradient-to-r from-red-500 via-orange-500 to-amber-400 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
                     />
                   </div>
                 </div>
@@ -1707,16 +1759,18 @@ export default function Arcade() {
 
               {/* LIVE LEADERBOARDS */}
               <div className="p-5 rounded-xl border border-white/[0.04] bg-[#070b13]/60 glass-panel space-y-3">
-                <div className="flex items-center justify-between border-b border-white/[0.04] pb-2">
-                  <div className="text-xs font-black text-white uppercase tracking-widest">LEADERBOARDS</div>
+                <div className="flex items-center justify-between border-b border-white/[0.06] pb-3 mb-1">
+                  <div className="text-xs font-black bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-500 bg-clip-text text-transparent uppercase tracking-wider flex items-center gap-1.5">
+                    🏆 Global Leaderboards
+                  </div>
                   <div className="flex gap-1">
                     {(["daily", "weekly", "all-time"] as const).map(w => (
                       <button
                         key={w}
                         onClick={(e) => { e.stopPropagation(); setLeaderboardWindow(w); playSound("click"); }}
-                        className={`px-1.5 py-0.5 rounded text-[8px] uppercase font-black tracking-wider transition-all cursor-pointer ${
+                        className={`px-2 py-0.5 rounded text-[8px] uppercase font-black tracking-wider transition-all cursor-pointer ${
                           leaderboardWindow === w 
-                            ? "bg-amber-500/25 border border-amber-500/35 text-amber-400" 
+                            ? "bg-amber-500/25 border border-amber-500/40 text-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.2)]" 
                             : "bg-white/[0.02] border border-white/[0.03] text-white/40 hover:text-white"
                         }`}
                       >
@@ -1727,75 +1781,127 @@ export default function Arcade() {
                 </div>
 
                 {/* Categories */}
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Total Kills */}
-                  <div className="space-y-1">
+                  <div className="space-y-1.5 p-3 rounded-xl border border-white/[0.03] bg-black/10 hover:border-amber-500/10 transition-all">
                     <div className="text-[9px] text-white/40 font-extrabold uppercase tracking-wider flex items-center gap-1 font-mono">
                       ☠️ Total Kills
                     </div>
-                    <div className="bg-black/20 rounded-lg p-2.5 space-y-1 min-h-[75px] max-h-[140px] overflow-y-auto pr-1">
+                    <div className="space-y-1 min-h-[100px] max-h-[140px] overflow-y-auto pr-1">
                       {leaderboardData?.totalKills && leaderboardData.totalKills.length > 0 ? (
-                        leaderboardData.totalKills.map((entry: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between text-[11px] py-0.5 border-b border-white/[0.02] last:border-0 font-mono">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`w-3.5 font-black text-center ${
-                                index === 0 ? "text-[#ffd700]" : (index === 1 ? "text-[#c0c0c0]" : (index === 2 ? "text-[#cd7f32]" : "text-white/20"))
-                              }`}>{index + 1}</span>
-                              <span className="font-bold text-white/80">{entry.username}</span>
+                        leaderboardData.totalKills.map((entry: any, index: number) => {
+                          const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
+                          return (
+                            <div key={index} className={`flex items-center justify-between text-[11px] py-1 border-b border-white/[0.02] last:border-0 font-mono transition-all ${
+                              isMe ? "bg-amber-500/15 border-l-2 border-l-amber-500 px-2 rounded-r shadow-[0_0_8px_rgba(245,158,11,0.08)]" : "px-1"
+                            }`}>
+                              <div className="flex items-center gap-2 font-sans">
+                                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${
+                                  index === 0 ? "bg-[#ffd700]/25 text-[#ffd700] border border-[#ffd700]/40" : 
+                                  (index === 1 ? "bg-[#c0c0c0]/25 text-[#c0c0c0] border border-[#c0c0c0]/40" : 
+                                  (index === 2 ? "bg-[#cd7f32]/25 text-[#cd7f32] border border-[#cd7f32]/40" : "text-white/20"))
+                                }`}>{index + 1}</span>
+                                <span className={`font-semibold ${isMe ? "text-amber-300 font-bold" : "text-white/80"}`}>{entry.username}</span>
+                              </div>
+                              <span className={`font-black ${isMe ? "text-amber-400" : (index === 0 ? "text-[#ffd700]" : "text-amber-500/80")}`}>{entry.score}</span>
                             </div>
-                            <span className="font-black text-amber-400">{entry.score}</span>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
-                        <div className="text-[10px] text-white/20 text-center py-4">No records yet</div>
+                        <div className="text-[10px] text-white/20 text-center py-4 font-mono">No records yet</div>
                       )}
                     </div>
                   </div>
 
                   {/* Highest Combo */}
-                  <div className="space-y-1">
+                  <div className="space-y-1.5 p-3 rounded-xl border border-white/[0.03] bg-black/10 hover:border-amber-500/10 transition-all">
                     <div className="text-[9px] text-white/40 font-extrabold uppercase tracking-wider flex items-center gap-1 font-mono">
                       ⚡ Max Combo
                     </div>
-                    <div className="bg-black/20 rounded-lg p-2.5 space-y-1 min-h-[75px] max-h-[140px] overflow-y-auto pr-1">
+                    <div className="space-y-1 min-h-[100px] max-h-[140px] overflow-y-auto pr-1">
                       {leaderboardData?.highestCombo && leaderboardData.highestCombo.length > 0 ? (
-                        leaderboardData.highestCombo.map((entry: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between text-[11px] py-0.5 border-b border-white/[0.02] last:border-0 font-mono">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`w-3.5 font-black text-center ${
-                                index === 0 ? "text-[#ffd700]" : (index === 1 ? "text-[#c0c0c0]" : (index === 2 ? "text-[#cd7f32]" : "text-white/20"))
-                              }`}>{index + 1}</span>
-                              <span className="font-bold text-white/80">{entry.username}</span>
+                        leaderboardData.highestCombo.map((entry: any, index: number) => {
+                          const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
+                          return (
+                            <div key={index} className={`flex items-center justify-between text-[11px] py-1 border-b border-white/[0.02] last:border-0 font-mono transition-all ${
+                              isMe ? "bg-amber-500/15 border-l-2 border-l-amber-500 px-2 rounded-r shadow-[0_0_8px_rgba(245,158,11,0.08)]" : "px-1"
+                            }`}>
+                              <div className="flex items-center gap-2 font-sans">
+                                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${
+                                  index === 0 ? "bg-[#ffd700]/25 text-[#ffd700] border border-[#ffd700]/40" : 
+                                  (index === 1 ? "bg-[#c0c0c0]/25 text-[#c0c0c0] border border-[#c0c0c0]/40" : 
+                                  (index === 2 ? "bg-[#cd7f32]/25 text-[#cd7f32] border border-[#cd7f32]/40" : "text-white/20"))
+                                }`}>{index + 1}</span>
+                                <span className={`font-semibold ${isMe ? "text-amber-300 font-bold" : "text-white/80"}`}>{entry.username}</span>
+                              </div>
+                              <span className={`font-black ${isMe ? "text-cyan-300" : (index === 0 ? "text-[#ffd700]" : "text-cyan-400/80")}`}>{entry.score}x</span>
                             </div>
-                            <span className="font-black text-cyan-400">{entry.score}x</span>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
-                        <div className="text-[10px] text-white/20 text-center py-4">No records yet</div>
+                        <div className="text-[10px] text-white/20 text-center py-4 font-mono">No records yet</div>
                       )}
                     </div>
                   </div>
 
-                  {/* Highest Hit */}
-                  <div className="space-y-1">
+                  {/* Most Dwarf Kills */}
+                  <div className="space-y-1.5 p-3 rounded-xl border border-white/[0.03] bg-black/10 hover:border-amber-500/10 transition-all">
                     <div className="text-[9px] text-white/40 font-extrabold uppercase tracking-wider flex items-center gap-1 font-mono">
-                      🔥 Highest Hit
+                      🧔 Dwarf Kills
                     </div>
-                    <div className="bg-black/20 rounded-lg p-2.5 space-y-1 min-h-[75px] max-h-[140px] overflow-y-auto pr-1">
-                      {leaderboardData?.highestDps && leaderboardData.highestDps.length > 0 ? (
-                        leaderboardData.highestDps.map((entry: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between text-[11px] py-0.5 border-b border-white/[0.02] last:border-0 font-mono">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`w-3.5 font-black text-center ${
-                                index === 0 ? "text-[#ffd700]" : (index === 1 ? "text-[#c0c0c0]" : (index === 2 ? "text-[#cd7f32]" : "text-white/20"))
-                              }`}>{index + 1}</span>
-                              <span className="font-bold text-white/80">{entry.username}</span>
+                    <div className="space-y-1 min-h-[100px] max-h-[140px] overflow-y-auto pr-1">
+                      {leaderboardData?.dwarfKills && leaderboardData.dwarfKills.length > 0 ? (
+                        leaderboardData.dwarfKills.map((entry: any, index: number) => {
+                          const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
+                          return (
+                            <div key={index} className={`flex items-center justify-between text-[11px] py-1 border-b border-white/[0.02] last:border-0 font-mono transition-all ${
+                              isMe ? "bg-amber-500/15 border-l-2 border-l-amber-500 px-2 rounded-r shadow-[0_0_8px_rgba(245,158,11,0.08)]" : "px-1"
+                            }`}>
+                              <div className="flex items-center gap-2 font-sans">
+                                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${
+                                  index === 0 ? "bg-[#ffd700]/25 text-[#ffd700] border border-[#ffd700]/40" : 
+                                  (index === 1 ? "bg-[#c0c0c0]/25 text-[#c0c0c0] border border-[#c0c0c0]/40" : 
+                                  (index === 2 ? "bg-[#cd7f32]/25 text-[#cd7f32] border border-[#cd7f32]/40" : "text-white/20"))
+                                }`}>{index + 1}</span>
+                                <span className={`font-semibold ${isMe ? "text-amber-300 font-bold" : "text-white/80"}`}>{entry.username}</span>
+                              </div>
+                              <span className={`font-black ${isMe ? "text-amber-400" : (index === 0 ? "text-[#ffd700]" : "text-amber-500/80")}`}>{entry.score}</span>
                             </div>
-                            <span className="font-black text-rose-400">{entry.score}</span>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
-                        <div className="text-[10px] text-white/20 text-center py-4">No records yet</div>
+                        <div className="text-[10px] text-white/20 text-center py-4 font-mono">No records yet</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Most Elf Kills */}
+                  <div className="space-y-1.5 p-3 rounded-xl border border-white/[0.03] bg-black/10 hover:border-amber-500/10 transition-all">
+                    <div className="text-[9px] text-white/40 font-extrabold uppercase tracking-wider flex items-center gap-1 font-mono">
+                      🧝 Elf Kills
+                    </div>
+                    <div className="space-y-1 min-h-[100px] max-h-[140px] overflow-y-auto pr-1">
+                      {leaderboardData?.elfKills && leaderboardData.elfKills.length > 0 ? (
+                        leaderboardData.elfKills.map((entry: any, index: number) => {
+                          const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
+                          return (
+                            <div key={index} className={`flex items-center justify-between text-[11px] py-1 border-b border-white/[0.02] last:border-0 font-mono transition-all ${
+                              isMe ? "bg-amber-500/15 border-l-2 border-l-amber-500 px-2 rounded-r shadow-[0_0_8px_rgba(245,158,11,0.08)]" : "px-1"
+                            }`}>
+                              <div className="flex items-center gap-2 font-sans">
+                                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${
+                                  index === 0 ? "bg-[#ffd700]/25 text-[#ffd700] border border-[#ffd700]/40" : 
+                                  (index === 1 ? "bg-[#c0c0c0]/25 text-[#c0c0c0] border border-[#c0c0c0]/40" : 
+                                  (index === 2 ? "bg-[#cd7f32]/25 text-[#cd7f32] border border-[#cd7f32]/40" : "text-white/20"))
+                                }`}>{index + 1}</span>
+                                <span className={`font-semibold ${isMe ? "text-amber-300 font-bold" : "text-white/80"}`}>{entry.username}</span>
+                              </div>
+                              <span className={`font-black ${isMe ? "text-emerald-300" : (index === 0 ? "text-[#ffd700]" : "text-emerald-400/80")}`}>{entry.score}</span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="text-[10px] text-white/20 text-center py-4 font-mono">No records yet</div>
                       )}
                     </div>
                   </div>

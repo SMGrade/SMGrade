@@ -8,13 +8,10 @@ const router = Router();
 // Master Password (can be configured via env)
 const MASTER_PASSWORD = process.env.MASTER_PASSWORD || "harrison@smgrade.swordmasters2026";
 
-// Store active master session tokens
-const masterSessions = new Set<string>();
-
 // Middleware to check Master session
 function checkMasterSession(req: any, res: any, next: () => void) {
   const authHeader = req.headers["x-master-token"];
-  if (!authHeader || !masterSessions.has(authHeader as string)) {
+  if (!authHeader || !jsonDb.hasMasterSession(authHeader as string)) {
     res.status(401).json({ error: "Unauthorized Master Vault access." });
     return;
   }
@@ -26,7 +23,7 @@ router.post("/unlock", async (req: any, res: any) => {
   const { password } = req.body;
   if (password === MASTER_PASSWORD) {
     const token = crypto.randomBytes(32).toString("hex");
-    masterSessions.add(token);
+    await jsonDb.addMasterSession(token);
     await jsonDb.addAuditLog("System", "Master Vault Unlocked", "Access granted to Master settings terminal.");
     await jsonDb.addActivityLog("Master Admin", "Admin Login", "Master Vault session unlocked.");
     res.json({ success: true, token });

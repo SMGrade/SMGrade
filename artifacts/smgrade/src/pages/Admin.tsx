@@ -220,6 +220,44 @@ function MarketDatabaseEditor({
     saveMarketData(updated); // Auto-save
   };
 
+  const handleGeneratePrices = (name: string, lvl1PriceStr: string) => {
+    const val = parseNumber(lvl1PriceStr);
+    if (isNaN(val) || val <= 0) {
+      alert("Please enter a valid positive number for Level 1 Price.");
+      return;
+    }
+    
+    // Capture initial prices for Undo history if not already captured
+    const itemToUpdate = marketItems.find(i => i.name === name);
+    if (itemToUpdate && !initialCardPrices[name]) {
+      setInitialCardPrices(init => ({
+        ...init,
+        [name]: { ...(itemToUpdate.prices || {}) }
+      }));
+    }
+
+    const generated: Record<number, number> = {};
+    let currentPrice = val;
+    generated[1] = currentPrice;
+    for (let l = 2; l <= 10; l++) {
+      currentPrice = currentPrice * l;
+      generated[l] = currentPrice;
+    }
+
+    const updated = marketItems.map(item => {
+      if (item.name === name) {
+        return {
+          ...item,
+          prices: generated,
+          lastUpdated: new Date().toLocaleDateString()
+        };
+      }
+      return item;
+    });
+    setMarketItems(updated);
+    saveMarketData(updated); // Auto-save
+  };
+
   const handleUndo = (name: string) => {
     const original = initialCardPrices[name];
     if (!original) return;
@@ -435,8 +473,33 @@ function MarketDatabaseEditor({
                             </div>
 
                             {/* Level-specific prices grid */}
-                            <div className="space-y-1.5">
-                              <span className="text-[9px] text-[#ffd700] uppercase font-black tracking-widest block mb-2">Configure Levels Pricing</span>
+                            <div className="space-y-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.02] pb-2 mb-2">
+                                <span className="text-[9px] text-[#ffd700] uppercase font-black tracking-widest block">Configure Levels Pricing</span>
+                                <div className="flex items-center gap-1.5 bg-white/[0.01] border border-white/[0.03] px-2.5 py-1 rounded-lg">
+                                  <span className="text-[9px] text-white/40 uppercase font-black tracking-wider">Generate from Lv1:</span>
+                                  <input
+                                    type="text"
+                                    placeholder="Lv1 price (e.g. 50)"
+                                    className="bg-[#050811] border border-white/[0.04] focus:border-[#ffd700] rounded px-2 py-0.5 text-[10px] text-white font-mono w-24 focus:outline-none text-center"
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        handleGeneratePrices(item.name, (e.target as HTMLInputElement).value);
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      const input = (e.currentTarget.previousSibling as HTMLInputElement);
+                                      handleGeneratePrices(item.name, input.value);
+                                    }}
+                                    className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/20 rounded text-[9px] font-black uppercase tracking-wider cursor-pointer transition-colors"
+                                  >
+                                    Generate
+                                  </button>
+                                </div>
+                              </div>
                               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                                 {Array.from({ length: 10 }).map((_, idx) => {
                                   const lvl = idx + 1;

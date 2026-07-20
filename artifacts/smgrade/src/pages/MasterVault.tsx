@@ -65,7 +65,7 @@ interface MostSearched {
 }
 
 export default function MasterVault() {
-  const [token, setToken] = useState(() => sessionStorage.getItem("smg_master_token") || "");
+  const [token, setToken] = useState(() => localStorage.getItem("smg_master_token") || "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<"analytics" | "lookups" | "activity" | "searched" | "gear" | "db" | "storageTest">("analytics");
@@ -101,7 +101,7 @@ export default function MasterVault() {
       });
       if (res.ok) {
         const json = await res.json();
-        sessionStorage.setItem("smg_master_token", json.token);
+        localStorage.setItem("smg_master_token", json.token);
         setToken(json.token);
         setError(false);
       } else {
@@ -120,6 +120,11 @@ export default function MasterVault() {
 
       // Fetch analytics
       const statsRes = await fetch("/api/master/analytics", { headers });
+      if (statsRes.status === 401) {
+        localStorage.removeItem("smg_master_token");
+        setToken("");
+        return;
+      }
       if (statsRes.ok) setStats(await statsRes.json());
 
       // Fetch lookups with filters
@@ -205,7 +210,7 @@ export default function MasterVault() {
         <div className="flex gap-2">
           <button 
             onClick={() => {
-              sessionStorage.removeItem("smg_master_token");
+              localStorage.removeItem("smg_master_token");
               setToken("");
             }}
             className="text-[9px] font-black uppercase tracking-widest border border-white/10 hover:border-red-500/30 hover:text-red-400 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"

@@ -460,6 +460,7 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     isUpgradeCurrent: boolean;
     isOwnedInInventory: boolean;
     resultingDps: number;
+    progressionScore: number;
   }
 
   const candidates: Candidate[] = [];
@@ -511,6 +512,12 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
       const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
 
       if (gain > 0) {
+        const dpsGainPct = gain;
+        const refPower = Math.max(player.powerRaw, benchmark.avgPower, 1e6);
+        const normalizedCost = cost / refPower;
+        
+        const progressionScore = dpsGainPct / (normalizedCost + 0.05);
+
         candidates.push({
           name: item.name,
           level: lvl,
@@ -520,8 +527,9 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
           priceNote: getPriceNoteFromMarket(item.name, lvl),
           isUpgradeCurrent: isEquipped,
           isOwnedInInventory: !isEquipped && ownedLevel > 0,
-          resultingDps: canStats.damagePerSecond
-        });
+          resultingDps: canStats.damagePerSecond,
+          progressionScore
+        } as any);
       }
     }
   });
@@ -554,7 +562,7 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   let lateGameGoals: UpgradeGoal[] = [];
 
   if (affordable.length > 0) {
-    affordable.sort((a, b) => b.resultingDps - a.resultingDps);
+    affordable.sort((a, b) => b.progressionScore - a.progressionScore);
 
     const uniqueSelected: Candidate[] = [];
     affordable.forEach(c => {
@@ -594,14 +602,14 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
       };
     });
   } else {
-    const sortedCheapest = [...candidates].sort((a, b) => a.cost - b.cost);
+    const sortedCheapest = [...candidates].sort((a, b) => b.progressionScore - a.progressionScore);
     const cheapest = sortedCheapest[0];
     const shortage = cheapest.cost - player.powerRaw;
     powerShortageMessage = `Need ${formatNumber(shortage)} more Power`;
   }
 
   if (unaffordable.length > 0) {
-    unaffordable.sort((a, b) => b.resultingDps - a.resultingDps);
+    unaffordable.sort((a, b) => b.progressionScore - a.progressionScore);
 
     const uniqueLate: Candidate[] = [];
     unaffordable.forEach(c => {
