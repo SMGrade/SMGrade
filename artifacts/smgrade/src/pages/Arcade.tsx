@@ -139,7 +139,7 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
       viewBox="0 0 200 250"
       className="overflow-visible"
       key={isDead ? "dead" : "alive"}
-      initial={isDead ? { scale: 1, opacity: 1, y: 0, rotate: 0, x: 0 } : { y: -250, opacity: 0, scale: 0.7, rotate: 0, x: 0 }}
+      initial={isDead ? { scale: 1, opacity: 1, y: 0, rotate: 0, x: 0 } : { x: 120, opacity: 0, scale: 0.85, rotate: 8, y: 0 }}
       animate={isDead ? {
         scaleY: 0.12,
         scaleX: 1.45,
@@ -169,7 +169,7 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
         opacity: 1,
         rotate: 0
       }}
-      transition={isDead ? { duration: 0.45 } : isCrit ? { duration: 0.5, ease: "easeOut" } : isHurt ? { duration: 0.3, ease: "easeOut" } : { type: "spring", stiffness: 90, damping: 12 }}
+      transition={isDead ? { duration: 0.45 } : isCrit ? { duration: 0.5, ease: "easeOut" } : isHurt ? { duration: 0.3, ease: "easeOut" } : { type: "spring", stiffness: 60, damping: 10, mass: 1.2 }}
     >
       <defs>
         {/* Soft Drop Shadows for 3D depth */}
@@ -393,7 +393,7 @@ function ElfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: bo
       viewBox="0 0 200 250"
       className="overflow-visible"
       key={isDead ? "dead" : "alive"}
-      initial={isDead ? { scale: 1, opacity: 1, y: 0, rotate: 0, x: 0 } : { y: -250, opacity: 0, scale: 0.7, rotate: 0, x: 0 }}
+      initial={isDead ? { scale: 1, opacity: 1, y: 0, rotate: 0, x: 0 } : { x: -120, opacity: 0, scale: 0.85, rotate: -8, y: 0 }}
       animate={isDead ? {
         scaleY: 0.12,
         scaleX: 1.45,
@@ -423,7 +423,7 @@ function ElfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: bo
         opacity: 1,
         rotate: 0
       }}
-      transition={isDead ? { duration: 0.45 } : isCrit ? { duration: 0.5, ease: "easeOut" } : isHurt ? { duration: 0.3, ease: "easeOut" } : { type: "spring", stiffness: 90, damping: 12 }}
+      transition={isDead ? { duration: 0.45 } : isCrit ? { duration: 0.5, ease: "easeOut" } : isHurt ? { duration: 0.3, ease: "easeOut" } : { type: "spring", stiffness: 60, damping: 10, mass: 1.2 }}
     >
       <defs>
         {/* Soft Shadows */}
@@ -1771,154 +1771,125 @@ export default function Arcade() {
                 </button>
               </div>
 
-              {/* LIVE LEADERBOARDS */}
-              <div className="p-5 rounded-xl border border-white/[0.04] bg-[#070b13]/60 glass-panel space-y-3">
-                <div className="flex items-center justify-between border-b border-white/[0.06] pb-3 mb-1">
-                  <div className="text-xs font-black bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-500 bg-clip-text text-transparent uppercase tracking-wider flex items-center gap-1.5">
+              {/* LIVE LEADERBOARDS — Top 10 Only */}
+              <div className="p-6 rounded-2xl border border-amber-500/15 bg-gradient-to-b from-[#0c1020]/80 to-[#070b13]/90 glass-panel space-y-5 shadow-[0_0_40px_rgba(245,158,11,0.06)]">
+                <div className="flex items-center justify-between border-b border-amber-500/10 pb-4">
+                  <div className="text-sm font-black bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-500 bg-clip-text text-transparent uppercase tracking-wider flex items-center gap-2">
                     🏆 Global Leaderboards
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1.5">
                     {(["daily", "weekly", "all-time"] as const).map(w => (
                       <button
                         key={w}
                         onClick={(e) => { e.stopPropagation(); setLeaderboardWindow(w); playSound("click"); }}
-                        className={`px-2 py-0.5 rounded text-[8px] uppercase font-black tracking-wider transition-all cursor-pointer ${
+                        className={`px-3 py-1 rounded-lg text-[9px] uppercase font-black tracking-wider transition-all cursor-pointer ${
                           leaderboardWindow === w 
-                            ? "bg-amber-500/25 border border-amber-500/40 text-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.2)]" 
-                            : "bg-white/[0.02] border border-white/[0.03] text-white/40 hover:text-white"
+                            ? "bg-amber-500/20 border border-amber-500/40 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.2)]" 
+                            : "bg-white/[0.02] border border-white/[0.04] text-white/40 hover:text-white hover:border-white/10"
                         }`}
                       >
-                        {w === "all-time" ? "All" : (w === "weekly" ? "Week" : "Day")}
+                        {w === "all-time" ? "All Time" : (w === "weekly" ? "Weekly" : "Daily")}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Categories */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Total Kills */}
-                  <div className="space-y-1.5 p-3 rounded-xl border border-white/[0.03] bg-black/10 hover:border-amber-500/10 transition-all">
-                    <div className="text-[9px] text-white/40 font-extrabold uppercase tracking-wider flex items-center gap-1 font-mono">
-                      ☠️ Total Kills
+                {/* 3 Leaderboard Categories — Stacked Full-Width */}
+                <div className="space-y-5">
+
+                  {/* ☠️ Top 10 Total Kills */}
+                  <div className="p-4 rounded-xl border border-amber-500/10 bg-black/20">
+                    <div className="text-[11px] text-amber-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2 font-mono">
+                      ☠️ Top 10 — Total Kills
                     </div>
-                    <div className="space-y-1 min-h-[100px] max-h-[140px] overflow-y-auto pr-1">
+                    <div className="space-y-1.5">
                       {leaderboardData?.totalKills && leaderboardData.totalKills.length > 0 ? (
-                        leaderboardData.totalKills.map((entry: any, index: number) => {
+                        leaderboardData.totalKills.slice(0, 10).map((entry: any, index: number) => {
                           const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
                           return (
-                            <div key={index} className={`flex items-center justify-between text-[11px] py-1 border-b border-white/[0.02] last:border-0 font-mono transition-all ${
-                              isMe ? "bg-amber-500/15 border-l-2 border-l-amber-500 px-2 rounded-r shadow-[0_0_8px_rgba(245,158,11,0.08)]" : "px-1"
+                            <div key={index} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${
+                              isMe ? "bg-amber-500/15 border border-amber-500/25 shadow-[0_0_12px_rgba(245,158,11,0.08)]" : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.03]"
                             }`}>
-                              <div className="flex items-center gap-2 font-sans">
-                                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${
-                                  index === 0 ? "bg-[#ffd700]/25 text-[#ffd700] border border-[#ffd700]/40" : 
-                                  (index === 1 ? "bg-[#c0c0c0]/25 text-[#c0c0c0] border border-[#c0c0c0]/40" : 
-                                  (index === 2 ? "bg-[#cd7f32]/25 text-[#cd7f32] border border-[#cd7f32]/40" : "text-white/20"))
+                              <div className="flex items-center gap-3">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
+                                  index === 0 ? "bg-[#ffd700]/20 text-[#ffd700] border-2 border-[#ffd700]/50 shadow-[0_0_8px_rgba(255,215,0,0.3)]" : 
+                                  (index === 1 ? "bg-[#c0c0c0]/20 text-[#c0c0c0] border-2 border-[#c0c0c0]/50" : 
+                                  (index === 2 ? "bg-[#cd7f32]/20 text-[#cd7f32] border-2 border-[#cd7f32]/50" : "bg-white/5 text-white/30 border border-white/5"))
                                 }`}>{index + 1}</span>
-                                <span className={`font-semibold ${isMe ? "text-amber-300 font-bold" : "text-white/80"}`}>{entry.username}</span>
+                                <span className={`font-bold text-[12px] ${isMe ? "text-amber-300 font-extrabold" : "text-white/90"}`}>{entry.username}</span>
                               </div>
-                              <span className={`font-black ${isMe ? "text-amber-400" : (index === 0 ? "text-[#ffd700]" : "text-amber-500/80")}`}>{entry.score}</span>
+                              <span className={`font-black text-sm tabular-nums ${isMe ? "text-amber-400" : (index === 0 ? "text-[#ffd700]" : "text-amber-500/80")}`}>{entry.score}</span>
                             </div>
                           );
                         })
                       ) : (
-                        <div className="text-[10px] text-white/20 text-center py-4 font-mono">No records yet</div>
+                        <div className="text-[11px] text-white/20 text-center py-6 font-mono">No records yet — be the first!</div>
                       )}
                     </div>
                   </div>
 
-                  {/* Highest Combo */}
-                  <div className="space-y-1.5 p-3 rounded-xl border border-white/[0.03] bg-black/10 hover:border-amber-500/10 transition-all">
-                    <div className="text-[9px] text-white/40 font-extrabold uppercase tracking-wider flex items-center gap-1 font-mono">
-                      ⚡ Max Combo
+                  {/* 🧔 Top 10 Dwarf Kills */}
+                  <div className="p-4 rounded-xl border border-amber-500/10 bg-black/20">
+                    <div className="text-[11px] text-amber-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2 font-mono">
+                      🧔 Top 10 — Dwarf Kills
                     </div>
-                    <div className="space-y-1 min-h-[100px] max-h-[140px] overflow-y-auto pr-1">
-                      {leaderboardData?.highestCombo && leaderboardData.highestCombo.length > 0 ? (
-                        leaderboardData.highestCombo.map((entry: any, index: number) => {
-                          const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
-                          return (
-                            <div key={index} className={`flex items-center justify-between text-[11px] py-1 border-b border-white/[0.02] last:border-0 font-mono transition-all ${
-                              isMe ? "bg-amber-500/15 border-l-2 border-l-amber-500 px-2 rounded-r shadow-[0_0_8px_rgba(245,158,11,0.08)]" : "px-1"
-                            }`}>
-                              <div className="flex items-center gap-2 font-sans">
-                                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${
-                                  index === 0 ? "bg-[#ffd700]/25 text-[#ffd700] border border-[#ffd700]/40" : 
-                                  (index === 1 ? "bg-[#c0c0c0]/25 text-[#c0c0c0] border border-[#c0c0c0]/40" : 
-                                  (index === 2 ? "bg-[#cd7f32]/25 text-[#cd7f32] border border-[#cd7f32]/40" : "text-white/20"))
-                                }`}>{index + 1}</span>
-                                <span className={`font-semibold ${isMe ? "text-amber-300 font-bold" : "text-white/80"}`}>{entry.username}</span>
-                              </div>
-                              <span className={`font-black ${isMe ? "text-cyan-300" : (index === 0 ? "text-[#ffd700]" : "text-cyan-400/80")}`}>{entry.score}x</span>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="text-[10px] text-white/20 text-center py-4 font-mono">No records yet</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Most Dwarf Kills */}
-                  <div className="space-y-1.5 p-3 rounded-xl border border-white/[0.03] bg-black/10 hover:border-amber-500/10 transition-all">
-                    <div className="text-[9px] text-white/40 font-extrabold uppercase tracking-wider flex items-center gap-1 font-mono">
-                      🧔 Dwarf Kills
-                    </div>
-                    <div className="space-y-1 min-h-[100px] max-h-[140px] overflow-y-auto pr-1">
+                    <div className="space-y-1.5">
                       {leaderboardData?.dwarfKills && leaderboardData.dwarfKills.length > 0 ? (
-                        leaderboardData.dwarfKills.map((entry: any, index: number) => {
+                        leaderboardData.dwarfKills.slice(0, 10).map((entry: any, index: number) => {
                           const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
                           return (
-                            <div key={index} className={`flex items-center justify-between text-[11px] py-1 border-b border-white/[0.02] last:border-0 font-mono transition-all ${
-                              isMe ? "bg-amber-500/15 border-l-2 border-l-amber-500 px-2 rounded-r shadow-[0_0_8px_rgba(245,158,11,0.08)]" : "px-1"
+                            <div key={index} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${
+                              isMe ? "bg-amber-500/15 border border-amber-500/25 shadow-[0_0_12px_rgba(245,158,11,0.08)]" : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.03]"
                             }`}>
-                              <div className="flex items-center gap-2 font-sans">
-                                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${
-                                  index === 0 ? "bg-[#ffd700]/25 text-[#ffd700] border border-[#ffd700]/40" : 
-                                  (index === 1 ? "bg-[#c0c0c0]/25 text-[#c0c0c0] border border-[#c0c0c0]/40" : 
-                                  (index === 2 ? "bg-[#cd7f32]/25 text-[#cd7f32] border border-[#cd7f32]/40" : "text-white/20"))
+                              <div className="flex items-center gap-3">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
+                                  index === 0 ? "bg-[#ffd700]/20 text-[#ffd700] border-2 border-[#ffd700]/50 shadow-[0_0_8px_rgba(255,215,0,0.3)]" : 
+                                  (index === 1 ? "bg-[#c0c0c0]/20 text-[#c0c0c0] border-2 border-[#c0c0c0]/50" : 
+                                  (index === 2 ? "bg-[#cd7f32]/20 text-[#cd7f32] border-2 border-[#cd7f32]/50" : "bg-white/5 text-white/30 border border-white/5"))
                                 }`}>{index + 1}</span>
-                                <span className={`font-semibold ${isMe ? "text-amber-300 font-bold" : "text-white/80"}`}>{entry.username}</span>
+                                <span className={`font-bold text-[12px] ${isMe ? "text-amber-300 font-extrabold" : "text-white/90"}`}>{entry.username}</span>
                               </div>
-                              <span className={`font-black ${isMe ? "text-amber-400" : (index === 0 ? "text-[#ffd700]" : "text-amber-500/80")}`}>{entry.score}</span>
+                              <span className={`font-black text-sm tabular-nums ${isMe ? "text-amber-400" : (index === 0 ? "text-[#ffd700]" : "text-amber-500/80")}`}>{entry.score}</span>
                             </div>
                           );
                         })
                       ) : (
-                        <div className="text-[10px] text-white/20 text-center py-4 font-mono">No records yet</div>
+                        <div className="text-[11px] text-white/20 text-center py-6 font-mono">No records yet — be the first!</div>
                       )}
                     </div>
                   </div>
 
-                  {/* Most Elf Kills */}
-                  <div className="space-y-1.5 p-3 rounded-xl border border-white/[0.03] bg-black/10 hover:border-amber-500/10 transition-all">
-                    <div className="text-[9px] text-white/40 font-extrabold uppercase tracking-wider flex items-center gap-1 font-mono">
-                      🧝 Elf Kills
+                  {/* 🧝 Top 10 Elf Kills */}
+                  <div className="p-4 rounded-xl border border-emerald-500/10 bg-black/20">
+                    <div className="text-[11px] text-emerald-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2 font-mono">
+                      🧝 Top 10 — Elf Kills
                     </div>
-                    <div className="space-y-1 min-h-[100px] max-h-[140px] overflow-y-auto pr-1">
+                    <div className="space-y-1.5">
                       {leaderboardData?.elfKills && leaderboardData.elfKills.length > 0 ? (
-                        leaderboardData.elfKills.map((entry: any, index: number) => {
+                        leaderboardData.elfKills.slice(0, 10).map((entry: any, index: number) => {
                           const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
                           return (
-                            <div key={index} className={`flex items-center justify-between text-[11px] py-1 border-b border-white/[0.02] last:border-0 font-mono transition-all ${
-                              isMe ? "bg-amber-500/15 border-l-2 border-l-amber-500 px-2 rounded-r shadow-[0_0_8px_rgba(245,158,11,0.08)]" : "px-1"
+                            <div key={index} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${
+                              isMe ? "bg-emerald-500/15 border border-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.08)]" : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.03]"
                             }`}>
-                              <div className="flex items-center gap-2 font-sans">
-                                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${
-                                  index === 0 ? "bg-[#ffd700]/25 text-[#ffd700] border border-[#ffd700]/40" : 
-                                  (index === 1 ? "bg-[#c0c0c0]/25 text-[#c0c0c0] border border-[#c0c0c0]/40" : 
-                                  (index === 2 ? "bg-[#cd7f32]/25 text-[#cd7f32] border border-[#cd7f32]/40" : "text-white/20"))
+                              <div className="flex items-center gap-3">
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
+                                  index === 0 ? "bg-[#ffd700]/20 text-[#ffd700] border-2 border-[#ffd700]/50 shadow-[0_0_8px_rgba(255,215,0,0.3)]" : 
+                                  (index === 1 ? "bg-[#c0c0c0]/20 text-[#c0c0c0] border-2 border-[#c0c0c0]/50" : 
+                                  (index === 2 ? "bg-[#cd7f32]/20 text-[#cd7f32] border-2 border-[#cd7f32]/50" : "bg-white/5 text-white/30 border border-white/5"))
                                 }`}>{index + 1}</span>
-                                <span className={`font-semibold ${isMe ? "text-amber-300 font-bold" : "text-white/80"}`}>{entry.username}</span>
+                                <span className={`font-bold text-[12px] ${isMe ? "text-emerald-300 font-extrabold" : "text-white/90"}`}>{entry.username}</span>
                               </div>
-                              <span className={`font-black ${isMe ? "text-emerald-300" : (index === 0 ? "text-[#ffd700]" : "text-emerald-400/80")}`}>{entry.score}</span>
+                              <span className={`font-black text-sm tabular-nums ${isMe ? "text-emerald-400" : (index === 0 ? "text-[#ffd700]" : "text-emerald-400/80")}`}>{entry.score}</span>
                             </div>
                           );
                         })
                       ) : (
-                        <div className="text-[10px] text-white/20 text-center py-4 font-mono">No records yet</div>
+                        <div className="text-[11px] text-white/20 text-center py-6 font-mono">No records yet — be the first!</div>
                       )}
                     </div>
                   </div>
+
                 </div>
               </div>
 
