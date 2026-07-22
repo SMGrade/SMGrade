@@ -63,11 +63,18 @@ export function loadMarketData(): MarketItem[] {
                 ? Math.pow(10, Math.min(3 + tierFactor * 0.45, 24))
                 : Math.pow(10, Math.min(3 + tierFactor * 0.47, 24));
 
+              let lastPrice = basePrice;
               for (let lvl = 1; lvl <= 10; lvl++) {
                 if (defaultItemPrices && defaultItemPrices[lvl]) {
                   prices[lvl] = parseNumber(defaultItemPrices[lvl]);
+                  lastPrice = prices[lvl];
                 } else {
-                  prices[lvl] = Math.round(basePrice * Math.pow(1.4, lvl - 1));
+                  if (lvl === 1) {
+                    prices[lvl] = Math.round(lastPrice);
+                  } else {
+                    lastPrice = Math.round(lastPrice * 2.0);
+                    prices[lvl] = lastPrice;
+                  }
                 }
               }
               parsed.push({
@@ -116,14 +123,22 @@ export function initializeMarketData(): MarketItem[] {
       const prices: { [level: number]: number } = {};
       const defaultItemPrices = DEFAULT_PRICES_ESTIMATED[item.name];
 
+      let lastPrice = basePrice;
       for (let lvl = 1; lvl <= 10; lvl++) {
         if (defaultItemPrices && defaultItemPrices[lvl]) {
           prices[lvl] = parseNumber(defaultItemPrices[lvl]);
+          lastPrice = prices[lvl];
         } else {
           const lvl1Price = defaultItemPrices && defaultItemPrices[1]
             ? parseNumber(defaultItemPrices[1])
             : basePrice;
-          prices[lvl] = Math.round(lvl1Price * Math.pow(1.4, lvl - 1));
+          if (lvl === 1) {
+            prices[lvl] = Math.round(lvl1Price);
+            lastPrice = prices[lvl];
+          } else {
+            lastPrice = Math.round(lastPrice * 2.0);
+            prices[lvl] = lastPrice;
+          }
         }
       }
       

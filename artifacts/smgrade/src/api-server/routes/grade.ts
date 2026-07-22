@@ -108,7 +108,7 @@ Be concise, specific, and accurate. Reference real game terms. Do not be generic
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -281,7 +281,7 @@ PLAYER CONTEXT:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: `${playerContextString}\n\nPlayer question: ${question.trim()}`,
       config: {
         systemInstruction: chatSystemInstruction,

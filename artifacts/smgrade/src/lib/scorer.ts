@@ -430,6 +430,10 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   };
 
   const isObtainable = (item: any): boolean => {
+    const isEquipped = item.type === "shield"
+      ? !!(curSh && item.name.toLowerCase() === curSh.name.toLowerCase())
+      : !!(curSw && item.name.toLowerCase() === curSw.name.toLowerCase());
+    if (isEquipped) return true;
     if (isAlreadyOwned(item.name, item.type === "shield")) return true;
     if (player.level < (item.minLevel || 0)) return false;
     const itemWorldNum = getWorldNumberFromName(item.world);
@@ -479,11 +483,27 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     const ownedLevel = isEquipped ? currentEquippedLevel : getOwnedLevel(item.name, isShield);
     const maxLvl = item.maxLevel || 10;
 
-    // If not equipped but owned in inventory, we evaluate from ownedLevel (cost = 0) to equip it.
-    // If equipped, we evaluate from ownedLevel + 1.
-    // If not owned, we only evaluate Level 1 to buy it.
     const startLvl = ownedLevel === 0 ? 1 : (isEquipped ? ownedLevel + 1 : ownedLevel);
-    const limitLvl = ownedLevel === 0 ? 1 : maxLvl;
+    
+    // For unowned items, let's allow evaluating up to the level required to surpass the current equipped gear,
+    // so we don't get trapped by temporary Level 1 downgrades.
+    let limitLvl = maxLvl;
+    if (ownedLevel === 0) {
+      let targetLvl = 1;
+      const curEquipped = isShield ? curSh : curSw;
+      if (curEquipped) {
+        const curBase = isShield ? (curSh?.baseDM || 0) : (curSw?.baseDamage || 0);
+        const curLvl = isShield ? shLevel : swLevel;
+        const curScaled = curBase * (1 + 0.25 * (curLvl - 1));
+        for (let l = 1; l <= maxLvl; l++) {
+          if (item.baseValue * (1 + 0.25 * (l - 1)) > curScaled) {
+            targetLvl = l;
+            break;
+          }
+        }
+      }
+      limitLvl = targetLvl;
+    }
 
     for (let lvl = startLvl; lvl <= limitLvl; lvl++) {
       if (lvl === ownedLevel && isEquipped) {
@@ -534,7 +554,21 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
         const refPower = Math.max(player.powerRaw, benchmark.avgPower, 1e6);
         const normalizedCost = cost / refPower;
         
-        const progressionScore = dpsGainPct / (normalizedCost + 0.05);
+        let progressionScore = dpsGainPct / (normalizedCost + 0.05);
+
+        // Apply a level-based progression efficiency multiplier to prevent spamming high-level upgrades
+        // for weapons that are below the expected tier limits.
+        let efficiencyFactor = 1.0;
+        if (item.rarity === "Legendary") {
+          if (lvl > 3) {
+            efficiencyFactor = Math.pow(0.65, lvl - 3);
+          }
+        } else {
+          if (lvl > 5) {
+            efficiencyFactor = Math.pow(0.45, lvl - 5);
+          }
+        }
+        progressionScore *= efficiencyFactor;
 
         candidates.push({
           name: item.name,
