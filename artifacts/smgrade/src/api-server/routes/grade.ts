@@ -123,9 +123,22 @@ Be concise, specific, and accurate. Reference real game terms. Do not be generic
 
     const result = JSON.parse(content);
     res.json(result);
-  } catch (err) {
+  } catch (err: any) {
     req.log.error({ err }, "AI explanation failed");
-    res.status(500).json({ error: "AI explanation failed" });
+    let errMsg = "AI explanation failed";
+    if (err && err.message) {
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed?.error?.message) {
+          errMsg = parsed.error.message;
+        } else {
+          errMsg = err.message;
+        }
+      } catch {
+        errMsg = err.message;
+      }
+    }
+    res.status(500).json({ error: errMsg });
   }
 });
 
@@ -287,9 +300,22 @@ PLAYER CONTEXT:
       text: content.trim(), 
       answer: content.trim() 
     });
-  } catch (err) {
+  } catch (err: any) {
     req.log.error({ err }, "AI Coach chat failed");
-    res.status(500).json({ error: "AI Coach chat failed" });
+    let errMsg = "AI Coach chat failed";
+    if (err && err.message) {
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed?.error?.message) {
+          errMsg = parsed.error.message;
+        } else {
+          errMsg = err.message;
+        }
+      } catch {
+        errMsg = err.message;
+      }
+    }
+    res.status(500).json({ error: errMsg });
   }
 });
 
