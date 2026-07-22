@@ -15,6 +15,15 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "missing-key-please-set-GEMINI_API_KEY",
 });
 
+router.get("/grade/models", async (req: any, res: any) => {
+  try {
+    const list = await ai.models.list();
+    res.json(list);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || err });
+  }
+});
+
 // Cache player lookup results for 5 minutes
 interface CacheEntry {
   playerData: ParsedPlayer;
