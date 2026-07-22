@@ -292,8 +292,12 @@ function CoachChat({ playerContext, explanation }: { playerContext: string; expl
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: text, playerContext }),
       });
-      const data = await res.json() as { answer?: string; error?: string };
-      setMessages((m) => [...m, { role: "coach", text: data.answer ?? "Couldn't get a response. Try again." }]);
+      const data = await res.json() as { answer?: string; text?: string; error?: string };
+      if (res.ok) {
+        setMessages((m) => [...m, { role: "coach", text: data.answer ?? data.text ?? "No response content from Coach." }]);
+      } else {
+        setMessages((m) => [...m, { role: "coach", text: `AI Coach Error: ${data.error ?? "Could not get a response."}` }]);
+      }
     } catch {
       setMessages((m) => [...m, { role: "coach", text: "Connection error. Please try again." }]);
     } finally {

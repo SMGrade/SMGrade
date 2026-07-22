@@ -155,7 +155,11 @@ router.post("/grade/chat", async (req: any, res: any) => {
     try {
       playerData = typeof playerContext === "string" ? JSON.parse(playerContext) : playerContext;
       if (playerData) {
-        scores = scorePlayer(playerData);
+        try {
+          scores = scorePlayer(playerData);
+        } catch (scoreErr) {
+          console.error("[AI Coach] scorePlayer error on context:", scoreErr);
+        }
       }
     } catch (err) {
       console.warn("[AI Coach] Failed to parse playerContext:", err);
@@ -175,7 +179,11 @@ router.post("/grade/chat", async (req: any, res: any) => {
         console.log(`[AI Coach] Backend Live Lookup fetching profile for: ${username}`);
         const playerInfo = await queryLivePlayer(username);
         playerData = normalizeLivePlayer(playerInfo);
-        scores = scorePlayer(playerData);
+        try {
+          scores = scorePlayer(playerData);
+        } catch (scoreErr) {
+          console.error("[AI Coach] scorePlayer error on live fetch:", scoreErr);
+        }
         
         playerCache.set(cleanUser, {
           playerData,

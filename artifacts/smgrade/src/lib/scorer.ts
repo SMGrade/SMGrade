@@ -433,7 +433,8 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     if (isAlreadyOwned(item.name, item.type === "shield")) return true;
     if (player.level < (item.minLevel || 0)) return false;
     const itemWorldNum = getWorldNumberFromName(item.world);
-    if (playerWorld < itemWorldNum) return false;
+    // Limit to current world or at most 1 world higher to ensure realistic progression path
+    if (playerWorld + 1 < itemWorldNum) return false;
     return true;
   };
 
@@ -490,14 +491,21 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
       }
 
       let cost = 0;
-      if (lvl > ownedLevel) {
-        for (let l = Math.max(1, ownedLevel) + 1; l <= lvl; l++) {
+      if (ownedLevel === 0) {
+        // Not owned: must buy Level 1 first
+        cost += getPriceRawFromMarket(item.name, 1);
+        for (let l = 2; l <= lvl; l++) {
+          cost += getPriceRawFromMarket(item.name, l);
+        }
+      } else if (lvl > ownedLevel) {
+        // Already owned, calculating upgrade cost
+        for (let l = ownedLevel + 1; l <= lvl; l++) {
           cost += getPriceRawFromMarket(item.name, l);
         }
       }
 
-      // Cap cost to 3x current power (minimum baseline of 10M for early game progression)
-      const maxAllowedCost = Math.max(player.powerRaw * 3.0, 1e7);
+      // Cap cost to 1.5x current power to prevent recommending unrealistic end-game upgrades (minimum baseline of 5M for early game)
+      const maxAllowedCost = Math.max(player.powerRaw * 1.5, 5e6);
       if (cost > maxAllowedCost) {
         break;
       }

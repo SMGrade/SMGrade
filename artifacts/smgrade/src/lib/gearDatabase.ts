@@ -2608,19 +2608,35 @@ export function scaledShieldDM(baseDM: number, level: number): number {
 export function getSwordData(name: string): SwordData | null {
   if (!name) return null;
   const cleanName = name.replace(/[^a-z0-9]/gi, "").toLowerCase();
-  return SWORDS.find((s) => {
+  let found = SWORDS.find((s) => {
     const cleanS = s.name.replace(/[^a-z0-9]/gi, "").toLowerCase();
     return cleanName.includes(cleanS) || cleanS.includes(cleanName);
-  }) ?? null;
+  });
+  if (!found) {
+    const normName = name.toLowerCase().replace(/'s\b|s\b/g, "").replace(/[^a-z0-9]/gi, "");
+    found = SWORDS.find((s) => {
+      const normS = s.name.toLowerCase().replace(/'s\b|s\b/g, "").replace(/[^a-z0-9]/gi, "");
+      return normName.includes(normS) || normS.includes(normName);
+    });
+  }
+  return found ?? null;
 }
 
 export function getShieldData(name: string): ShieldData | null {
   if (!name) return null;
   const cleanName = name.replace(/[^a-z0-9]/gi, "").toLowerCase();
-  return SHIELDS.find((s) => {
+  let found = SHIELDS.find((s) => {
     const cleanS = s.name.replace(/[^a-z0-9]/gi, "").toLowerCase();
     return cleanName.includes(cleanS) || cleanS.includes(cleanName);
-  }) ?? null;
+  });
+  if (!found) {
+    const normName = name.toLowerCase().replace(/'s\b|s\b/g, "").replace(/[^a-z0-9]/gi, "");
+    found = SHIELDS.find((s) => {
+      const normS = s.name.toLowerCase().replace(/'s\b|s\b/g, "").replace(/[^a-z0-9]/gi, "");
+      return normName.includes(normS) || normS.includes(normName);
+    });
+  }
+  return found ?? null;
 }
 
 export function getNextSwordUpgrade(name: string): SwordData | null {
