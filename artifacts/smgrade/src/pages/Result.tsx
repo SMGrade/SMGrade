@@ -14,7 +14,6 @@ import HistoryTracker from "@/components/HistoryTracker";
 import { ParticleBackground } from "./Home";
 import { type UserProfile } from "@/lib/authStore";
 import { ensurePricesLoaded, calculateNetWorth, lookupItemPrice, type NetWorthResult } from "@/lib/priceProvider";
-import { scorePlayer } from "@/lib/scorer";
 import { calculateDamageStats } from "@/lib/damageCalc";
 
 interface ResultData {
@@ -393,7 +392,7 @@ export default function Result() {
   const [data, setData] = useState<ResultData | null>(null);
   const scores = useMemo(() => {
     if (!data) return null;
-    return data.scores || scorePlayer(data.player);
+    return data.scores;
   }, [data]);
   const [parseError, setParseError] = useState(false);
   const [copied, setCopied] = useState(false);

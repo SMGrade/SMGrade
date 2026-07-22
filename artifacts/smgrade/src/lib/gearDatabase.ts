@@ -2519,7 +2519,14 @@ export const DEFAULT_ITEMS: GameItem[] = [
   }
 ];
 
+let itemsOverride: GameItem[] | null = null;
+export function setOverrideItems(items: GameItem[] | null): void {
+  itemsOverride = items;
+  reloadGearDatabase();
+}
+
 export function loadItems(): GameItem[] {
+  if (itemsOverride) return itemsOverride;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {

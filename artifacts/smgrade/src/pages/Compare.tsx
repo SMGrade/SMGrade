@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { parsePlayerData } from "@/lib/parser";
-import { scorePlayer } from "@/lib/scorer";
 import { getSwordData, getShieldData, scaledSwordDamage, scaledShieldDM } from "@/lib/gearDatabase";
 import { formatNumber } from "@/lib/numberParser";
 import { calculateDamageStats } from "@/lib/damageCalc";
@@ -48,7 +47,7 @@ export default function Compare() {
   const [player1, setPlayer1] = useState<ComparedPlayer | null>(null);
   const [player2, setPlayer2] = useState<ComparedPlayer | null>(null);
 
-  function handleCompare() {
+  async function handleCompare() {
     setError("");
     const txt1 = pasted1.trim();
     const txt2 = pasted2.trim();
@@ -70,72 +69,89 @@ export default function Compare() {
       return;
     }
 
-    const sc1 = scorePlayer(data1);
-    const sc2 = scorePlayer(data2);
+    try {
+      const res1 = await fetch("/api/grade/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player: data1 })
+      });
+      if (!res1.ok) throw new Error("Failed to calculate Player 1 score.");
+      const r1 = await res1.json();
+      const sc1 = r1.scores;
 
-    const sw1 = getSwordData(data1.sword);
-    const sh1 = getShieldData(data1.shield);
-    const ds1 = sw1 ? scaledSwordDamage(sw1.baseDamage, data1.swordLevel) * 1e9 : 0;
-    const ms1 = sh1 ? scaledShieldDM(sh1.baseDM, data1.shieldLevel) : 0;
-    const dmgStats1 = calculateDamageStats({
-      ds: ds1,
-      swordDamageMultiplier: ms1,
-      power: data1.powerRaw,
-      petPowerBonus: 0
-    });
-    const dmg1 = dmgStats1.damagePerHit;
+      const res2 = await fetch("/api/grade/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player: data2 })
+      });
+      if (!res2.ok) throw new Error("Failed to calculate Player 2 score.");
+      const r2 = await res2.json();
+      const sc2 = r2.scores;
 
-    const sw2 = getSwordData(data2.sword);
-    const sh2 = getShieldData(data2.shield);
-    const ds2 = sw2 ? scaledSwordDamage(sw2.baseDamage, data2.swordLevel) * 1e9 : 0;
-    const ms2 = sh2 ? scaledShieldDM(sh2.baseDM, data2.shieldLevel) : 0;
-    const dmgStats2 = calculateDamageStats({
-      ds: ds2,
-      swordDamageMultiplier: ms2,
-      power: data2.powerRaw,
-      petPowerBonus: 0
-    });
-    const dmg2 = dmgStats2.damagePerHit;
+      const sw1 = getSwordData(data1.sword);
+      const sh1 = getShieldData(data1.shield);
+      const ds1 = sw1 ? scaledSwordDamage(sw1.baseDamage, data1.swordLevel) * 1e9 : 0;
+      const ms1 = sh1 ? scaledShieldDM(sh1.baseDM, data1.shieldLevel) : 0;
+      const dmgStats1 = calculateDamageStats({
+        ds: ds1,
+        swordDamageMultiplier: ms1,
+        power: data1.powerRaw,
+        petPowerBonus: 0
+      });
 
-    setPlayer1({
-      username: data1.username,
-      level: data1.level,
-      power: data1.power,
-      powerRaw: data1.powerRaw,
-      gold: data1.gold,
-      goldRaw: data1.goldRaw,
-      sword: data1.sword,
-      swordLevel: data1.swordLevel,
-      shield: data1.shield,
-      shieldLevel: data1.shieldLevel,
-      pvpKills: data1.pvpKillCount,
-      overallScore: sc1.overallScore,
-      overallGrade: sc1.overallGrade,
-      gearScore: sc1.gearScore,
-      powerScore: sc1.powerScore,
-      damagePerHit: dmgStats1.damagePerHit,
-      dps: dmgStats1.damagePerSecond,
-    });
+      const sw2 = getSwordData(data2.sword);
+      const sh2 = getShieldData(data2.shield);
+      const ds2 = sw2 ? scaledSwordDamage(sw2.baseDamage, data2.swordLevel) * 1e9 : 0;
+      const ms2 = sh2 ? scaledShieldDM(sh2.baseDM, data2.shieldLevel) : 0;
+      const dmgStats2 = calculateDamageStats({
+        ds: ds2,
+        swordDamageMultiplier: ms2,
+        power: data2.powerRaw,
+        petPowerBonus: 0
+      });
 
-    setPlayer2({
-      username: data2.username,
-      level: data2.level,
-      power: data2.power,
-      powerRaw: data2.powerRaw,
-      gold: data2.gold,
-      goldRaw: data2.goldRaw,
-      sword: data2.sword,
-      swordLevel: data2.swordLevel,
-      shield: data2.shield,
-      shieldLevel: data2.shieldLevel,
-      pvpKills: data2.pvpKillCount,
-      overallScore: sc2.overallScore,
-      overallGrade: sc2.overallGrade,
-      gearScore: sc2.gearScore,
-      powerScore: sc2.powerScore,
-      damagePerHit: dmgStats2.damagePerHit,
-      dps: dmgStats2.damagePerSecond,
-    });
+      setPlayer1({
+        username: data1.username,
+        level: data1.level,
+        power: data1.power,
+        powerRaw: data1.powerRaw,
+        gold: data1.gold,
+        goldRaw: data1.goldRaw,
+        sword: data1.sword,
+        swordLevel: data1.swordLevel,
+        shield: data1.shield,
+        shieldLevel: data1.shieldLevel,
+        pvpKills: data1.pvpKillCount,
+        overallScore: sc1.overallScore,
+        overallGrade: sc1.overallGrade,
+        gearScore: sc1.gearScore,
+        powerScore: sc1.powerScore,
+        damagePerHit: dmgStats1.damagePerHit,
+        dps: dmgStats1.damagePerSecond,
+      });
+
+      setPlayer2({
+        username: data2.username,
+        level: data2.level,
+        power: data2.power,
+        powerRaw: data2.powerRaw,
+        gold: data2.gold,
+        goldRaw: data2.goldRaw,
+        sword: data2.sword,
+        swordLevel: data2.swordLevel,
+        shield: data2.shield,
+        shieldLevel: data2.shieldLevel,
+        pvpKills: data2.pvpKillCount,
+        overallScore: sc2.overallScore,
+        overallGrade: sc2.overallGrade,
+        gearScore: sc2.gearScore,
+        powerScore: sc2.powerScore,
+        damagePerHit: dmgStats2.damagePerHit,
+        dps: dmgStats2.damagePerSecond,
+      });
+    } catch (e: any) {
+      setError(e.message || "Failed to compare players on the server.");
+    }
   }
 
   function fmtBig(n: number): string {

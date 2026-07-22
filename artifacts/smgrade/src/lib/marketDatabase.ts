@@ -39,7 +39,13 @@ export const DEFAULT_PRICES_ESTIMATED: Record<string, Record<number, string>> = 
   "Crackshield":        { 1: "10QT",   2: "20QT",   3: "35QT",   4: "45QT",   5: "53QT" }
 };
 
+let marketDataOverride: MarketItem[] | null = null;
+export function setOverrideMarketData(data: MarketItem[] | null): void {
+  marketDataOverride = data;
+}
+
 export function loadMarketData(): MarketItem[] {
+  if (marketDataOverride) return marketDataOverride;
   if (typeof window === "undefined" || !window.localStorage) {
     return initializeMarketData();
   }

@@ -181,7 +181,13 @@ export function extendBenchmark(bt: BenchmarkTier): ExtendedBenchmarkTier {
   };
 }
 
+let benchmarksOverride: BenchmarkTier[] | null = null;
+export function setOverrideBenchmarks(tiers: BenchmarkTier[] | null): void {
+  benchmarksOverride = tiers;
+}
+
 export function loadBenchmarkTiers(): BenchmarkTier[] {
+  if (benchmarksOverride) return benchmarksOverride;
   try {
     if (typeof window !== "undefined" && window.localStorage) {
       const raw = localStorage.getItem(BENCHMARK_STORAGE_KEY);

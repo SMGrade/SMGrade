@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { GoogleGenAI } from "@google/genai";
 import { ExplainGradeBody } from "@workspace/api-zod";
 import { queryLivePlayer } from "./liveLookup.js";
 import { normalizeLivePlayer } from "../../lib/liveLookupEngine.js";
@@ -11,9 +10,43 @@ import { formatNumber } from "../../lib/numberParser.js";
 
 const router = Router();
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || "missing-key-please-set-GEMINI_API_KEY",
-});
+async function generateOpenRouterContent(messages: any[], isJson = false): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey || apiKey.trim() === "" || apiKey.includes("missing-key")) {
+    throw new Error("OpenRouter API key is missing. Please configure OPENROUTER_API_KEY in your environment.");
+  }
+  const model = process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash";
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://sm-grade-smgrade.vercel.app",
+      "X-Title": "SMGrade"
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      response_format: isJson ? { type: "json_object" } : undefined,
+      temperature: 0.7,
+      max_tokens: 500
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMsg = errorData.error?.message || `OpenRouter returned status ${response.status}`;
+    throw new Error(errorMsg);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error("Empty response from OpenRouter API.");
+  }
+  return content;
+}
 
 // Cache player lookup results for 5 minutes
 interface CacheEntry {
@@ -48,8 +81,9 @@ MARKET PRICES are in Power (QT = Quadrillion, QNT = Quintillion).
 `;
 
 router.post("/grade/explain", async (req: any, res: any) => {
-  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.trim() === "" || process.env.GEMINI_API_KEY.includes("missing-key")) {
-    res.status(400).json({ error: "Gemini API key is missing. Please configure GEMINI_API_KEY in your environment." });
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey || apiKey.trim() === "" || apiKey.includes("missing-key")) {
+    res.status(400).json({ error: "OpenRouter API key is missing. Please configure OPENROUTER_API_KEY in your environment." });
     return;
   }
 
@@ -107,45 +141,23 @@ Respond in JSON with exactly this structure (no markdown, no code block):
 Be concise, specific, and accurate. Reference real game terms. Do not be generic.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    const content = response.text;
-    if (!content) {
-      res.status(500).json({ error: "No response from AI" });
-      return;
-    }
+    const content = await generateOpenRouterContent([
+      { role: "user", content: prompt }
+    ], true);
 
     const result = JSON.parse(content);
     res.json(result);
   } catch (err: any) {
     req.log.error({ err }, "AI explanation failed");
-    let errMsg = "AI explanation failed";
-    if (err && err.message) {
-      try {
-        const parsed = JSON.parse(err.message);
-        if (parsed?.error?.message) {
-          errMsg = parsed.error.message;
-        } else {
-          errMsg = err.message;
-        }
-      } catch {
-        errMsg = err.message;
-      }
-    }
-    res.status(500).json({ error: errMsg });
+    res.status(500).json({ error: "AI Coach is temporarily unavailable due to high demand or service limits. Please try again shortly." });
   }
 });
 
 // ── AI Coach Chat Redesign (Section 4) ─────
 router.post("/grade/chat", async (req: any, res: any) => {
-  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.trim() === "" || process.env.GEMINI_API_KEY.includes("missing-key")) {
-    res.status(400).json({ error: "Gemini API key is missing. Please configure GEMINI_API_KEY in your environment." });
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey || apiKey.trim() === "" || apiKey.includes("missing-key")) {
+    res.status(400).json({ error: "OpenRouter API key is missing. Please configure OPENROUTER_API_KEY in your environment." });
     return;
   }
 
@@ -280,21 +292,10 @@ PLAYER CONTEXT:
   }
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: `${playerContextString}\n\nPlayer question: ${question.trim()}`,
-      config: {
-        systemInstruction: chatSystemInstruction,
-        maxOutputTokens: 300,
-        temperature: 0.7,
-      },
-    });
-
-    const content = response.text;
-    if (!content) {
-      res.status(500).json({ error: "No response from AI" });
-      return;
-    }
+    const content = await generateOpenRouterContent([
+      { role: "system", content: chatSystemInstruction },
+      { role: "user", content: `${playerContextString}\n\nPlayer question: ${question.trim()}` }
+    ], false);
 
     res.json({ 
       text: content.trim(), 
@@ -302,20 +303,21 @@ PLAYER CONTEXT:
     });
   } catch (err: any) {
     req.log.error({ err }, "AI Coach chat failed");
-    let errMsg = "AI Coach chat failed";
-    if (err && err.message) {
-      try {
-        const parsed = JSON.parse(err.message);
-        if (parsed?.error?.message) {
-          errMsg = parsed.error.message;
-        } else {
-          errMsg = err.message;
-        }
-      } catch {
-        errMsg = err.message;
-      }
-    }
-    res.status(500).json({ error: errMsg });
+    res.status(500).json({ error: "AI Coach is temporarily unavailable due to high demand or service limits. Please try again shortly." });
+  }
+});
+
+router.post("/grade/calculate", (req: any, res: any) => {
+  const { player } = req.body;
+  if (!player) {
+    res.status(400).json({ error: "player is required" });
+    return;
+  }
+  try {
+    const scores = scorePlayer(player);
+    res.json({ success: true, scores });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || err });
   }
 });
 

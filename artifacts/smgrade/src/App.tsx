@@ -35,6 +35,8 @@ function Router() {
 
 import { useEffect } from "react";
 
+import { reloadGearDatabase } from "@/lib/gearDatabase";
+
 export default function App() {
   useEffect(() => {
     fetch("/api/master/admin/config")
@@ -55,6 +57,9 @@ export default function App() {
         if (data.constants && typeof data.constants === "object" && Object.keys(data.constants).length > 0) {
           localStorage.setItem("smg_grading_settings_v1", JSON.stringify(data.constants));
         }
+        
+        // Dynamically update frontend static weapon/shield caches
+        reloadGearDatabase();
       })
       .catch((err) => {
         console.warn("[SMGrade Config Sync] Server offline or unconfigured:", err.message);

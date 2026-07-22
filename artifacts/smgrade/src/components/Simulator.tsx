@@ -1,7 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { ParsedPlayer } from "@/lib/parser";
 import type { ScoreResult } from "@/lib/scorer";
-import { scorePlayer } from "@/lib/scorer";
 import { SWORDS, SHIELDS, getSwordData, getShieldData, scaledSwordDamage, scaledShieldDM } from "@/lib/gearDatabase";
 import { parseNumber, formatNumber } from "@/lib/numberParser";
 import { calculateDamageStats } from "@/lib/damageCalc";
@@ -52,8 +51,31 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
     };
   }, [currentPlayer, selectedSword, swordLevel, selectedShield, shieldLevel, parsedPower, parsedGold]);
 
-  // Calculate simulated score
-  const simulatedScores = useMemo(() => scorePlayer(simulatedPlayer), [simulatedPlayer]);
+  // Calculate simulated score asynchronously on the backend
+  const [simulatedScores, setSimulatedScores] = useState<ScoreResult>(currentScores);
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  useEffect(() => {
+    setIsCalculating(true);
+    fetch("/api/grade/calculate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ player: simulatedPlayer })
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Simulation failed");
+        return res.json();
+      })
+      .then((data) => {
+        setSimulatedScores(data.scores);
+      })
+      .catch((err) => {
+        console.error("Simulation error:", err);
+      })
+      .finally(() => {
+        setIsCalculating(false);
+      });
+  }, [simulatedPlayer, currentScores]);
 
   // Calculate current vs simulated combat damages
   const curSword = getSwordData(currentPlayer.sword);
@@ -192,7 +214,12 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
 
         {/* Right Side: Simulated Results & Comparison */}
         <div className="p-5 space-y-5 bg-white/[0.01]">
-          <div className="text-[9px] uppercase tracking-widest text-white/30 font-black font-display">Simulated Output</div>
+          <div className="flex items-center justify-between">
+            <div className="text-[9px] uppercase tracking-widest text-white/30 font-black font-display">Simulated Output</div>
+            {isCalculating && (
+              <span className="text-[9px] font-bold text-amber-400 animate-pulse uppercase tracking-wider font-display">Calculating...</span>
+            )}
+          </div>
 
           {/* Grade Comparison */}
           <div className="flex items-center justify-between border-b border-white/[0.04] pb-4">

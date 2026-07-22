@@ -211,7 +211,7 @@ router.get("/live-lookup", async (req: any, res: any) => {
     );
 
     isConnecting = false;
-    res.json({ success: true, playerInfo });
+    res.json({ success: true, playerInfo, scores });
   } catch (err: any) {
     const duration = Date.now() - startTime;
     const ipAddress = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "127.0.0.1";

@@ -32,7 +32,13 @@ export const DEFAULT_CONSTANTS: GradingConstants = {
 
 const STORAGE_KEY = "smg_grading_settings_v1";
 
+let constantsOverride: GradingConstants | null = null;
+export function setOverrideConstants(constants: GradingConstants | null): void {
+  constantsOverride = constants;
+}
+
 export function loadGradingConstants(): GradingConstants {
+  if (constantsOverride) return constantsOverride;
   try {
     if (typeof window !== "undefined" && window.localStorage) {
       const raw = window.localStorage.getItem(STORAGE_KEY);

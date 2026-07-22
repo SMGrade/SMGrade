@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { scorePlayer } from "@/lib/scorer";
 import { fetchLivePlayerInfo, normalizeLivePlayer } from "@/lib/liveLookupEngine";
 
 export function ParticleBackground() {
@@ -110,6 +109,7 @@ export default function Home() {
 
     try {
       let rawPayload: any = null;
+      let scores: any = null;
       try {
         rawPayload = await fetchLivePlayerInfo(userToFind, (status) => {
           setConnectionStatus(status.message);
@@ -128,6 +128,7 @@ export default function Home() {
           throw new Error(proxyData.error || "Proxy query returned unsuccessful state.");
         }
         rawPayload = proxyData.playerInfo;
+        scores = proxyData.scores;
       }
 
       setConnectionStatus("Running grade formulas...");
@@ -139,7 +140,20 @@ export default function Home() {
         rawPayload
       };
 
-      const scores = scorePlayer(normalizedPlayer);
+      if (!scores) {
+        const calcRes = await fetch("/api/grade/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ player: normalizedPlayer })
+        });
+        if (!calcRes.ok) {
+          const errData = await calcRes.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to calculate player score on backend.");
+        }
+        const calcData = await calcRes.json();
+        scores = calcData.scores;
+      }
+
       const encoded = encodeURIComponent(JSON.stringify({ player: normalizedPlayer, scores }));
 
       const duration = Date.now() - startTime;
