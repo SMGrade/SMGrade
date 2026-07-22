@@ -15,15 +15,6 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "missing-key-please-set-GEMINI_API_KEY",
 });
 
-router.get("/grade/models", async (req: any, res: any) => {
-  try {
-    const list = await ai.models.list();
-    res.json(list);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || err });
-  }
-});
-
 // Cache player lookup results for 5 minutes
 interface CacheEntry {
   playerData: ParsedPlayer;
@@ -117,7 +108,7 @@ Be concise, specific, and accurate. Reference real game terms. Do not be generic
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -290,7 +281,7 @@ PLAYER CONTEXT:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       contents: `${playerContextString}\n\nPlayer question: ${question.trim()}`,
       config: {
         systemInstruction: chatSystemInstruction,
