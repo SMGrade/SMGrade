@@ -4,8 +4,15 @@ import { ExplainGradeBody } from "@workspace/api-zod";
 
 const router = Router();
 
+function getGeminiApiKey(): string {
+  const raw = process.env.GEMINI_API_KEY;
+  if (!raw) return "";
+  const cleaned = raw.split(/[\r\n\s]+/)[0]?.trim();
+  return cleaned || "";
+}
+
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || "missing-key-please-set-GEMINI_API_KEY",
+  apiKey: getGeminiApiKey() || "missing-key-please-set-GEMINI_API_KEY",
 });
 
 // Real gear knowledge for accurate AI advice
@@ -32,7 +39,8 @@ MARKET PRICES are in Power (QT = Quadrillion, QNT = Quintillion).
 `;
 
 router.post("/grade/explain", async (req, res) => {
-  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.trim() === "" || process.env.GEMINI_API_KEY.includes("missing-key")) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey || apiKey === "" || apiKey.includes("missing-key")) {
     res.status(400).json({ error: "Gemini API key is missing. Please configure GEMINI_API_KEY in your environment." });
     return;
   }
@@ -116,7 +124,8 @@ Be concise, specific, and accurate. Reference real game terms. Do not be generic
 // ── AI Chat ──────────────────────────────────────────────────────────────────
 
 router.post("/grade/chat", async (req, res) => {
-  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.trim() === "" || process.env.GEMINI_API_KEY.includes("missing-key")) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey || apiKey === "" || apiKey.includes("missing-key")) {
     res.status(400).json({ error: "Gemini API key is missing. Please configure GEMINI_API_KEY in your environment." });
     return;
   }

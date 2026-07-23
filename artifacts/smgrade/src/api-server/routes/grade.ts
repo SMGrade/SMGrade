@@ -10,18 +10,28 @@ import { formatNumber } from "../../lib/numberParser.js";
 
 const router = Router();
 
+function getOpenRouterApiKey(): string {
+  const raw = process.env.OPENROUTER_API_KEY;
+  if (!raw) return "";
+  const cleaned = raw.split(/[\r\n\s]+/)[0]?.trim();
+  return cleaned || "";
+}
+
 async function generateOpenRouterContent(messages: any[], isJson = false): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey || apiKey.trim() === "" || apiKey.includes("missing-key")) {
+  const apiKey = getOpenRouterApiKey();
+  if (!apiKey || apiKey === "" || apiKey.includes("missing-key")) {
     throw new Error("OpenRouter API key is missing. Please configure OPENROUTER_API_KEY in your environment.");
   }
   const model = process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash";
+
+  const authHeader = `Bearer ${apiKey}`;
+  console.log(`[OpenRouter] Auth header length: ${authHeader.length}`);
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
+      "Authorization": authHeader,
       "HTTP-Referer": "https://sm-grade-smgrade.vercel.app",
       "X-Title": "SMGrade"
     },
@@ -81,8 +91,8 @@ MARKET PRICES are in Power (QT = Quadrillion, QNT = Quintillion).
 `;
 
 router.post("/grade/explain", async (req: any, res: any) => {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey || apiKey.trim() === "" || apiKey.includes("missing-key")) {
+  const apiKey = getOpenRouterApiKey();
+  if (!apiKey || apiKey === "" || apiKey.includes("missing-key")) {
     res.status(400).json({ error: "OpenRouter API key is missing. Please configure OPENROUTER_API_KEY in your environment." });
     return;
   }
@@ -154,8 +164,8 @@ Be concise, specific, and accurate. Reference real game terms. Do not be generic
 
 // ── AI Coach Chat Redesign (Section 4) ─────
 router.post("/grade/chat", async (req: any, res: any) => {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey || apiKey.trim() === "" || apiKey.includes("missing-key")) {
+  const apiKey = getOpenRouterApiKey();
+  if (!apiKey || apiKey === "" || apiKey.includes("missing-key")) {
     res.status(400).json({ error: "OpenRouter API key is missing. Please configure OPENROUTER_API_KEY in your environment." });
     return;
   }
