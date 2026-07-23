@@ -22,7 +22,7 @@ async function generateOpenRouterContent(messages: any[], isJson = false): Promi
   if (!apiKey || apiKey === "" || apiKey.includes("missing-key")) {
     throw new Error("OpenRouter API key is missing. Please configure OPENROUTER_API_KEY in your environment.");
   }
-  const model = process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash";
+  const model = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
 
   const authHeader = `Bearer ${apiKey}`;
   console.log(`[OpenRouter] Auth header length: ${authHeader.length}`);
