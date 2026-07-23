@@ -481,121 +481,96 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
     
     const currentEquippedLevel = isShield ? shLevel : swLevel;
     const ownedLevel = isEquipped ? currentEquippedLevel : getOwnedLevel(item.name, isShield);
-    const maxLvl = item.maxLevel || 10;
-
-    const startLvl = ownedLevel === 0 ? 1 : (isEquipped ? ownedLevel + 1 : ownedLevel);
     
-    // For unowned items, let's allow evaluating up to the level required to surpass the current equipped gear,
-    // so we don't get trapped by temporary Level 1 downgrades.
-    let limitLvl = maxLvl;
-    if (ownedLevel === 0) {
-      let targetLvl = 1;
-      const curEquipped = isShield ? curSh : curSw;
-      if (curEquipped) {
-        const curBase = isShield ? (curSh?.baseDM || 0) : (curSw?.baseDamage || 0);
-        const curLvl = isShield ? shLevel : swLevel;
-        const curScaled = curBase * (1 + 0.25 * (curLvl - 1));
-        for (let l = 1; l <= maxLvl; l++) {
-          if (item.baseValue * (1 + 0.25 * (l - 1)) > curScaled) {
-            targetLvl = l;
-            break;
-          }
-        }
-      }
-      limitLvl = targetLvl;
+    // Enforce step-by-step target level:
+    // If owned: we can only upgrade to ownedLevel + 1.
+    // If unowned: we can only buy Level 1.
+    const targetLvl = ownedLevel === 0 ? 1 : ownedLevel + 1;
+    
+    // STRICT RARITY CAPS
+    const capLevel = item.rarity === "Legendary" ? 5 : (item.rarity === "Epic" ? 7 : 10);
+    if (targetLvl > capLevel) {
+      return; // Skip: exceeds the rarity level cap
     }
 
-    for (let lvl = startLvl; lvl <= limitLvl; lvl++) {
-      if (lvl === ownedLevel && isEquipped) {
-        continue;
-      }
+    let cost = 0;
+    if (ownedLevel === 0) {
+      cost = getPriceRawFromMarket(item.name, 1);
+    } else {
+      cost = getPriceRawFromMarket(item.name, targetLvl);
+    }
 
-      let cost = 0;
-      if (ownedLevel === 0) {
-        // Not owned: must buy Level 1 first
-        cost += getPriceRawFromMarket(item.name, 1);
-        for (let l = 2; l <= lvl; l++) {
-          cost += getPriceRawFromMarket(item.name, l);
+    // Cap cost to 1.5x current power to prevent recommending unrealistic end-game upgrades (minimum baseline of 5M for early game)
+    const maxAllowedCost = Math.max(player.powerRaw * 1.5, 5e6);
+    if (cost > maxAllowedCost) {
+      return;
+    }
+
+    let dsVal = curDs;
+    let msVal = curMs;
+    if (isShield) {
+      msVal = scaledShieldDM(item.baseValue, targetLvl);
+    } else {
+      dsVal = scaledSwordDamage(item.baseValue, targetLvl) * 1e9;
+    }
+
+    const canStats = calculateDamageStats({
+      ds: dsVal,
+      swordDamageMultiplier: msVal,
+      power: player.powerRaw,
+      petPowerBonus: 0,
+      armorPowerBonus: 0,
+      attackSpeed: 2.77
+    });
+
+    const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
+
+    if (gain > 0) {
+      const dpsGainPct = gain;
+      const refPower = Math.max(player.powerRaw, benchmark.avgPower, 1e6);
+      const normalizedCost = cost / refPower;
+      
+      let progressionScore = dpsGainPct / (normalizedCost + 0.05);
+
+      // Apply a level-based progression efficiency multiplier to prevent spamming high-level upgrades
+      // for weapons that are below the expected tier limits.
+      let efficiencyFactor = 1.0;
+      if (item.rarity === "Legendary") {
+        if (targetLvl > 3) {
+          efficiencyFactor = Math.pow(0.65, targetLvl - 3);
         }
-      } else if (lvl > ownedLevel) {
-        // Already owned, calculating upgrade cost
-        for (let l = ownedLevel + 1; l <= lvl; l++) {
-          cost += getPriceRawFromMarket(item.name, l);
-        }
-      }
-
-      // Cap cost to 1.5x current power to prevent recommending unrealistic end-game upgrades (minimum baseline of 5M for early game)
-      const maxAllowedCost = Math.max(player.powerRaw * 1.5, 5e6);
-      if (cost > maxAllowedCost) {
-        break;
-      }
-
-      let dsVal = curDs;
-      let msVal = curMs;
-      if (isShield) {
-        msVal = scaledShieldDM(item.baseValue, lvl);
       } else {
-        dsVal = scaledSwordDamage(item.baseValue, lvl) * 1e9;
-      }
-
-      const canStats = calculateDamageStats({
-        ds: dsVal,
-        swordDamageMultiplier: msVal,
-        power: player.powerRaw,
-        petPowerBonus: 0,
-        armorPowerBonus: 0,
-        attackSpeed: 2.77
-      });
-
-      const gain = Math.round(((canStats.damagePerSecond - currentStats.damagePerSecond) / Math.max(currentStats.damagePerSecond, 1)) * 100);
-
-      if (gain > 0) {
-        const dpsGainPct = gain;
-        const refPower = Math.max(player.powerRaw, benchmark.avgPower, 1e6);
-        const normalizedCost = cost / refPower;
-        
-        let progressionScore = dpsGainPct / (normalizedCost + 0.05);
-
-        // Apply a level-based progression efficiency multiplier to prevent spamming high-level upgrades
-        // for weapons that are below the expected tier limits.
-        let efficiencyFactor = 1.0;
-        if (item.rarity === "Legendary") {
-          if (lvl > 3) {
-            efficiencyFactor = Math.pow(0.65, lvl - 3);
-          }
-        } else {
-          if (lvl > 5) {
-            efficiencyFactor = Math.pow(0.45, lvl - 5);
-          }
+        if (targetLvl > 5) {
+          efficiencyFactor = Math.pow(0.45, targetLvl - 5);
         }
-        progressionScore *= efficiencyFactor;
-
-        candidates.push({
-          name: item.name,
-          level: lvl,
-          type: isShield ? "Shield" : "Sword",
-          damageGainPct: gain,
-          cost,
-          priceNote: getPriceNoteFromMarket(item.name, lvl),
-          isUpgradeCurrent: isEquipped,
-          isOwnedInInventory: !isEquipped && ownedLevel > 0,
-          resultingDps: canStats.damagePerSecond,
-          progressionScore
-        } as any);
       }
+      progressionScore *= efficiencyFactor;
+
+      candidates.push({
+        name: item.name,
+        level: targetLvl,
+        type: isShield ? "Shield" : "Sword",
+        damageGainPct: gain,
+        cost,
+        priceNote: getPriceNoteFromMarket(item.name, targetLvl),
+        isUpgradeCurrent: isEquipped,
+        isOwnedInInventory: !isEquipped && ownedLevel > 0,
+        resultingDps: canStats.damagePerSecond,
+        progressionScore
+      } as any);
     }
   });
 
   if (candidates.length === 0) {
     const fallbackGoal: UpgradeGoal = {
-      name: "No upgrade currently recommended.",
+      name: "No worthwhile upgrade currently available.",
       level: 0,
       type: "Power",
       damageGainPct: 0,
       marketPriceNote: null,
       affordable: true,
       status: "Affordable Now",
-      reason: "No upgrade currently recommended. Your current equipment is the strongest available."
+      reason: "No worthwhile upgrade currently available."
     };
     return {
       immediate: fallbackGoal,

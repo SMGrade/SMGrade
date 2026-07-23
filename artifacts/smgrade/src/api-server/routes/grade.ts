@@ -149,7 +149,7 @@ Be concise, specific, and accurate. Reference real game terms. Do not be generic
     res.json(result);
   } catch (err: any) {
     req.log.error({ err }, "AI explanation failed");
-    res.status(500).json({ error: "AI Coach is temporarily unavailable due to high demand or service limits. Please try again shortly." });
+    res.status(500).json({ error: "AI Coach is temporarily unavailable. Please try again in a few moments." });
   }
 });
 
@@ -303,7 +303,7 @@ PLAYER CONTEXT:
     });
   } catch (err: any) {
     req.log.error({ err }, "AI Coach chat failed");
-    res.status(500).json({ error: "AI Coach is temporarily unavailable due to high demand or service limits. Please try again shortly." });
+    res.status(500).json({ error: "AI Coach is temporarily unavailable. Please try again in a few moments." });
   }
 });
 
