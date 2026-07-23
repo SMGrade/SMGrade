@@ -174,9 +174,12 @@ export class JsonDatabase {
         ssl: {
           rejectUnauthorized: false
         },
-        connectionTimeoutMillis: 3000,
-        statement_timeout: 3000,
-        query_timeout: 3000
+        max: 1,
+        idleTimeoutMillis: 1000,
+        connectionTimeoutMillis: 2000,
+        statement_timeout: 2000,
+        query_timeout: 2000,
+        allowExitOnIdle: true
       });
     }
   }
