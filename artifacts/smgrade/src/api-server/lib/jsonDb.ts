@@ -164,6 +164,7 @@ export class JsonDatabase {
   private data: DbSchema;
   private pool: any = null;
   private tableCreated = false;
+  private dbDisabled = false;
   private queue: Promise<any> = Promise.resolve();
 
   constructor() {
@@ -214,7 +215,7 @@ export class JsonDatabase {
   }
 
   public async init(): Promise<void> {
-    if (!this.pool) {
+    if (!this.pool || this.dbDisabled) {
       return;
     }
     if (!this.tableCreated) {
@@ -231,14 +232,16 @@ export class JsonDatabase {
         ]);
         this.tableCreated = true;
       } catch (err) {
-        console.error("[SMGrade DB] Failed to create master_vault_state table:", err);
+        console.error("[SMGrade DB] Failed to create master_vault_state table (disabling DB sync):", err);
+        this.dbDisabled = true;
+        return;
       }
     }
     await this.syncFromDb();
   }
 
   private async syncFromDb(): Promise<void> {
-    if (!this.pool) {
+    if (!this.pool || this.dbDisabled) {
       return;
     }
     try {
@@ -251,13 +254,17 @@ export class JsonDatabase {
         this.saveToFile(this.data);
       } else if (res && res.rows) {
         const stateStr = JSON.stringify(this.data);
-        await this.pool.query(
-          "INSERT INTO master_vault_state (id, state) VALUES (1, $1) ON CONFLICT (id) DO NOTHING",
-          [stateStr]
-        );
+        await Promise.race([
+          this.pool.query(
+            "INSERT INTO master_vault_state (id, state) VALUES (1, $1) ON CONFLICT (id) DO NOTHING",
+            [stateStr]
+          ),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("DB insert timeout")), 2000))
+        ]);
       }
     } catch (err) {
-      console.error("[SMGrade DB] Failed to synchronize state from database:", err);
+      console.error("[SMGrade DB] Failed to synchronize state from database (disabling DB sync):", err);
+      this.dbDisabled = true;
     }
   }
 
@@ -265,19 +272,22 @@ export class JsonDatabase {
     this.data = data;
     this.saveToFile(data);
 
-    if (this.pool) {
+    if (this.pool && !this.dbDisabled) {
       const stateStr = JSON.stringify(data);
       try {
-        await this.pool.query(
-          `INSERT INTO master_vault_state (id, state, updated_at) 
-           VALUES (1, $1, CURRENT_TIMESTAMP) 
-           ON CONFLICT (id) 
-           DO UPDATE SET state = EXCLUDED.state, updated_at = EXCLUDED.updated_at`,
-          [stateStr]
-        );
+        await Promise.race([
+          this.pool.query(
+            `INSERT INTO master_vault_state (id, state, updated_at) 
+             VALUES (1, $1, CURRENT_TIMESTAMP) 
+             ON CONFLICT (id) 
+             DO UPDATE SET state = EXCLUDED.state, updated_at = EXCLUDED.updated_at`,
+            [stateStr]
+          ),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("DB save timeout")), 2000))
+        ]);
       } catch (err: any) {
-        console.error("[SMGrade DB] Save to database failed:", err);
-        throw err;
+        console.error("[SMGrade DB] Save to database failed (disabling DB sync):", err);
+        this.dbDisabled = true;
       }
     }
   }
