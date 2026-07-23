@@ -276,7 +276,6 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
             {[
               { label: "Gear Score", cur: currentScores.gearScore, sim: simulatedScores.gearScore, color: "#ffd700" },
               { label: "Power Score", cur: currentScores.powerScore, sim: simulatedScores.powerScore, color: "#3b82f6" },
-              { label: "Progress Score", cur: currentScores.progressScore, sim: simulatedScores.progressScore, color: "#5ecb7a" },
               { label: "Wealth Score", cur: currentScores.wealthScore, sim: simulatedScores.wealthScore, color: "#a855f7" },
             ].map((score) => {
               const diff = score.sim - score.cur;

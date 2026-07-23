@@ -2,6 +2,11 @@ import { Router, type Request, type Response } from "express";
 import crypto from "crypto";
 import jsonDb from "../lib/jsonDb.js";
 import { getSession } from "./auth.js";
+import { setOverrideItems } from "../../lib/gearDatabase.js";
+import { setOverrideMarketData } from "../../lib/marketDatabase.js";
+import { setOverrideBenchmarks } from "../../lib/benchmark.js";
+import { setOverrideConstants } from "../../lib/settings.js";
+import { clearPlayerCache } from "./grade.js";
 
 const router = Router();
 
@@ -508,13 +513,28 @@ router.post("/admin/config", async (req: any, res: any) => {
 
   try {
     const { items, prices, benchmarks, constants } = req.body;
-    if (items) await jsonDb.saveCustomItems(items);
-    if (prices) await jsonDb.saveCustomPrices(prices);
-    if (benchmarks) await jsonDb.saveCustomBenchmarks(benchmarks);
-    if (constants) await jsonDb.saveCustomConstants(constants);
+    if (items) {
+      await jsonDb.saveCustomItems(items);
+      setOverrideItems(items);
+    }
+    if (prices) {
+      await jsonDb.saveCustomPrices(prices);
+      setOverrideMarketData(prices);
+    }
+    if (benchmarks) {
+      await jsonDb.saveCustomBenchmarks(benchmarks);
+      setOverrideBenchmarks(benchmarks);
+    }
+    if (constants) {
+      await jsonDb.saveCustomConstants(constants);
+      setOverrideConstants(constants);
+    }
+    
+    // Clear all player lookup caches immediately on config updates
+    clearPlayerCache();
     
     await jsonDb.addAuditLog("Admin Panel", "Configuration Updated", "Admin updated game items, prices, or constants settings.");
-    res.json({ success: true, message: "Configuration persisted successfully." });
+    res.json({ success: true, message: "Configuration persisted successfully and server cache purged." });
   } catch (err: any) {
     console.error("Failed to save admin configuration:", err);
     res.status(500).json({ error: "Database save failure." });

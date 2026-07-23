@@ -107,9 +107,9 @@ Be concise, specific, and accurate. Reference real game terms. Do not be generic
 
     const result = JSON.parse(content);
     res.json(result);
-  } catch (err) {
+  } catch (err: any) {
     req.log.error({ err }, "AI explanation failed");
-    res.status(500).json({ error: "AI explanation failed" });
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
@@ -153,9 +153,9 @@ ${itemsContext}`;
     });
     const answer = response.text ?? "I couldn't generate a response. Try again.";
     res.json({ answer });
-  } catch (err) {
+  } catch (err: any) {
     req.log.error({ err }, "AI chat failed");
-    res.status(500).json({ error: "AI chat failed" });
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 

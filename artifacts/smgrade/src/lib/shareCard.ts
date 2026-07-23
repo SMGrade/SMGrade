@@ -302,10 +302,10 @@ export function generateShareCard(
 
   // 2x2 Grid of Ratings Cards
   const metricsList = [
-    { label: "POWER SCORE", score: scores.powerScore, color: "#8ab4c9" },
-    { label: "GEAR SCORE", score: scores.gearScore, color: "#c9a84c" },
-    { label: "PROGRESSION SCORE", score: scores.progressScore, color: "#b89fce" },
-    { label: "WEALTH SCORE", score: scores.wealthScore, color: "#5ecb7a" }
+    { type: "score", label: "POWER SCORE", score: scores.powerScore, color: "#8ab4c9" },
+    { type: "score", label: "GEAR SCORE", score: scores.gearScore, color: "#c9a84c" },
+    { type: "text", label: "STANDING", value: scores.standing, color: "#b89fce" },
+    { type: "score", label: "WEALTH SCORE", score: scores.wealthScore, color: "#5ecb7a" }
   ];
 
   const gridStartX = rightX + 24;
@@ -344,35 +344,51 @@ export function generateShareCard(
     ctx.font = "900 7.5px monospace";
     ctx.fillText(m.label, cx + 12, cy + 18);
 
-    // Score Value
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "900 17px system-ui, -apple-system, sans-serif";
-    ctx.fillText(`${m.score}%`, cx + 12, cy + 38);
-
-    // Grade badge
-    const badgeLetter = getScoreLetter(m.score);
     const badgeColor = m.color;
 
-    ctx.textAlign = "right";
-    ctx.fillStyle = `${badgeColor}15`;
-    roundRectCut(ctx, cx + cardW - 42, cy + 14, 30, 16, 4);
-    ctx.fill();
-    ctx.strokeStyle = `${badgeColor}35`;
-    roundRectCut(ctx, cx + cardW - 42, cy + 14, 30, 16, 4);
-    ctx.stroke();
+    if (m.type === "score") {
+      // Score Value
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 17px system-ui, -apple-system, sans-serif";
+      ctx.fillText(`${m.score}%`, cx + 12, cy + 38);
 
-    ctx.fillStyle = badgeColor;
-    ctx.font = "900 9.5px system-ui, -apple-system, sans-serif";
-    ctx.fillText(badgeLetter, cx + cardW - 27, cy + 25);
-    ctx.textAlign = "left";
+      // Grade badge
+      const badgeLetter = getScoreLetter(m.score!);
 
-    // Glowing bottom status bar
-    ctx.fillStyle = badgeColor;
-    ctx.shadowColor = badgeColor;
-    ctx.shadowBlur = 6;
-    roundRectCut(ctx, cx + 12, cy + 50, (cardW - 24) * (m.score / 100), 3.5, 1.55);
-    ctx.fill();
-    ctx.shadowBlur = 0; // reset
+      ctx.textAlign = "right";
+      ctx.fillStyle = `${badgeColor}15`;
+      roundRectCut(ctx, cx + cardW - 42, cy + 14, 30, 16, 4);
+      ctx.fill();
+      ctx.strokeStyle = `${badgeColor}35`;
+      roundRectCut(ctx, cx + cardW - 42, cy + 14, 30, 16, 4);
+      ctx.stroke();
+
+      ctx.fillStyle = badgeColor;
+      ctx.font = "900 9.5px system-ui, -apple-system, sans-serif";
+      ctx.fillText(badgeLetter, cx + cardW - 27, cy + 25);
+      ctx.textAlign = "left";
+    } else {
+      // Text value
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 14px system-ui, -apple-system, sans-serif";
+      ctx.fillText(m.value || "", cx + 12, cy + 38);
+    }
+
+    if (m.type === "score") {
+      ctx.fillStyle = badgeColor;
+      ctx.shadowColor = badgeColor;
+      ctx.shadowBlur = 6;
+      roundRectCut(ctx, cx + 12, cy + 50, (cardW - 24) * (m.score! / 100), 3.5, 1.55);
+      ctx.fill();
+      ctx.shadowBlur = 0; // reset
+    } else {
+      ctx.fillStyle = badgeColor;
+      ctx.shadowColor = badgeColor;
+      ctx.shadowBlur = 6;
+      roundRectCut(ctx, cx + 12, cy + 50, cardW - 24, 3.5, 1.55);
+      ctx.fill();
+      ctx.shadowBlur = 0; // reset
+    }
   });
 
   // Separation Divider

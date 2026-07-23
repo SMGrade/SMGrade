@@ -106,7 +106,6 @@ Standing: ${d.standing} compared to players at this level
 Score breakdown:
 - Gear Score: ${d.gearScore}/100
 - Power Score: ${d.powerScore}/100
-- Progress Score: ${d.progressScore}/100
 - Wealth Score: ${d.wealthScore}/100
 
 Gear:
@@ -149,7 +148,7 @@ Be concise, specific, and accurate. Reference real game terms. Do not be generic
     res.json(result);
   } catch (err: any) {
     req.log.error({ err }, "AI explanation failed");
-    res.status(500).json({ error: "AI Coach is temporarily unavailable. Please try again in a few moments." });
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
@@ -303,7 +302,7 @@ PLAYER CONTEXT:
     });
   } catch (err: any) {
     req.log.error({ err }, "AI Coach chat failed");
-    res.status(500).json({ error: "AI Coach is temporarily unavailable. Please try again in a few moments." });
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
@@ -320,5 +319,9 @@ router.post("/grade/calculate", (req: any, res: any) => {
     res.status(500).json({ error: err.message || err });
   }
 });
+
+export function clearPlayerCache(): void {
+  playerCache.clear();
+}
 
 export default router;

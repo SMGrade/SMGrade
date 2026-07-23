@@ -297,8 +297,8 @@ function CoachChat({ playerContext, explanation }: { playerContext: string; expl
       } else {
         setMessages((m) => [...m, { role: "coach", text: `AI Coach Error: ${data.error ?? "Could not get a response."}` }]);
       }
-    } catch {
-      setMessages((m) => [...m, { role: "coach", text: "Connection error. Please try again." }]);
+    } catch (err: any) {
+      setMessages((m) => [...m, { role: "coach", text: `Connection error: ${err.message || String(err)}` }]);
     } finally {
       setChatLoading(false);
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
@@ -909,10 +909,10 @@ export default function Result() {
                   <SectionLabel>Component Performance Indices</SectionLabel>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {[
-                      { label: "Power Score", score: scores.powerScore },
-                      { label: "Gear Score", score: scores.gearScore },
-                      { label: "Progression Score", score: scores.progressScore },
-                      { label: "Wealth Score", score: scores.wealthScore },
+                      { type: "score", label: "Power Score", score: scores.powerScore },
+                      { type: "score", label: "Gear Score", score: scores.gearScore },
+                      { type: "score", label: "Wealth Score", score: scores.wealthScore },
+                      { type: "diagnostics", label: "Account Diagnostics", score: 0 }
                     ].map((card, idx) => {
                       const getScoreGrade = (s: number) => {
                         if (s >= 95) return "S+";
@@ -925,10 +925,38 @@ export default function Result() {
                         if (s >= 40) return "C";
                         return "D";
                       };
-                      const cardGrade = getScoreGrade(card.score);
-                      const gradeColor = GRADE_COLOR[cardGrade] ?? "#ffd700";
                       const delays = ["delay-75", "delay-100", "delay-150", "delay-200"];
                       const delayClass = delays[idx] || "";
+
+                      if (card.type === "diagnostics") {
+                        return (
+                          <div
+                            key={card.label}
+                            className={`border border-white/[0.03] rounded-xl p-3 bg-[#070b13]/60 glass-panel flex flex-col justify-between hover-glow-card animate-fade-in ${delayClass} shadow-[0_4px_15px_rgba(0,0,0,0.2)]`}
+                            style={{ minHeight: "92px" }}
+                          >
+                            <span className="text-[9px] uppercase font-black text-white/20 tracking-wider block mb-1">
+                              {card.label}
+                            </span>
+                            <div className="flex flex-col gap-1 overflow-y-auto max-h-[56px] pr-1 scrollbar-thin mt-0.5">
+                              {scores.diagnostics && scores.diagnostics.map((diag: string, i: number) => {
+                                const isGreen = diag.includes("Optimized") || diag.includes("Excellent") || diag.includes("Ready");
+                                const isYellow = diag.includes("Pending") || diag.includes("Balanced");
+                                const dotColor = isGreen ? "text-[#5ecb7a]" : (isYellow ? "text-amber-500" : "text-blue-400");
+                                return (
+                                  <div key={i} className="flex items-start gap-1 text-[8.5px] font-bold text-white/80 leading-snug">
+                                    <span className={`${dotColor} select-none`}>•</span>
+                                    <span>{diag}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const cardGrade = getScoreGrade(card.score!);
+                      const gradeColor = GRADE_COLOR[cardGrade] ?? "#ffd700";
                       return (
                         <div
                           key={card.label}
@@ -989,8 +1017,10 @@ export default function Result() {
                           const getPlayerStrengthsAndWeaknesses = (sc: any) => {
                             const strengths: string[] = [];
                             const weaknesses: string[] = [];
+                            const isSwordOptimized = sc.subGrades?.sword?.score >= 100;
+                            const isShieldOptimized = sc.subGrades?.shield?.score >= 100;
 
-                            if (sc.gearScore >= 75) strengths.push("High-tier equipped armaments");
+                            if (isSwordOptimized && isShieldOptimized) strengths.push("High-tier equipped armaments");
                             else weaknesses.push("Equipped sword/shield levels need upgrading");
 
                             if (sc.powerScore >= 75) strengths.push("Strong raw power base contribution");
@@ -999,11 +1029,8 @@ export default function Result() {
                             if (sc.wealthScore >= 75) strengths.push("High gold reserves & vault net worth");
                             else weaknesses.push("Low vault valuation; grind gold and items");
 
-                            if (sc.progressScore >= 75) strengths.push("Excellent level progression and quest index");
-                            else weaknesses.push("Quest completions are lagging; focus on quest log");
-
                             if (sc.combatScore >= 75) strengths.push("Devastating Damage and DPS combat rating");
-                            else weaknesses.push("DPS contribution is low; upgrade weapon level");
+                            else if (!isSwordOptimized) weaknesses.push("DPS contribution is low; upgrade weapon level");
 
                             if (strengths.length < 2) strengths.push("Consistent daily combat activity", "Solid gear durability scaling");
                             if (weaknesses.length < 2) weaknesses.push("Unoptimized enchants on offhand shield", "Farming speed can be increased");
@@ -1568,6 +1595,22 @@ export default function Result() {
 
             {activeTab === "coach" && (
               <div className="space-y-6">
+                {explainMutation.isPending && (
+                  <div className="rounded-xl p-5 border border-white/[0.04] glass-panel flex flex-col items-center justify-center gap-3 py-10">
+                    <div className="w-5 h-5 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin" />
+                    <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest font-mono">AI Coach is analyzing...</span>
+                  </div>
+                )}
+
+                {explainMutation.isError && (
+                  <div className="rounded-xl p-5 border border-red-500/20 bg-red-500/5 text-xs text-red-400 space-y-2">
+                    <div className="font-bold uppercase tracking-wider text-[10px] text-red-400">AI Coach Analysis Failed</div>
+                    <p className="text-white/60 leading-relaxed font-medium">
+                      {(explainMutation.error as any)?.message || "An unknown error occurred while contacting the AI Coach."}
+                    </p>
+                  </div>
+                )}
+
                 {explanation && (
                   <div className="rounded-xl p-5 border border-white/[0.04] glass-panel space-y-4">
                     <SectionLabel>Analysis Dossier</SectionLabel>

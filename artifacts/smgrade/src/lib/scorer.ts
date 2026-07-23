@@ -106,6 +106,7 @@ export interface ScoreResult {
   levelTier: string;
   slotGrades: GearSlotGrade[];
   upgradeAdvice: UpgradeAdvice;
+  diagnostics?: string[];
 }
 
 function clamp(val: number, min = 0, max = 100): number {
@@ -357,6 +358,47 @@ function printUpgradeAudit(
   console.log("==================================================\n");
 }
 
+function getWorldFromLevel(lvl: number): number {
+  if (lvl >= 3000) return 11;
+  if (lvl >= 2000) return 10;
+  if (lvl >= 1500) return 9;
+  if (lvl >= 1000) return 8.5; // Dragon World
+  if (lvl >= 700) return 8; // Spaceland W8
+  if (lvl >= 400) return 7; // Aqualand W7
+  if (lvl >= 300) return 6; // Heaven W6
+  if (lvl >= 100) return 5; // Netherworld W5
+  if (lvl >= 60) return 4; // Desertland W4
+  if (lvl >= 50) return 3; // Iceworld W3
+  if (lvl >= 25) return 2; // Sugarland W2
+  return 1; // Orkland W1
+}
+
+function getWorldNumberFromName(worldName?: string): number {
+  if (!worldName) return 1;
+  const name = worldName.toLowerCase();
+  if (name.includes("world 11") || name.includes("w11")) return 11;
+  if (name.includes("asgard") || name.includes("w10")) return 10;
+  if (name.includes("death") || name.includes("w9")) return 9;
+  if (name.includes("spaceland") || name.includes("w8")) return 8;
+  if (name.includes("dragon")) return 8; // Dragon World
+  if (name.includes("aqualand") || name.includes("w7")) return 7;
+  if (name.includes("heaven") || name.includes("w6")) return 6;
+  if (name.includes("netherworld") || name.includes("w5")) return 5;
+  if (name.includes("desertland") || name.includes("w4")) return 4;
+  if (name.includes("ice") || name.includes("w3")) return 3;
+  if (name.includes("sugar") || name.includes("w2")) return 2;
+  if (name.includes("ork") || name.includes("w1")) return 1;
+  return 1;
+}
+
+function isItemAvailableForProgression(item: any, playerLevel: number): boolean {
+  if (playerLevel < (item.minLevel || 0)) return false;
+  const itemWorldNum = getWorldNumberFromName(item.world);
+  const playerWorld = getWorldFromLevel(playerLevel);
+  if (itemWorldNum > playerWorld) return false;
+  return true;
+}
+
 function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants()): UpgradeAdvice {
   const items = loadItems();
   const curSw = getSwordData(player.sword);
@@ -366,40 +408,6 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   const shLevel = player.shieldLevel;
   
   const benchmark = getInterpolatedBenchmark(player.level);
-
-  // Helper mappings for player's current world progression
-  const getWorldFromLevel = (lvl: number): number => {
-    if (lvl >= 3000) return 11;
-    if (lvl >= 2000) return 10;
-    if (lvl >= 1500) return 9;
-    if (lvl >= 1000) return 8.5; // Dragon World
-    if (lvl >= 700) return 8; // Spaceland W8
-    if (lvl >= 400) return 7; // Aqualand W7
-    if (lvl >= 300) return 6; // Heaven W6
-    if (lvl >= 100) return 5; // Netherworld W5
-    if (lvl >= 60) return 4; // Desertland W4
-    if (lvl >= 50) return 3; // Iceworld W3
-    if (lvl >= 25) return 2; // Sugarland W2
-    return 1; // Orkland W1
-  };
-
-  const getWorldNumberFromName = (worldName?: string): number => {
-    if (!worldName) return 1;
-    const name = worldName.toLowerCase();
-    if (name.includes("world 11") || name.includes("w11")) return 11;
-    if (name.includes("asgard") || name.includes("w10")) return 10;
-    if (name.includes("death") || name.includes("w9")) return 9;
-    if (name.includes("spaceland") || name.includes("w8")) return 8;
-    if (name.includes("dragon")) return 8; // Dragon World
-    if (name.includes("aqualand") || name.includes("w7")) return 7;
-    if (name.includes("heaven") || name.includes("w6")) return 6;
-    if (name.includes("netherworld") || name.includes("w5")) return 5;
-    if (name.includes("desertland") || name.includes("w4")) return 4;
-    if (name.includes("ice") || name.includes("w3")) return 3;
-    if (name.includes("sugar") || name.includes("w2")) return 2;
-    if (name.includes("ork") || name.includes("w1")) return 1;
-    return 1;
-  };
 
   const playerWorld = (player as any).worldNumber || (player as any).rawPayload?.worldNumber || getWorldFromLevel(player.level);
 
@@ -588,8 +596,24 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   let recommendations: UpgradeGoal[] = [];
   let lateGameGoals: UpgradeGoal[] = [];
 
+  const sortCandidates = (list: Candidate[]) => {
+    list.sort((a, b) => {
+      const getPriority = (c: Candidate): number => {
+        if (c.type === "Shield") {
+          return c.isUpgradeCurrent ? 1 : 2;
+        } else {
+          return c.isUpgradeCurrent ? 3 : 4;
+        }
+      };
+      const priA = getPriority(a);
+      const priB = getPriority(b);
+      if (priA !== priB) return priA - priB;
+      return b.resultingDps - a.resultingDps;
+    });
+  };
+
   if (affordable.length > 0) {
-    affordable.sort((a, b) => b.progressionScore - a.progressionScore);
+    sortCandidates(affordable);
 
     const uniqueSelected: Candidate[] = [];
     affordable.forEach(c => {
@@ -629,14 +653,15 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
       };
     });
   } else {
-    const sortedCheapest = [...candidates].sort((a, b) => b.progressionScore - a.progressionScore);
+    const sortedCheapest = [...candidates];
+    sortCandidates(sortedCheapest);
     const cheapest = sortedCheapest[0];
     const shortage = cheapest.cost - player.powerRaw;
     powerShortageMessage = `Need ${formatNumber(shortage)} more Power`;
   }
 
   if (unaffordable.length > 0) {
-    unaffordable.sort((a, b) => b.progressionScore - a.progressionScore);
+    sortCandidates(unaffordable);
 
     const uniqueLate: Candidate[] = [];
     unaffordable.forEach(c => {
@@ -710,7 +735,8 @@ function getLegacyUpgradeAdviceForGrading(player: ParsedPlayer, constants = load
   const swords = items.filter((i: any) => i.type === "sword" || (i as any).category === "sword");
   swords.forEach((sw: any) => {
     const isCurrent = curSw && sw.name.toLowerCase() === curSw.name.toLowerCase();
-    const maxLvl = sw.maxLevel || 10;
+    const swCap = sw.rarity === "Legendary" ? 5 : (sw.rarity === "Epic" ? 7 : 10);
+    const maxLvl = Math.min(sw.maxLevel || 10, swCap);
     
     if (isCurrent) {
       for (let lvl = swLevel + 1; lvl <= maxLvl; lvl++) {
@@ -778,7 +804,8 @@ function getLegacyUpgradeAdviceForGrading(player: ParsedPlayer, constants = load
   const shields = items.filter((i: any) => i.type === "shield" || (i as any).category === "shield");
   shields.forEach((sh: any) => {
     const isCurrent = curSh && sh.name.toLowerCase() === curSh.name.toLowerCase();
-    const maxLvl = sh.maxLevel || 10;
+    const shCap = sh.rarity === "Legendary" ? 5 : (sh.rarity === "Epic" ? 7 : 10);
+    const maxLvl = Math.min(sh.maxLevel || 10, shCap);
     
     if (isCurrent) {
       for (let lvl = shLevel + 1; lvl <= maxLvl; lvl++) {
@@ -1005,24 +1032,36 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
   const healthScore = getPiecewiseScore(healthRaw, benchmark.weakHealth, benchmark.avgHealth, benchmark.strongHealth, benchmark.eliteHealth);
 
   // 7. Gear specific scores (Purely stats, levels, and quality based)
-  const curSwStats = swData ? getSwordStats(swData, player.swordLevel) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
-  const curShStats = shData ? getShieldStats(shData, player.shieldLevel) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
+  const swordCap = swData ? (swData.rarity === "Legendary" ? 5 : (swData.rarity === "Epic" ? 7 : 10)) : 10;
+  const shieldCap = shData ? (shData.rarity === "Legendary" ? 5 : (shData.rarity === "Epic" ? 7 : 10)) : 10;
 
-  const allSwords = items.filter((i: any) => i.type === "sword" || (i as any).category === "sword");
-  const allShields = items.filter((i: any) => i.type === "shield" || (i as any).category === "shield");
+  const curSwStats = swData ? getSwordStats(swData, Math.min(player.swordLevel, swordCap)) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
+  const curShStats = shData ? getShieldStats(shData, Math.min(player.shieldLevel, shieldCap)) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
+
+  const isAvailableForPlayer = (item: any) => {
+    const isEquipped = (player.sword && item.name.toLowerCase() === player.sword.toLowerCase()) ||
+                       (player.shield && item.name.toLowerCase() === player.shield.toLowerCase());
+    if (isEquipped) return true;
+    return isItemAvailableForProgression(item, player.level);
+  };
+
+  const allSwords = items.filter((i: any) => (i.type === "sword" || (i as any).category === "sword") && isAvailableForPlayer(i));
+  const allShields = items.filter((i: any) => (i.type === "shield" || (i as any).category === "shield") && isAvailableForPlayer(i));
 
   let maxWeaponScore = 1;
   let maxShieldScore = 1;
 
   allSwords.forEach((sw: any) => {
-    const swMaxStats = getSwordStats(sw, sw.maxLevel || 10);
+    const cap = sw.rarity === "Legendary" ? 5 : (sw.rarity === "Epic" ? 7 : 10);
+    const swMaxStats = getSwordStats(sw, cap);
     if (swMaxStats.score > maxWeaponScore) {
       maxWeaponScore = swMaxStats.score;
     }
   });
 
   allShields.forEach((sh: any) => {
-    const shMaxStats = getShieldStats(sh, sh.maxLevel || 10);
+    const cap = sh.rarity === "Legendary" ? 5 : (sh.rarity === "Epic" ? 7 : 10);
+    const shMaxStats = getShieldStats(sh, cap);
     if (shMaxStats.score > maxShieldScore) {
       maxShieldScore = shMaxStats.score;
     }
@@ -1089,10 +1128,12 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
   const progressScore = Math.round(levelScore * 0.50 + upgradePotentialScore * 0.50);
   const wealthScore = goldScore;
 
-  // Hardcoded final weights mapping SMGrade official beta rules
-  const powerW = 0.55;
-  const gearW = 0.35;
-  const progressW = 0.08;
+  // Redesign weights: remove Progression Score (8%) and redistribute proportionally to Power and Gear.
+  // Power: 55% -> 60%
+  // Gear: 35% -> 38%
+  // Wealth: 2% -> 2%
+  const powerW = 0.60;
+  const gearW = 0.38;
   const wealthW = 0.02;
 
   // Overall index: composite representation where Power dominates
@@ -1100,13 +1141,71 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
     Math.round(
       gearScore * gearW +
       powerScore * powerW +
-      progressScore * progressW +
       wealthScore * wealthW
     )
   );
 
   const overallGrade = scoreToGrade(overallScore, constants);
   const standing = scoreStanding(player.powerRaw, benchmark);
+
+  // Generate Account Diagnostics preserving progression insights
+  const diagnostics: string[] = [];
+  const swCap = swData ? (swData.rarity === "Legendary" ? 5 : (swData.rarity === "Epic" ? 7 : 10)) : 10;
+  const shCap = shData ? (shData.rarity === "Legendary" ? 5 : (shData.rarity === "Epic" ? 7 : 10)) : 10;
+  
+  const swOptimized = swData ? player.swordLevel >= swCap : false;
+  const shOptimized = shData ? player.shieldLevel >= shCap : false;
+
+  if (swOptimized && shOptimized) {
+    diagnostics.push("Gear Optimized");
+  } else {
+    diagnostics.push("Gear Optimization Pending");
+  }
+
+  // Preserve Level progression standing:
+  const levelProgressStatus = levelScore >= 95 ? "Elite" : (levelScore >= 80 ? "Excellent" : (levelScore >= 50 ? "Balanced" : "Grind Recommended"));
+  diagnostics.push(`Level Progress: ${levelProgressStatus} (Lv ${player.level.toLocaleString()})`);
+
+  // Preserve Upgrade Potential insight:
+  let potentialGain = 0;
+  if (legacyUpgradeAdvice.immediate && legacyUpgradeAdvice.immediate.type !== "Power") {
+    potentialGain = legacyUpgradeAdvice.immediate.damageGainPct;
+  }
+  const potentialStatus = potentialGain === 0 ? "Fully Optimized" : (potentialGain <= 15 ? "Moderate Gain" : "High Gain");
+  diagnostics.push(`Upgrade Potential: ${potentialStatus} (+${potentialGain}% DPS potential)`);
+
+  if (powerScore >= 80) {
+    diagnostics.push("Power Excellent");
+  } else if (powerScore >= 55) {
+    diagnostics.push("Power Balanced");
+  } else {
+    diagnostics.push("Power Grind Recommended");
+  }
+
+  if (wealthScore >= 80) {
+    diagnostics.push("Wealth Excellent");
+  } else if (wealthScore >= 55) {
+    diagnostics.push("Wealth Balanced");
+  } else {
+    diagnostics.push("Wealth Grind Recommended");
+  }
+
+  if (player.level >= 3000 && swOptimized && shOptimized) {
+    diagnostics.push("Endgame Ready");
+  }
+
+  if (swOptimized && shOptimized && powerScore >= 90 && wealthScore >= 90) {
+    diagnostics.push("Fully Optimized Build");
+  }
+
+  // Next Objective suggestion:
+  if (upgradeAdvice.immediate && upgradeAdvice.immediate.level > 0 && upgradeAdvice.immediate.name !== "No worthwhile upgrade currently available.") {
+    diagnostics.push(`Next Objective: Upgrade ${upgradeAdvice.immediate.name} to Lv${upgradeAdvice.immediate.level}`);
+  } else if (upgradeAdvice.powerShortageMessage) {
+    diagnostics.push(`Next Objective: Grind Power (${upgradeAdvice.powerShortageMessage})`);
+  } else {
+    diagnostics.push("Next Objective: Focus on daily farming and gold grind");
+  }
 
   // Legacy slot grades for UI backward compatibility
   const slotGrades: GearSlotGrade[] = [
@@ -1160,6 +1259,7 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
     standing,
     levelTier: benchmark.label,
     slotGrades,
-    upgradeAdvice
+    upgradeAdvice,
+    diagnostics
   };
 }
