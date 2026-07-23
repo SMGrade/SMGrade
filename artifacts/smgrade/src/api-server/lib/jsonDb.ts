@@ -173,7 +173,10 @@ export class JsonDatabase {
         connectionString: process.env.DATABASE_URL,
         ssl: {
           rejectUnauthorized: false
-        }
+        },
+        connectionTimeoutMillis: 3000,
+        statement_timeout: 3000,
+        query_timeout: 3000
       });
     }
   }
