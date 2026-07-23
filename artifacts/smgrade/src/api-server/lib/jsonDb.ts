@@ -216,13 +216,16 @@ export class JsonDatabase {
     }
     if (!this.tableCreated) {
       try {
-        await this.pool.query(`
-          CREATE TABLE IF NOT EXISTS master_vault_state (
-            id INT PRIMARY KEY,
-            state TEXT NOT NULL,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          );
-        `);
+        await Promise.race([
+          this.pool.query(`
+            CREATE TABLE IF NOT EXISTS master_vault_state (
+              id INT PRIMARY KEY,
+              state TEXT NOT NULL,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+          `),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("DB init timeout")), 2000))
+        ]);
         this.tableCreated = true;
       } catch (err) {
         console.error("[SMGrade DB] Failed to create master_vault_state table:", err);
@@ -236,11 +239,14 @@ export class JsonDatabase {
       return;
     }
     try {
-      const res = await this.pool.query("SELECT state FROM master_vault_state WHERE id = 1");
-      if (res.rows.length > 0) {
+      const res: any = await Promise.race([
+        this.pool.query("SELECT state FROM master_vault_state WHERE id = 1"),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("DB sync timeout")), 2000))
+      ]);
+      if (res && res.rows && res.rows.length > 0) {
         this.data = JSON.parse(res.rows[0].state);
         this.saveToFile(this.data);
-      } else {
+      } else if (res && res.rows) {
         const stateStr = JSON.stringify(this.data);
         await this.pool.query(
           "INSERT INTO master_vault_state (id, state) VALUES (1, $1) ON CONFLICT (id) DO NOTHING",
