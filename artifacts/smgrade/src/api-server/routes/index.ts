@@ -10,6 +10,7 @@ const router = Router();
 router.use(healthRouter);
 router.use(gradeRouter);
 router.use("/auth", authRouter);
+router.use(masterRouter);
 router.use("/master", masterRouter);
 router.use(liveLookupRouter);
 
