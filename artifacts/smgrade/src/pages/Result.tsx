@@ -400,7 +400,6 @@ export default function Result() {
   const [activeTab, setActiveTab] = useState<"overview" | "combat" | "upgrades" | "benchmarks" | "simulator" | "coach">("overview");
 
   // Collapsible accordion section states
-  const [questsExpanded, setQuestsExpanded] = useState(false);
   const [enemiesExpanded, setEnemiesExpanded] = useState(false);
   const [dailyExpanded, setDailyExpanded] = useState(false);
   const [socialExpanded, setSocialExpanded] = useState(false);
@@ -712,7 +711,9 @@ export default function Result() {
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
                 <span className="text-[8px] uppercase tracking-widest text-amber-500 font-bold">Terminal Connected</span>
               </div>
-              <h2 className="text-2xl font-black font-display tracking-tight text-white">{player.username}</h2>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-2xl font-black font-display tracking-tight text-white">{player.username}</h2>
+              </div>
               <p className="text-[10px] text-white/40 font-semibold mt-1">Lvl {player.level.toLocaleString()} • {scores.levelTier} Player</p>
             </div>
 
@@ -1084,6 +1085,9 @@ export default function Result() {
                     </div>
                   </div>
                 </div>
+
+                {/* 4. Combat Breakdown Section */}
+                <PowerBreakdownSection player={player} computedStats={computedStats} />
               </div>
             )}
 
@@ -1108,6 +1112,8 @@ export default function Result() {
 
               return (
                 <div className="space-y-6">
+                  <PowerBreakdownSection player={player} computedStats={computedStats} />
+
                   {/* Top Stats Display */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="border border-white/[0.04] rounded-xl p-5 bg-[#05050f]/60 glass-panel space-y-2">
@@ -1792,3 +1798,147 @@ function ValuationRow({ name, level, type }: { name: string; level: number; type
     </div>
   );
 }
+
+function PowerBreakdownSection({ player, computedStats }: { player: ParsedPlayer; computedStats?: any }) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  const p = player.powerRaw || 0;
+  const swordItem = getSwordData(player.sword);
+  const shieldItem = getShieldData(player.shield);
+  const ds = computedStats?.ds ?? (swordItem ? scaledSwordDamage(swordItem.baseDamage, player.swordLevel || 1) : 0);
+  const ms = computedStats?.ms ?? (shieldItem ? scaledShieldDM(shieldItem.baseDM, player.shieldLevel || 1) : 0);
+  const mp = computedStats?.powerMulti ?? 0;
+  const ap = 0;
+  const attackSpeed = 2.77;
+
+  // Exact combat formulas
+  const powerContribution = 2 * Math.sqrt(p) + 1;
+  const combinedBaseDamage = ds + powerContribution;
+  const damagePerHit = combinedBaseDamage * (1 + ms);
+  const finalDps = damagePerHit * attackSpeed;
+  const powerPerHit = damagePerHit * (1 + mp + ap);
+  const powerPerSec = powerPerHit * attackSpeed;
+
+  // Combat Insight text
+  const getCombatInsightText = () => {
+    const shieldDamageGainFromSword = 10 * (1 + ms);
+    const shieldDamageGainFromShield = combinedBaseDamage * 0.15;
+
+    if (shieldDamageGainFromShield > shieldDamageGainFromSword && ms > 0.5) {
+      return "Your shield currently contributes the largest increase to your combat damage.";
+    }
+    if ((damagePerHit - combinedBaseDamage) > combinedBaseDamage || ms >= 1.5) {
+      return "Most of your combat strength currently comes from your shield multiplier.";
+    }
+    if (ms >= 1.0) {
+      return "Your shield multiplier is currently multiplying your base damage significantly.";
+    }
+    if (ds > 0 && powerContribution > ds * 1.5) {
+      return "Your Power stat currently provides more base damage than your weapon damage.";
+    }
+    return "Your combat power currently maintains a balanced ratio between base damage and shield multiplication.";
+  };
+
+  const insightText = getCombatInsightText();
+
+  return (
+    <div className="border border-white/[0.04] rounded-2xl bg-[#070b13]/80 glass-panel overflow-hidden transition-all">
+      {/* Collapsible Header */}
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-6 py-4 flex justify-between items-center border-b border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.02] transition-colors cursor-pointer text-left"
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="text-amber-400 font-black text-sm uppercase tracking-widest font-display">⚔ Combat Breakdown</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-white/30 font-mono uppercase hidden sm:inline font-semibold">Damage Mechanics</span>
+          <span className="text-white/40 text-xs">{isOpen ? "▲" : "▼"}</span>
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="p-6 space-y-6">
+          {/* Top Summary Cards (4 Cards Grid) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-black/40 border border-white/[0.03] p-4 rounded-xl space-y-1">
+              <span className="text-[9px] uppercase font-bold tracking-wider text-white/40 block">Final Damage / Hit</span>
+              <span className="text-xl font-black font-mono text-amber-400">{formatNumber(damagePerHit)}</span>
+            </div>
+
+            <div className="bg-black/40 border border-white/[0.03] p-4 rounded-xl space-y-1">
+              <span className="text-[9px] uppercase font-bold tracking-wider text-white/40 block">Final DPS</span>
+              <span className="text-xl font-black font-mono text-purple-400">{formatNumber(finalDps)}</span>
+            </div>
+
+            <div className="bg-black/40 border border-white/[0.03] p-4 rounded-xl space-y-1">
+              <span className="text-[9px] uppercase font-bold tracking-wider text-white/40 block">Power / Hit</span>
+              <span className="text-xl font-black font-mono text-emerald-400">{formatNumber(powerPerHit)}</span>
+            </div>
+
+            <div className="bg-black/40 border border-white/[0.03] p-4 rounded-xl space-y-1">
+              <span className="text-[9px] uppercase font-bold tracking-wider text-white/40 block">Power / Second</span>
+              <span className="text-xl font-black font-mono text-cyan-400">{formatNumber(powerPerSec)}</span>
+            </div>
+          </div>
+
+          {/* Section 1: Base Damage Calculation */}
+          <div className="space-y-3 bg-white/[0.01] border border-white/[0.03] p-5 rounded-xl">
+            <h4 className="text-xs uppercase font-black tracking-widest text-amber-400 font-display">Base Damage Calculation</h4>
+
+            <div className="space-y-2 text-xs font-semibold">
+              <div className="flex justify-between items-center py-1.5 border-b border-white/[0.03]">
+                <span className="text-white/70">Weapon Damage (DS)</span>
+                <span className="font-mono text-white font-bold">{formatNumber(ds)}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-1.5 border-b border-white/[0.03]">
+                <span className="text-white/70">Power Contribution (2√Power + 1)</span>
+                <span className="font-mono text-white font-bold">+{formatNumber(powerContribution)}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-1.5 font-bold text-amber-400">
+                <span>Combined Base Damage</span>
+                <span className="font-mono text-amber-400">{formatNumber(combinedBaseDamage)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Multipliers & Rates */}
+          <div className="space-y-3 bg-white/[0.01] border border-white/[0.03] p-5 rounded-xl">
+            <h4 className="text-xs uppercase font-black tracking-widest text-amber-400 font-display">Multipliers & Rates</h4>
+
+            <div className="space-y-2 text-xs font-semibold">
+              <div className="flex justify-between items-center py-1.5 border-b border-white/[0.03]">
+                <span className="text-white/70">Shield Damage Multiplier</span>
+                <span className="font-mono text-white font-bold">× {(1 + ms).toFixed(2)}</span>
+              </div>
+
+              <div className="flex justify-between items-center py-1.5 border-b border-white/[0.03]">
+                <span className="text-white/70">Attack Speed</span>
+                <span className="font-mono text-white font-bold">{attackSpeed} / sec</span>
+              </div>
+
+              <div className="flex justify-between items-center py-1.5 font-bold text-amber-400">
+                <span>Final Damage / Hit</span>
+                <span className="font-mono text-amber-400">{formatNumber(damagePerHit)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Combat Insight Card */}
+          <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl flex items-center gap-3">
+            <span className="text-amber-400 text-lg shrink-0">💡</span>
+            <div>
+              <span className="text-[9px] uppercase font-black text-amber-400 tracking-wider block font-mono">Combat Insight</span>
+              <p className="text-xs text-white/90 font-semibold leading-relaxed mt-0.5">{insightText}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
