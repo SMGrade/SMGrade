@@ -272,7 +272,7 @@ const EXAMPLE_QUESTIONS = [
   "Is my power rating optimized for my level?",
 ];
 
-function CoachChat({ playerContext, explanation }: { playerContext: string; explanation?: any }) {
+function CoachChat({ playerContext, explanation, onClearError }: { playerContext: string; explanation?: any; onClearError?: () => void }) {
   const [messages, setMessages] = useState<Array<{ role: "user" | "coach"; text: string }>>([]);
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -281,19 +281,33 @@ function CoachChat({ playerContext, explanation }: { playerContext: string; expl
   async function sendQuestion(text: string) {
     if (!text.trim() || chatLoading) return;
     setInput("");
-    setMessages((m) => [...m, { role: "user", text }]);
+    const newMessages = [...messages, { role: "user" as const, text }];
+    setMessages(newMessages);
     setChatLoading(true);
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+
+    onClearError?.();
 
     try {
       const res = await fetch("/api/grade/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: text, playerContext }),
+        body: JSON.stringify({
+          question: text,
+          playerContext,
+          history: messages.map((m) => ({
+            role: m.role === "user" ? "user" : "assistant",
+            content: m.text,
+          })),
+        }),
       });
       const data = await res.json() as { answer?: string; text?: string; error?: string };
       if (res.ok) {
-        setMessages((m) => [...m, { role: "coach", text: data.answer ?? data.text ?? "No response content from Coach." }]);
+        onClearError?.();
+        let answerText = data.answer ?? data.text ?? "No response content from Coach.";
+        // Clean any system prompt leakage or preamble if returned by model
+        answerText = answerText.replace(/^You are (the )?SMGrade AI Coach[^\n]*\n?/i, "").trim();
+        setMessages((m) => [...m, { role: "coach", text: answerText }]);
       } else {
         setMessages((m) => [...m, { role: "coach", text: `AI Coach Error: ${data.error ?? "Could not get a response."}` }]);
       }
@@ -1086,9 +1100,6 @@ export default function Result() {
                     </div>
                   </div>
                 </div>
-
-                {/* 4. Combat Breakdown Section */}
-                <PowerBreakdownSection player={player} computedStats={computedStats} />
               </div>
             )}
 
@@ -1677,7 +1688,11 @@ export default function Result() {
                   </div>
                 )}
                 
-                <CoachChat playerContext={JSON.stringify(player)} explanation={explanation} />
+                <CoachChat 
+                  playerContext={JSON.stringify(player)} 
+                  explanation={explanation} 
+                  onClearError={() => explainMutation.reset()}
+                />
               </div>
             )}
           </div>
