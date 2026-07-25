@@ -579,6 +579,7 @@ export default function Result() {
   useEffect(() => {
     if (!data) return;
     const { player, scores } = data;
+    explainMutation.reset();
     explainMutation.mutate({
       data: {
         username: player.username,
@@ -1608,9 +1609,43 @@ export default function Result() {
                   </div>
                 )}
 
-                {explainMutation.isError && (
-                  <div className="rounded-xl p-5 border border-red-500/20 bg-red-500/5 text-xs text-red-400 space-y-2">
-                    <div className="font-bold uppercase tracking-wider text-[10px] text-red-400">AI Coach Analysis Failed</div>
+                {explainMutation.isError && !explainMutation.isPending && !explanation && (
+                  <div className="rounded-xl p-5 border border-red-500/20 bg-red-500/5 text-xs text-red-400 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div className="font-bold uppercase tracking-wider text-[10px] text-red-400">AI Coach Analysis Failed</div>
+                      <button
+                        onClick={() => {
+                          if (!data) return;
+                          explainMutation.reset();
+                          const { player, scores } = data;
+                          explainMutation.mutate({
+                            data: {
+                              username: player.username,
+                              level: player.level,
+                              overallScore: scores.overallScore,
+                              overallGrade: scores.overallGrade,
+                              gearScore: scores.gearScore,
+                              powerScore: scores.powerScore,
+                              progressScore: scores.progressScore,
+                              wealthScore: scores.wealthScore,
+                              sword: player.sword,
+                              swordLevel: player.swordLevel,
+                              shield: player.shield,
+                              shieldLevel: player.shieldLevel,
+                              powerRaw: player.powerRaw,
+                              goldRaw: player.goldRaw,
+                              levelTier: scores.levelTier,
+                              standing: scores.standing,
+                              pvpKills: player.pvpKillCount ?? null,
+                              itemsContext: itemsContextStr,
+                            } as any,
+                          });
+                        }}
+                        className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded text-[10px] font-bold text-red-300 uppercase tracking-wider transition-all cursor-pointer"
+                      >
+                        Retry Analysis ↻
+                      </button>
+                    </div>
                     <p className="text-white/60 leading-relaxed font-medium">
                       {(explainMutation.error as any)?.message || "An unknown error occurred while contacting the AI Coach."}
                     </p>
