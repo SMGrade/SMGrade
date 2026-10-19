@@ -31,6 +31,33 @@
     }
   }
 
+  // --- MASTER LOGS AUDIT LOGGER ---
+  function logMasterAction(username, action, details, status = 'Success') {
+    try {
+      const logEntry = {
+        id: 'mlog_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+        timestamp: new Date().toISOString(),
+        username: username || 'ArcadeHero',
+        action: action,
+        details: details,
+        status: status
+      };
+      const existing = JSON.parse(localStorage.getItem('smg_master_logs') || '[]');
+      existing.unshift(logEntry);
+      if (existing.length > 500) existing.length = 500;
+      localStorage.setItem('smg_master_logs', JSON.stringify(existing));
+
+      fetch('/api/master/log-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(logEntry)
+      }).catch(() => {});
+    } catch (e) {
+      console.warn('[MasterLog] Error logging action:', e);
+    }
+  }
+  window.logMasterAction = logMasterAction;
+
   // --- 1. LOCAL COLYSEUS SCHEMA EMULATOR ---
   class LocalSchemaMap {
     constructor() {
@@ -596,10 +623,21 @@
         const playerCtrl = playerEnt.script?.playerController;
 
         for (const [id, mob] of Object.entries(this.state.enemies.items)) {
-          if (mob.health <= 0) continue;
           const mobEnt = this.networkManager.enemies[id];
           if (!mobEnt) continue;
           const ec = mobEnt.script?.enemyController;
+
+          if (mob.health <= 0 || (ec && ec.isDied)) {
+            if (ec) {
+              ec.canGetDamage = false;
+              if (ec.ring) ec.ring.enabled = false;
+              if (playerCtrl) {
+                const idx = playerCtrl.nearEnemies.indexOf(ec);
+                if (idx !== -1) playerCtrl.nearEnemies.splice(idx, 1);
+              }
+            }
+            continue;
+          }
 
           const dx = playerPos.x - mob.x;
           const dz = playerPos.z - mob.z;
@@ -926,9 +964,14 @@
         }
       }
 
-      // 2B. AUTHENTIC DWARF BLACKSMITH FORGING (Phase 5 / Criteria 1)
+      // 2B. AUTHENTIC DWARF BLACKSMITH FORGING (Strict +1 Level, Exact PDF Probability, Authentic Burn Rule)
       else if (type === 'Client:UpgraderController:forge') {
         if (!inv) return;
+        if (this.isForging) {
+          console.warn('[SMGrade Standalone Room] Forge request rejected: already in progress.');
+          return;
+        }
+
         const activeItemId = data?.activeItemId;
         let item = inv.swords.find(s => s.itemId === activeItemId);
         let isSword = true;
@@ -941,37 +984,163 @@
           return;
         }
 
-        // Increment item level
-        item.level = (item.level || 1) + 1;
-        item.set('level', item.level);
-
-        // If this item is currently equipped, update active weapon level too
-        if (isSword && inv.activeSword && inv.activeSword.itemId === item.itemId) {
-          inv.activeSword.set('level', item.level);
-          this.profile.activeSwordLevel = item.level;
-        } else if (!isSword && inv.activeShield && inv.activeShield.itemId === item.itemId) {
-          inv.activeShield.set('level', item.level);
-          this.profile.activeShieldLevel = item.level;
-          this.recalculatePlayerStats(inv);
+        const currentLevel = item.level || 1;
+        if (currentLevel >= 10) {
+          console.warn(`[SMGrade Standalone Room] Item ${item.itemId} is already at max level (10).`);
+          if (this.networkManager.app) {
+            this.networkManager.app.fire("WarningTextController:setWarning", "Item is already at max level (10)!", 5, new pc.Color(1, 0, 0, 1));
+          }
+          this.dispatchMessage("Server:UpgraderController:forgeFailed", { success: false, reason: "Max level reached" });
+          return;
         }
 
-        // Persist inventory
-        this.persistInventory();
-        saveLocalArcadeProfile(this.profile);
+        // Engage forge mutex lock
+        this.isForging = true;
+        setTimeout(() => { this.isForging = false; }, 1500);
 
-        // Trigger authentic Dwarf Blacksmith NPC animation in 3D world
-        const ironsmith = this.networkManager.app?.root?.findByName("ironsmith");
-        if (ironsmith && ironsmith.anim) {
-          ironsmith.anim.setTrigger("Attack0");
+        // Retrieve catalog metadata & rarity
+        const swordsCatalog = window.SWORDMASTERS_SWORDS || (window.StaticData && StaticData.swords) || window.swords || [];
+        const shieldsCatalog = window.SWORDMASTERS_SHIELDS || (window.StaticData && StaticData.shields) || window.shields || [];
+        const itemData = isSword ? (swordsCatalog[item.type] || {}) : (shieldsCatalog[item.type] || {});
+        const itemName = itemData.name || (isSword ? `Sword #${item.type}` : `Shield #${item.type}`);
+        const rarity = itemData.rarity || "Common";
+
+        // Read shield fortune level
+        let fortuneLevel = 0;
+        if (inv.activeShield && inv.activeShield.enchantments) {
+          const enchList = inv.activeShield.enchantments.items || inv.activeShield.enchantments;
+          if (Array.isArray(enchList)) {
+            const fort = enchList.find(e => e.type === 4 || e.name === 'Fortune');
+            if (fort) fortuneLevel = fort.level || 0;
+          }
         }
 
-        // Dispatch Server:UpgraderController:forge to client to trigger authentic forgeAnim
-        this.dispatchMessage("Server:UpgraderController:forge", {
-          success: true,
-          itemId: item.itemId,
-          newLevel: item.level
-        });
-        console.log(`[SMGrade Standalone Room] Dwarfed item ${item.itemId} to Level ${item.level}!`);
+        // Exact canonical PDF probability curve
+        let s = currentLevel < 3
+          ? 1 / (1 + 0.1 * currentLevel)
+          : currentLevel < 5
+          ? 1 / (1 + 0.2 * currentLevel)
+          : 1 / (1 + 0.3 * currentLevel);
+
+        if (rarity === "Rare") s *= 0.8;
+        else if (rarity === "Epic") s *= (4 / 7);
+        else if (rarity === "Legendary") s *= 0.4;
+
+        s *= (1 + 0.05 * fortuneLevel);
+        if (s > 1) s = 1;
+
+        // Force flag support for deterministic automated test verification
+        const isSuccess = data?.forceSuccess !== undefined
+          ? !!data.forceSuccess
+          : (Math.random() < s);
+
+        if (isSuccess) {
+          // Strictly +1 level (never jumps)
+          item.level = currentLevel + 1;
+          item.set('level', item.level);
+
+          // Update active weapon if equipped
+          if (isSword && inv.activeSword && inv.activeSword.itemId === item.itemId) {
+            inv.activeSword.set('level', item.level);
+            this.profile.activeSwordLevel = item.level;
+          } else if (!isSword && inv.activeShield && inv.activeShield.itemId === item.itemId) {
+            inv.activeShield.set('level', item.level);
+            this.profile.activeShieldLevel = item.level;
+            this.recalculatePlayerStats(inv);
+          }
+
+          this.persistInventory();
+          saveLocalArcadeProfile(this.profile);
+
+          // Authentic Dwarf Blacksmith NPC animation in 3D world
+          const ironsmith = this.networkManager.app?.root?.findByName("ironsmith");
+          if (ironsmith && ironsmith.anim) {
+            ironsmith.anim.setTrigger("Attack0");
+          }
+
+          // Record Master Log
+          if (window.logMasterAction) {
+            window.logMasterAction(
+              this.profile.username,
+              "Dwarfing Attempt (Success)",
+              `${itemName} upgraded from Level ${currentLevel} to Level ${item.level} (Odds: ${Math.round(s * 100)}%)`,
+              "Success"
+            );
+          }
+
+          // Dispatch Server:UpgraderController:forge to client to trigger authentic forgeAnim
+          this.dispatchMessage("Server:UpgraderController:forge", {
+            success: true,
+            itemId: item.itemId,
+            newLevel: item.level
+          });
+          console.log(`[SMGrade Standalone Room] Dwarfed ${itemName} strictly +1 to Level ${item.level}!`);
+        } else {
+          // Authentic Failure / Burn Rule
+          const basePrice = itemData.priceGold || 1000;
+          const refundGold = Math.round(basePrice * Math.pow(2, currentLevel - 1));
+
+          // Permanently burn and remove item from inventory
+          if (isSword) {
+            const sIdx = inv.swords.items.findIndex(s => s.itemId === item.itemId);
+            if (sIdx !== -1) inv.swords.remove(inv.swords.items[sIdx]);
+            if (this.profile.inventory?.swords) {
+              this.profile.inventory.swords = this.profile.inventory.swords.filter(s => s.itemId !== item.itemId);
+            }
+            if (inv.activeSword && inv.activeSword.itemId === item.itemId) {
+              inv.activeSword.set('type', 1);
+              inv.activeSword.set('level', 1);
+              inv.activeSword.set('itemId', 'starter_sword');
+              this.profile.activeSword = 1;
+              this.profile.activeSwordLevel = 1;
+              this.profile.activeSwordId = 'starter_sword';
+            }
+          } else {
+            const shIdx = inv.shields.items.findIndex(sh => sh.itemId === item.itemId);
+            if (shIdx !== -1) inv.shields.remove(inv.shields.items[shIdx]);
+            if (this.profile.inventory?.shields) {
+              this.profile.inventory.shields = this.profile.inventory.shields.filter(sh => sh.itemId !== item.itemId);
+            }
+            if (inv.activeShield && inv.activeShield.itemId === item.itemId) {
+              inv.activeShield.set('type', 0);
+              inv.activeShield.set('level', 1);
+              inv.activeShield.set('itemId', 'none');
+              this.profile.activeShield = 0;
+              this.profile.activeShieldLevel = 1;
+              this.profile.activeShieldId = 'none';
+              this.recalculatePlayerStats(inv);
+            }
+          }
+
+          // Credit refund gold to player
+          this.networkManager.goldAmount = (this.networkManager.goldAmount || 0) + refundGold;
+          inv.set('gold', this.networkManager.goldAmount);
+          this.profile.gold = this.networkManager.goldAmount;
+          if (this.networkManager.goldStatText?.element) {
+            this.networkManager.goldStatText.element.text = numRound(this.networkManager.goldAmount);
+          }
+
+          this.persistInventory();
+          saveLocalArcadeProfile(this.profile);
+
+          // Record Master Log
+          if (window.logMasterAction) {
+            window.logMasterAction(
+              this.profile.username,
+              "Dwarfing Attempt (Burn / Failure)",
+              `${itemName} (Level ${currentLevel}) failed and burned permanently. Refunded ${refundGold} gold. (Odds: ${Math.round(s * 100)}%)`,
+              "Failed"
+            );
+          }
+
+          // Dispatch Server:UpgraderController:forgeFailed to client to trigger flame particles, burn sound, and refund notification
+          this.dispatchMessage("Server:UpgraderController:forgeFailed", {
+            success: false,
+            itemId: item.itemId,
+            refundGold: refundGold
+          });
+          console.log(`[SMGrade Standalone Room] Dwarfing failed: ${itemName} burned! Refunded ${refundGold} gold.`);
+        }
       }
 
       // 2C. PET EQUIPPING & SUMMONING (Criteria 3)
@@ -1304,6 +1473,13 @@
       room.networkManager.items[itemSchema.itemId] = itemSchema;
       room.networkManager.inventoryController.sortInventory();
     }
+    const swordsCatalog = window.SWORDMASTERS_SWORDS || (window.StaticData && StaticData.swords) || window.swords || [];
+    const shieldsCatalog = window.SWORDMASTERS_SHIELDS || (window.StaticData && StaticData.shields) || window.shields || [];
+    const itemMeta = isSword ? swordsCatalog[opts.type] : shieldsCatalog[opts.type];
+    const itemTitle = itemMeta?.name || `${isSword ? 'Sword' : 'Shield'} #${opts.type}`;
+    if (window.logMasterAction) {
+      window.logMasterAction(room.profile?.username, "Item Added", `Added ${itemTitle} (Level ${opts.level || 1}) to inventory`);
+    }
     console.log(`[SMGrade Standalone API] Stored ${isSword ? 'sword' : 'shield'} type ${opts.type} level ${opts.level} in inventory. Equipped item unchanged.`);
     return itemSchema;
   };
@@ -1336,6 +1512,11 @@
     room.persistInventory();
     if (room.networkManager?.petUIController) {
       room.networkManager.petUIController.sortInventory();
+    }
+    const petMeta = (window.StaticData && StaticData.pets && StaticData.pets[petType]) || {};
+    const petTitle = petMeta.name || `Pet #${petType}`;
+    if (window.logMasterAction) {
+      window.logMasterAction(room.profile?.username, "Pet Added", `Added ${count}x ${petTitle} to pet inventory`);
     }
     console.log(`[SMGrade Standalone API] Stored ${count}x pet type ${petType} in pet inventory. Active pets unchanged.`);
     return lastPetSchema;
@@ -1397,6 +1578,9 @@
       room.profile.level = lvl;
     }
     saveLocalArcadeProfile(room.profile);
+    if (window.logMasterAction) {
+      window.logMasterAction(room.profile?.username, "Resource Updated", `Updated ${type} to ${val}`);
+    }
     console.log(`[SMGrade Standalone API] Set ${type} to ${num}`);
   };
 

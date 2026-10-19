@@ -533,6 +533,20 @@ router.get("/activity-logs", checkMasterSession, (req: any, res: any) => {
   res.json(logs);
 });
 
+// 16B. Log Action (Master Logs / Arcade actions)
+router.post("/log-action", async (req: any, res: any) => {
+  try {
+    const { username, action, details, status, responseTimeMs } = req.body;
+    if (!username || !action) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    const entry = await jsonDb.addActivityLog(username, action, details || "", status || "Success", responseTimeMs || 0);
+    res.json({ success: true, log: entry });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to log action" });
+  }
+});
+
 // 17. Protected: Get dashboard stats analytics
 router.get("/analytics", checkMasterSession, (req: any, res: any) => {
   const logs = jsonDb.getLookupLogs();

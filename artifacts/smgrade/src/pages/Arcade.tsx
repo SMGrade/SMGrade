@@ -1548,7 +1548,7 @@ export default function Arcade() {
               }`}
             >
               <span>🎮</span>
-              <span>SwordMasters (Original Game)</span>
+              <span>DWARF HUB</span>
             </button>
             <button
               onClick={() => setArcadeMode("puncher")}
@@ -1565,7 +1565,7 @@ export default function Arcade() {
 
           <div className="text-[11px] text-white/40 hidden sm:flex items-center gap-2 font-mono">
             {arcadeMode === "original" ? (
-              <span className="text-emerald-400 font-bold">Authentic PlayCanvas Engine & Live Colyseus MMO</span>
+              <span className="text-emerald-400 font-bold">Authentic PlayCanvas Engine & Dwarf Hub MMO</span>
             ) : (
               <span className="text-rose-400/90 font-bold">Classic 2D Reflex Mini-Game</span>
             )}
@@ -1576,7 +1576,7 @@ export default function Arcade() {
           <div className="relative w-full max-w-6xl mx-auto rounded-3xl overflow-hidden shadow-2xl border border-white/10 aspect-[16/9] min-h-[620px] bg-black">
             <iframe
               src="/original-runtime/index.html"
-              title="SwordMasters Original Runtime"
+              title="DWARF HUB"
               className="w-full h-full border-0 select-none"
               allow="autoplay; fullscreen; clipboard-read; clipboard-write"
             />

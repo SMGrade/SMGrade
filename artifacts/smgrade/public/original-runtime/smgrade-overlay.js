@@ -123,25 +123,6 @@
         openItemModal();
       });
     }
-
-    let dwarfBtn = document.getElementById('sm-inv-dwarf-trigger');
-    if (!dwarfBtn) {
-      dwarfBtn = document.createElement('button');
-      dwarfBtn.id = 'sm-inv-dwarf-trigger';
-      dwarfBtn.innerHTML = `<span>🔨</span><span>Dwarf Blacksmith</span>`;
-      dwarfBtn.style.display = 'none';
-      document.body.appendChild(dwarfBtn);
-
-      dwarfBtn.addEventListener('click', () => {
-        const app = window.pcApp || (window.pc && window.pc.Application && window.pc.Application.getApplication());
-        const upgraderUI = app?.root?.findByName('UpgraderUI');
-        if (upgraderUI && upgraderUI.script?.upgraderController) {
-          upgraderUI.script.upgraderController.show();
-        } else if (upgraderUI) {
-          upgraderUI.fire('UpgraderController:show');
-        }
-      });
-    }
   }
 
   // --- 3. IN-PET TRIGGER BUTTON (Phase 7) ---
@@ -703,16 +684,34 @@
     }
   }
 
-  // --- 8. NICKNAME START PANEL (Phase 5) ---
+  // --- 8. NICKNAME START PANEL (Phase 5 & Persistence) ---
   function createStartPanel() {
     let panel = document.getElementById('smgrade-start-panel');
     if (!panel) {
       panel = document.createElement('div');
       panel.id = 'smgrade-start-panel';
-      panel.className = 'active';
 
+      const savedNick = localStorage.getItem('arcade_username');
+      if (savedNick && savedNick.trim().length > 0) {
+        panel.style.display = 'none';
+        document.body.appendChild(panel);
+
+        const applyNickname = () => {
+          if (window.standaloneRoom) {
+            window.standaloneRoom.profile.username = savedNick;
+            const p = window.standaloneRoom.state.players.items[window.standaloneRoom.sessionId];
+            if (p) p.username = savedNick;
+          }
+        };
+        applyNickname();
+        setTimeout(applyNickname, 500);
+        setTimeout(applyNickname, 1500);
+        return;
+      }
+
+      panel.className = 'active';
       const randNames = ['BladeMaster', 'ShadowKnight', 'FrostWalker', 'OrcBane', 'DragonSlayer', 'ArcadeHero'];
-      const defaultName = (localStorage.getItem('arcade_username') || randNames[Math.floor(Math.random() * randNames.length)]) + '_' + Math.floor(Math.random() * 899 + 100);
+      const defaultName = randNames[Math.floor(Math.random() * randNames.length)] + '_' + Math.floor(Math.random() * 899 + 100);
 
       panel.innerHTML = `
         <div class="smgrade-start-card">
@@ -792,11 +791,9 @@
         setInterval(() => {
           const invCtrl = app.networkManager?.inventoryController;
           const invTrigger = document.getElementById('sm-inv-add-trigger');
-          const dwarfTrigger = document.getElementById('sm-inv-dwarf-trigger');
           if (invCtrl) {
             const isInvOpen = !!invCtrl.inventoryEnabled;
             if (invTrigger) invTrigger.style.display = isInvOpen ? 'flex' : 'none';
-            if (dwarfTrigger) dwarfTrigger.style.display = isInvOpen ? 'flex' : 'none';
           }
 
           const petUI = app.root?.findByName('PetUI');

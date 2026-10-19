@@ -494,6 +494,10 @@ router.get("/export-logs", checkMasterSession, (req: any, res: any) => {
 
 // 17. Public / Admin Config Syncing (Section 6)
 router.get("/admin/config", (req: any, res: any) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.setHeader("Surrogate-Control", "no-store");
   res.json({
     items: jsonDb.getCustomItems(),
     prices: jsonDb.getCustomPrices(),
@@ -504,7 +508,12 @@ router.get("/admin/config", (req: any, res: any) => {
 
 router.post("/admin/config", async (req: any, res: any) => {
   const adminPassword = req.headers["x-admin-password"];
-  if (adminPassword !== "harrison@smgrade2026") {
+  const expectedAdminPassword = process.env.ADMIN_PASSWORD;
+  if (!expectedAdminPassword) {
+    res.status(500).json({ error: "Server authentication is unconfigured." });
+    return;
+  }
+  if (adminPassword !== expectedAdminPassword) {
     res.status(401).json({ error: "Unauthorized admin access." });
     return;
   }

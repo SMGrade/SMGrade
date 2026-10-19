@@ -120,6 +120,7 @@ function Router() {
       <Route path="/admin" component={Admin} />
       <Route path="/vault" component={MasterVault} />
       <Route path="/master" component={MasterVault} />
+      <Route path="/master-vault" component={MasterVault} />
       <Route path="/compare" component={Compare} />
       <Route path="/live-lookup" component={LiveLookup} />
       <Route path="/arcade" component={Arcade} />
