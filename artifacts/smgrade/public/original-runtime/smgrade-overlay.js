@@ -109,20 +109,39 @@
     document.getElementById('sm-hud-ore-plus').addEventListener('click', (e) => { e.stopPropagation(); openOreModal(); });
   }
 
-  // --- 2. IN-INVENTORY TRIGGER BUTTON (Phase 6) ---
+  // --- 2. IN-INVENTORY TRIGGER BUTTONS (Phase 6 & Dwarfing) ---
   function createInInventoryTrigger() {
-    let btn = document.getElementById('sm-inv-add-trigger');
-    if (btn) return;
+    let addBtn = document.getElementById('sm-inv-add-trigger');
+    if (!addBtn) {
+      addBtn = document.createElement('button');
+      addBtn.id = 'sm-inv-add-trigger';
+      addBtn.innerHTML = `<span>⚔️</span><span>Add Item</span>`;
+      addBtn.style.display = 'none';
+      document.body.appendChild(addBtn);
 
-    btn = document.createElement('button');
-    btn.id = 'sm-inv-add-trigger';
-    btn.innerHTML = `<span>⚔️</span><span>Add Item</span>`;
-    btn.style.display = 'none';
-    document.body.appendChild(btn);
+      addBtn.addEventListener('click', () => {
+        openItemModal();
+      });
+    }
 
-    btn.addEventListener('click', () => {
-      openItemModal();
-    });
+    let dwarfBtn = document.getElementById('sm-inv-dwarf-trigger');
+    if (!dwarfBtn) {
+      dwarfBtn = document.createElement('button');
+      dwarfBtn.id = 'sm-inv-dwarf-trigger';
+      dwarfBtn.innerHTML = `<span>🔨</span><span>Dwarf Blacksmith</span>`;
+      dwarfBtn.style.display = 'none';
+      document.body.appendChild(dwarfBtn);
+
+      dwarfBtn.addEventListener('click', () => {
+        const app = window.pcApp || (window.pc && window.pc.Application && window.pc.Application.getApplication());
+        const upgraderUI = app?.root?.findByName('UpgraderUI');
+        if (upgraderUI && upgraderUI.script?.upgraderController) {
+          upgraderUI.script.upgraderController.show();
+        } else if (upgraderUI) {
+          upgraderUI.fire('UpgraderController:show');
+        }
+      });
+    }
   }
 
   // --- 3. IN-PET TRIGGER BUTTON (Phase 7) ---
@@ -273,14 +292,12 @@
       const card = document.createElement('div');
       card.className = `smgrade-card ${selectedItem && selectedItem.type === item.type ? 'selected' : ''}`;
       
-      const fallbackImg = isSword ? `/images/swords/${item.name.toLowerCase().replace(/ /g, '_')}.png` : `/images/shields/${item.name.toLowerCase().replace(/ /g, '_')}.png`;
-      const directImg = isSword
-        ? `https://swordmasters.io/files/assets/132440050/1/sword${item.type}.png`
-        : `https://swordmasters.io/files/assets/132549579/1/shield${item.type}.png`;
+      const cleanName = item.name.trim().toLowerCase().replace(/ /g, '_').replace(/'/g, '').replace(/-/g, '_');
+      const localImg = isSword ? `/images/swords/${cleanName}.png` : `/images/shields/${cleanName}.png`;
 
       card.innerHTML = `
         <div class="smgrade-card-img-wrap">
-          <img src="${directImg}" class="smgrade-card-img" onerror="this.src='${fallbackImg}'; this.onerror=null;" alt="${item.name}" />
+          <img src="${localImg}" class="smgrade-card-img" alt="${item.name}" />
         </div>
         <div class="smgrade-card-name" title="${item.name}">${item.name}</div>
         <div class="smgrade-card-badge ${item.rarity}">${item.rarity}</div>
@@ -448,11 +465,12 @@
       const card = document.createElement('div');
       card.className = `smgrade-card ${selectedPet && selectedPet.type === pet.type ? 'selected' : ''}`;
       
-      const directImg = `https://swordmasters.io/files/assets/141521157/1/pet${pet.type}.png`;
+      const cleanName = pet.name.trim().toLowerCase().replace(/ /g, '_');
+      const localImg = `/images/pets/${cleanName}.png`;
 
       card.innerHTML = `
         <div class="smgrade-card-img-wrap">
-          <img src="${directImg}" class="smgrade-card-img" onerror="this.src='/hub-assets/PenguinPet.glb'; this.onerror=null;" alt="${pet.name}" />
+          <img src="${localImg}" class="smgrade-card-img" alt="${pet.name}" />
         </div>
         <div class="smgrade-card-name" title="${pet.name}">${pet.name}</div>
         <div class="smgrade-card-badge ${pet.rarity || 'Common'}">${pet.rarity || 'Common'}</div>
@@ -774,8 +792,11 @@
         setInterval(() => {
           const invCtrl = app.networkManager?.inventoryController;
           const invTrigger = document.getElementById('sm-inv-add-trigger');
-          if (invTrigger && invCtrl) {
-            invTrigger.style.display = invCtrl.inventoryEnabled ? 'flex' : 'none';
+          const dwarfTrigger = document.getElementById('sm-inv-dwarf-trigger');
+          if (invCtrl) {
+            const isInvOpen = !!invCtrl.inventoryEnabled;
+            if (invTrigger) invTrigger.style.display = isInvOpen ? 'flex' : 'none';
+            if (dwarfTrigger) dwarfTrigger.style.display = isInvOpen ? 'flex' : 'none';
           }
 
           const petUI = app.root?.findByName('PetUI');
