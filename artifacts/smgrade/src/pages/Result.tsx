@@ -3,18 +3,42 @@ import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
 import { useExplainGrade } from "@workspace/api-client-react";
 import type { ParsedPlayer } from "@/lib/parser";
-import type { ScoreResult, GearSlotGrade } from "@/lib/scorer";
+import { scoreToGrade, type ScoreResult, type GearSlotGrade } from "@/lib/scorer";
 import { formatNumber, parseNumber } from "@/lib/numberParser";
-import { getSwordRarity, getShieldRarity, getInterpolatedBenchmark } from "@/lib/benchmark";
+import { getSwordRarity, getShieldRarity, getInterpolatedBenchmark, getBenchmarkForLevel, extendBenchmark } from "@/lib/benchmark";
 import { downloadShareCard } from "@/lib/shareCard";
 import { SWORDS, SHIELDS, getSwordData, getShieldData, scaledSwordDamage, scaledShieldDM, loadItems, resolveItemByGameType, getNextSwordUpgrade, getNextShieldUpgrade, swordUpgradeGain, shieldUpgradeGain } from "@/lib/gearDatabase";
 import { getPriceRaw } from "@/lib/marketDatabase";
 import Simulator from "@/components/Simulator";
 import HistoryTracker from "@/components/HistoryTracker";
-import { ParticleBackground } from "./Home";
+import { ParticleBackground, ParallaxBackground } from "./Home";
 import { type UserProfile } from "@/lib/authStore";
 import { ensurePricesLoaded, calculateNetWorth, lookupItemPrice, type NetWorthResult } from "@/lib/priceProvider";
 import { calculateDamageStats } from "@/lib/damageCalc";
+function useAnimatedCounter(targetValue: number, duration: number = 900) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    let startTimestamp: number | null = null;
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      if (active) {
+        setCount(Math.floor(progress * targetValue));
+      }
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      }
+    };
+    window.requestAnimationFrame(step);
+    return () => {
+      active = false;
+    };
+  }, [targetValue, duration]);
+
+  return count;
+}
 
 interface ResultData {
   player: ParsedPlayer;
@@ -100,6 +124,7 @@ const GRADE_COLOR: Record<string, string> = {
   "C+": "#888",
   C: "#888",
   D: "#e05a5a",
+  F: "#ef4444",
 };
 
 const STANDING_COLOR: Record<string, string> = {
@@ -272,11 +297,26 @@ const EXAMPLE_QUESTIONS = [
   "Is my power rating optimized for my level?",
 ];
 
-function CoachChat({ playerContext, explanation, onClearError }: { playerContext: string; explanation?: any; onClearError?: () => void }) {
+function CoachChat({ playerContext, explanation, scores, onClearError, isDossierError }: { playerContext: string; explanation?: any; scores?: any; onClearError?: () => void; isDossierError?: boolean }) {
   const [messages, setMessages] = useState<Array<{ role: "user" | "coach"; text: string }>>([]);
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isDossierError) {
+      setMessages((m) => {
+        if (m.some(msg => msg.text.includes("dossier analysis encountered an issue"))) return m;
+        return [
+          ...m,
+          {
+            role: "coach",
+            text: "Hello! The automatic dossier analysis encountered an issue connecting with the AI completions server, but I am still online and ready to answer any questions you have about your build, power split, alt accounts, or progression plans!"
+          }
+        ];
+      });
+    }
+  }, [isDossierError]);
 
   async function sendQuestion(text: string) {
     if (!text.trim() || chatLoading) return;
@@ -295,13 +335,26 @@ function CoachChat({ playerContext, explanation, onClearError }: { playerContext
         body: JSON.stringify({
           question: text,
           playerContext,
+          scores,
           history: messages.map((m) => ({
             role: m.role === "user" ? "user" : "assistant",
             content: m.text,
           })),
         }),
       });
-      const data = await res.json() as { answer?: string; text?: string; error?: string };
+      let data: { answer?: string; text?: string; error?: string } = {};
+      try {
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          data = await res.json();
+        } else {
+          const rawText = await res.text();
+          data = { error: rawText || "An unexpected server error occurred." };
+        }
+      } catch (parseErr) {
+        data = { error: "Failed to parse server response." };
+      }
+
       if (res.ok) {
         onClearError?.();
         let answerText = data.answer ?? data.text ?? "No response content from Coach.";
@@ -365,12 +418,14 @@ function CoachChat({ playerContext, explanation, onClearError }: { playerContext
               </div>
             ))}
             {chatLoading && (
-              <div className="flex gap-3 justify-start">
-                <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5 bg-[#070b13] border border-amber-500/25">
+              <div className="flex gap-3 justify-start items-end">
+                <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 bg-[#070b13] border border-amber-500/25">
                   <span className="text-xs text-amber-400">⚔</span>
                 </div>
-                <div className="rounded-xl px-4 py-2.5 text-xs border bg-white/[0.01] border-white/[0.03] text-white/35 animate-pulse">
-                  Thinking...
+                <div className="rounded-xl px-4 py-3 border bg-white/[0.01] border-white/[0.04] flex items-center gap-1.5">
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
                 </div>
               </div>
             )}
@@ -411,7 +466,14 @@ export default function Result() {
   const [parseError, setParseError] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isRevealing, setIsRevealing] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "combat" | "upgrades" | "benchmarks" | "simulator" | "coach">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "combat" | "upgrades" | "benchmarks" | "simulator" | "coach" | "history">("overview");
+  // Track if the user has ever opened the Coach tab — we only show AI errors after that
+  const [coachTabOpened, setCoachTabOpened] = useState(false);
+
+  const animOverallScore = useAnimatedCounter(scores?.overallScore || 0, 1200);
+  const animGearScore = useAnimatedCounter(scores?.gearScore || 0, 1200);
+  const animPowerScore = useAnimatedCounter(scores?.powerScore || 0, 1200);
+  const animWealthScore = useAnimatedCounter(scores?.wealthScore || 0, 1200);
 
   // Collapsible accordion section states
   const [enemiesExpanded, setEnemiesExpanded] = useState(false);
@@ -440,7 +502,27 @@ export default function Result() {
 
   const updatePlayer = (id: string, updates: Partial<PartyPlayer>) => {
     setPartyPlayers((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+      prev.map((p) => {
+        if (p.id === id) {
+          const next = { ...p, ...updates };
+          if (updates.hasOwnProperty("sword")) {
+            if (updates.sword === "None") {
+              next.swordLevel = 0;
+            } else if (p.sword === "None") {
+              next.swordLevel = 1;
+            }
+          }
+          if (updates.hasOwnProperty("shield")) {
+            if (updates.shield === "None") {
+              next.shieldLevel = 0;
+            } else if (p.shield === "None") {
+              next.shieldLevel = 1;
+            }
+          }
+          return next;
+        }
+        return p;
+      })
     );
   };
 
@@ -538,6 +620,16 @@ export default function Result() {
     };
   }, [data]);
 
+  // Helper to extract clean weapon name
+  const getCleanSwordName = (fullName: string) => {
+    const sw = getSwordData(fullName);
+    return sw ? sw.name : "None";
+  };
+  const getCleanShieldName = (fullName: string) => {
+    const sh = getShieldData(fullName);
+    return sh ? sh.name : "None";
+  };
+
   useEffect(() => {
     if (data && computedStats) {
       setCalcPower(data.player.powerRaw || 0);
@@ -545,21 +637,21 @@ export default function Result() {
       setCalcShieldMs(computedStats.ms || 0);
       setCalcSpeedBoost(Math.round(computedStats.speedBoost * 100));
 
-      setPartyPlayers((prev) => {
-        if (prev.length > 0) return prev;
-        return [
-          {
-            id: "current-player",
-            nickname: data.player.username || "You",
-            sword: data.player.sword,
-            swordLevel: data.player.swordLevel || 1,
-            shield: data.player.shield,
-            shieldLevel: data.player.shieldLevel || 1,
-            powerInput: data.player.power || "0",
-            powerRaw: data.player.powerRaw || 0
-          }
-        ];
-      });
+      const cleanSw = getCleanSwordName(data.player.sword);
+      const cleanSh = getCleanShieldName(data.player.shield);
+
+      setPartyPlayers([
+        {
+          id: "current-player",
+          nickname: data.player.username || "You",
+          sword: cleanSw,
+          swordLevel: cleanSw === "None" ? 0 : (data.player.swordLevel || 1),
+          shield: cleanSh,
+          shieldLevel: cleanSh === "None" ? 0 : (data.player.shieldLevel || 1),
+          powerInput: data.player.power || "0",
+          powerRaw: data.player.powerRaw || 0
+        }
+      ]);
     }
   }, [data, computedStats]);
 
@@ -591,7 +683,7 @@ export default function Result() {
   const explainMutation = useExplainGrade();
 
   useEffect(() => {
-    if (!data) return;
+    if (!data || !coachTabOpened || explainMutation.isPending || explainMutation.data || explainMutation.isError) return;
     const { player, scores } = data;
     explainMutation.reset();
     explainMutation.mutate({
@@ -608,15 +700,14 @@ export default function Result() {
         swordLevel: player.swordLevel,
         shield: player.shield,
         shieldLevel: player.shieldLevel,
-        powerRaw: player.powerRaw,
-        goldRaw: player.goldRaw,
+        powerRaw: String(player.powerRaw),
+        goldRaw: String(player.goldRaw),
         levelTier: scores.levelTier,
         standing: scores.standing,
         pvpKills: player.pvpKillCount ?? null,
-        itemsContext: itemsContextStr,
       } as any,
     });
-  }, [data]);
+  }, [data, coachTabOpened]);
 
   useEffect(() => {
     if (!data) return;
@@ -654,8 +745,19 @@ export default function Result() {
 
   if (isRevealing) {
     return (
-      <div className="min-h-screen text-white flex flex-col items-center justify-center relative overflow-hidden font-sans bg-[#070b13]">
-        <div className="absolute inset-0 bg-radial-gradient from-amber-500/5 via-transparent to-transparent pointer-events-none" />
+      <div className="min-h-screen text-white flex flex-col items-center justify-center relative overflow-hidden font-sans bg-[#03050b]">
+        {/* World 1 blurred background behind scanner */}
+        <div 
+          className="absolute inset-0 z-0 pointer-events-none"
+          style={{
+            backgroundImage: "url('/swordmasters_world1.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: "blur(8px) brightness(0.35) saturate(0.8)",
+            opacity: 0.5,
+          }}
+        />
+        <div className="absolute inset-0 bg-radial-gradient from-amber-500/5 via-transparent to-transparent pointer-events-none z-0" />
         
         <motion.div
           initial={{ opacity: 0, scale: 0.92 }}
@@ -663,7 +765,11 @@ export default function Result() {
           transition={{ duration: 0.6 }}
           className="text-center space-y-6 z-10"
         >
-          <p className="text-white/20 text-[10px] font-black uppercase tracking-widest font-display">Analyzing Profile</p>
+          <div className="space-y-1">
+            <p className="text-white/20 text-[9px] font-mono tracking-widest uppercase animate-pulse">Initializing HUD Link...</p>
+            <p className="text-amber-500/70 text-[10px] font-black uppercase tracking-widest font-display animate-pulse">Analyzing Character Profile</p>
+          </div>
+          
           <h2 className="text-3xl font-black font-display text-white tracking-tight">{player.username}</h2>
           
           <div className="relative flex items-center justify-center py-10">
@@ -673,27 +779,33 @@ export default function Result() {
               animate={{ scale: [0, 1.25, 1], rotate: 0, opacity: 1 }}
               transition={{ duration: 0.9, ease: "easeOut", delay: 0.4 }}
               style={{ color: gradeColor }}
-              className="text-8xl font-black font-display drop-shadow-[0_0_40px_rgba(0,240,255,0.35)] select-none cursor-default"
+              className="text-8xl font-black font-display drop-shadow-[0_0_40px_rgba(245,158,11,0.35)] select-none cursor-default"
             >
               {scores.overallGrade}
             </motion.div>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.1, duration: 0.4 }}
-            className="text-amber-400/80 text-[10px] font-bold font-mono tracking-widest uppercase bg-amber-500/5 px-4 py-1.5 rounded-full border border-amber-500/10 inline-block"
-          >
-            Analysis Complete
-          </motion.div>
+          <div className="flex flex-col items-center gap-2">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.1, duration: 0.4 }}
+              className="text-amber-400/80 text-[10px] font-bold font-mono tracking-widest uppercase bg-amber-500/5 px-4 py-1.5 rounded-full border border-amber-500/10 inline-block"
+            >
+              Analysis Complete
+            </motion.div>
+            <span className="text-[8px] font-mono text-white/20 uppercase tracking-wider">Syncing database configuration...</span>
+          </div>
         </motion.div>
       </div>
     );
   }
-
   return (
     <div className="min-h-screen text-white flex flex-col font-sans relative overflow-hidden bg-[#03050b]">
+      {/* Energetic Cinematic Blurred Parallax Background */}
+      <ParallaxBackground blur={6} brightness={0.55} saturate={0.95} opacity={0.65} />
+      {/* Dark Overlay for readability */}
+      <div className="absolute inset-0 bg-black/45 z-0 pointer-events-none" />
       <ParticleBackground />
       
       {/* Navbar */}
@@ -764,13 +876,16 @@ export default function Result() {
             <div className="space-y-2.5 flex-1">
               <span className="text-[9px] uppercase font-black tracking-widest text-white/30 block">Analysis Index</span>
               <div>
-                <span className="text-sm font-bold font-mono text-white">{scores.overallScore}%</span>
+                <span className="text-sm font-bold font-mono text-white">{animOverallScore}%</span>
                 <span className="text-white/20 text-[9px] uppercase font-bold tracking-wider ml-1">Overall</span>
               </div>
-              <div className="h-1 bg-white/[0.03] border border-white/[0.02] rounded-full overflow-hidden w-full">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${scores.overallScore}%`, backgroundColor: gradeColor }}
+              <div className="h-1 bg-white/[0.03] border border-white/[0.02] rounded-full overflow-hidden w-full relative">
+                <motion.div
+                  className="h-full rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${scores.overallScore}%` }}
+                  transition={{ duration: 1.2, ease: "easeOut" }}
+                  style={{ backgroundColor: gradeColor }}
                 />
               </div>
               <p className="text-[10px] font-semibold" style={{ color: standingColor }}>
@@ -803,8 +918,8 @@ export default function Result() {
             </div>
             <div className="bg-white/[0.01] border border-white/[0.02] rounded p-2 flex flex-col justify-between col-span-2">
               <span className="text-[8px] uppercase tracking-wider text-white/30 font-bold">Equipped Armaments</span>
-              <span className="text-[10px] font-black text-amber-400 truncate animate-pulse" title={`${player.sword} / ${player.shield}`}>
-                ⚔️ {player.sword.split(",")[0]}
+              <span className="text-[10px] font-black text-amber-400 truncate" title={`${player.sword || 'None'} / ${player.shield || 'None'}`}>
+                ⚔️ {player.sword ? player.sword.split(",")[0] : "None"}{player.shield ? ` | 🛡️ ${player.shield.split(",")[0]}` : ""}
               </span>
             </div>
           </div>
@@ -815,15 +930,16 @@ export default function Result() {
           <div className="inline-flex gap-1.5 bg-[#070b13]/90 p-1.5 rounded-xl border border-white/[0.04] overflow-x-auto max-w-full no-scrollbar shadow-inner">
             {[
               { id: "overview", label: "Overview" },
-              { id: "combat", label: "Combat & Calc" },
+              { id: "combat", label: "Combat" },
               { id: "upgrades", label: "Upgrades" },
               { id: "benchmarks", label: "Benchmarks" },
-              { id: "simulator", label: "Sandbox Sim" },
+              { id: "simulator", label: "Sandbox" },
+              { id: "history", label: "History" },
               { id: "coach", label: "AI Coach" },
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => { setActiveTab(tab.id as any); if (tab.id === "coach") setCoachTabOpened(true); }}
                 className={`py-2 px-3.5 rounded-lg font-black text-[9px] uppercase tracking-widest font-display transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === tab.id
                     ? "bg-amber-500/10 border border-amber-500/20 text-amber-400 font-black shadow-[0_0_10px_rgba(255,215,0,0.05)]"
@@ -839,7 +955,7 @@ export default function Result() {
         {/* Tab Panel contents */}
         <div className="space-y-6">
             {activeTab === "overview" && (
-              <div className="space-y-8">
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-8">
                 {/* 1. HERO SM GRADE BANNER */}
                 <div 
                   className="border border-amber-500/20 rounded-2xl p-6 bg-gradient-to-r from-[#070b13]/80 via-black to-[#070b13]/80 glass-panel shadow-[0_8px_32px_rgba(255,215,0,0.1)] relative overflow-hidden flex flex-col md:flex-row items-center gap-8 md:gap-12"
@@ -880,7 +996,7 @@ export default function Result() {
                       </span>
                       <h3 className="text-2xl font-black text-white tracking-tight">Performance Summary</h3>
                       <p className="text-xs text-white/50 font-semibold mt-1">
-                        Grader Index score is <span className="text-white font-black font-mono">{scores.overallScore}%</span>. Standing: <span className="font-bold" style={{ color: standingColor }}>{scores.standing}</span>
+                        Grader Index score is <span className="text-white font-black font-mono">{animOverallScore}%</span>. Standing: <span className="font-bold" style={{ color: standingColor }}>{scores.standing}</span>
                       </p>
                     </div>
 
@@ -888,12 +1004,15 @@ export default function Result() {
                     <div className="space-y-1.5 max-w-lg mx-auto md:mx-0">
                       <div className="flex justify-between text-[10px] uppercase font-bold text-white/30">
                         <span>Grader Score Tracker</span>
-                        <span className="font-mono text-white">{scores.overallScore}/100</span>
+                        <span className="font-mono text-white">{animOverallScore}/100</span>
                       </div>
                       <div className="h-2 bg-white/[0.03] border border-white/[0.02] rounded-full overflow-hidden relative">
-                        <div
-                          className="h-full rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(255,215,0,0.3)]"
-                          style={{ width: `${scores.overallScore}%`, backgroundColor: gradeColor }}
+                        <motion.div
+                          className="h-full rounded-full shadow-[0_0_10px_rgba(255,215,0,0.3)]"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${scores.overallScore}%` }}
+                          transition={{ duration: 1.5, ease: "easeOut" }}
+                          style={{ backgroundColor: gradeColor }}
                         />
                       </div>
                     </div>
@@ -925,22 +1044,11 @@ export default function Result() {
                   <SectionLabel>Component Performance Indices</SectionLabel>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {[
-                      { type: "score", label: "Power Score", score: scores.powerScore },
-                      { type: "score", label: "Gear Score", score: scores.gearScore },
-                      { type: "score", label: "Wealth Score", score: scores.wealthScore },
+                      { type: "score", label: "Power Score", score: scores.powerScore, animScore: animPowerScore },
+                      { type: "score", label: "Gear Score", score: scores.gearScore, animScore: animGearScore },
+                      { type: "score", label: "Wealth Score", score: scores.wealthScore, animScore: animWealthScore },
                       { type: "diagnostics", label: "Account Diagnostics", score: 0 }
                     ].map((card, idx) => {
-                      const getScoreGrade = (s: number) => {
-                        if (s >= 95) return "S+";
-                        if (s >= 90) return "S";
-                        if (s >= 85) return "A+";
-                        if (s >= 80) return "A";
-                        if (s >= 70) return "B+";
-                        if (s >= 60) return "B";
-                        if (s >= 50) return "C+";
-                        if (s >= 40) return "C";
-                        return "D";
-                      };
                       const delays = ["delay-75", "delay-100", "delay-150", "delay-200"];
                       const delayClass = delays[idx] || "";
 
@@ -971,7 +1079,7 @@ export default function Result() {
                         );
                       }
 
-                      const cardGrade = getScoreGrade(card.score!);
+                      const cardGrade = scoreToGrade(card.score!);
                       const gradeColor = GRADE_COLOR[cardGrade] ?? "#ffd700";
                       return (
                         <div
@@ -983,7 +1091,7 @@ export default function Result() {
                           </span>
                           
                           <div className="flex items-baseline justify-between mt-0.5">
-                            <span className="text-xl font-black text-white font-mono">{card.score}%</span>
+                            <span className="text-xl font-black text-white font-mono">{card.animScore}%</span>
                             <span
                               className="text-[9px] font-black px-1.5 py-0.5 rounded border"
                               style={{
@@ -1100,7 +1208,7 @@ export default function Result() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {activeTab === "combat" && computedStats && (() => {
@@ -1123,7 +1231,7 @@ export default function Result() {
               };
 
               return (
-                <div className="space-y-6">
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
                   <PowerBreakdownSection player={player} computedStats={computedStats} />
 
                   {/* Top Stats Display */}
@@ -1300,6 +1408,7 @@ export default function Result() {
                                     onChange={(e) => updatePlayer(p.id, { sword: e.target.value })}
                                     className="w-full bg-[#070b13] border border-white/5 text-white/80 rounded-lg px-2 py-2 text-xs outline-none cursor-pointer font-semibold focus:border-amber-500/30"
                                   >
+                                    <option value="None">None</option>
                                     {SWORDS.map((s) => (
                                       <option key={s.name} value={s.name}>{s.name}</option>
                                     ))}
@@ -1308,10 +1417,14 @@ export default function Result() {
                                 <div className="col-span-1">
                                   <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Lvl</label>
                                   <select
+                                    disabled={p.sword === "None"}
                                     value={p.swordLevel}
                                     onChange={(e) => updatePlayer(p.id, { swordLevel: parseInt(e.target.value) })}
-                                    className="w-full bg-[#070b13] border border-white/5 text-white/80 rounded-lg px-1.5 py-2 text-xs outline-none cursor-pointer font-semibold focus:border-amber-500/30"
+                                    className="w-full bg-[#070b13] border border-white/5 text-white/80 rounded-lg px-1.5 py-2 text-xs outline-none cursor-pointer font-semibold focus:border-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
                                   >
+                                    {p.swordLevel === 0 && (
+                                      <option value={0}>Lv0</option>
+                                    )}
                                     {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => (
                                       <option key={lvl} value={lvl}>Lv{lvl}</option>
                                     ))}
@@ -1328,6 +1441,7 @@ export default function Result() {
                                     onChange={(e) => updatePlayer(p.id, { shield: e.target.value })}
                                     className="w-full bg-[#070b13] border border-white/5 text-white/80 rounded-lg px-2 py-2 text-xs outline-none cursor-pointer font-semibold focus:border-amber-500/30"
                                   >
+                                    <option value="None">None</option>
                                     {SHIELDS.map((s) => (
                                       <option key={s.name} value={s.name}>{s.name}</option>
                                     ))}
@@ -1336,10 +1450,14 @@ export default function Result() {
                                 <div className="col-span-1">
                                   <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Lvl</label>
                                   <select
+                                    disabled={p.shield === "None"}
                                     value={p.shieldLevel}
                                     onChange={(e) => updatePlayer(p.id, { shieldLevel: parseInt(e.target.value) })}
-                                    className="w-full bg-[#070b13] border border-white/5 text-white/80 rounded-lg px-1.5 py-2 text-xs outline-none cursor-pointer font-semibold focus:border-amber-500/30"
+                                    className="w-full bg-[#070b13] border border-white/5 text-white/80 rounded-lg px-1.5 py-2 text-xs outline-none cursor-pointer font-semibold focus:border-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
                                   >
+                                    {p.shieldLevel === 0 && (
+                                      <option value={0}>Lv0</option>
+                                    )}
                                     {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => (
                                       <option key={lvl} value={lvl}>Lv{lvl}</option>
                                     ))}
@@ -1454,12 +1572,12 @@ export default function Result() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })()}
 
             {activeTab === "upgrades" && computedStats && (
-              <div className="space-y-6">
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
                 <div className="border border-white/[0.04] rounded-xl overflow-hidden glass-panel text-white">
                   <div className="px-5 py-4 border-b border-white/[0.04] bg-white/[0.01] flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -1545,13 +1663,13 @@ export default function Result() {
                     </div>
                   </div>
                 )}
-              </div>
+              </motion.div>
             )}
 
             {activeTab === "benchmarks" && (
-              <div className="space-y-6">
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
                 {(() => {
-                  const bmark = getInterpolatedBenchmark(player.level);
+                  const bmark = extendBenchmark(getBenchmarkForLevel(player.level));
                   const powerRatio = bmark.avgPower > 0 ? (player.powerRaw / bmark.avgPower) * 100 : 100;
                   const goldRatio = bmark.avgGold > 0 ? (player.goldRaw / bmark.avgGold) * 100 : 100;
                   
@@ -1601,65 +1719,22 @@ export default function Result() {
                     </div>
                   );
                 })()}
-              </div>
+              </motion.div>
             )}
 
 
             {activeTab === "simulator" && (
-              <div className="space-y-6">
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
                 <Simulator currentPlayer={player} currentScores={scores} />
-              </div>
+              </motion.div>
             )}
 
             {activeTab === "coach" && (
-              <div className="space-y-6">
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
                 {explainMutation.isPending && (
                   <div className="rounded-xl p-5 border border-white/[0.04] glass-panel flex flex-col items-center justify-center gap-3 py-10">
                     <div className="w-5 h-5 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin" />
                     <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest font-mono">AI Coach is analyzing...</span>
-                  </div>
-                )}
-
-                {explainMutation.isError && !explainMutation.isPending && !explanation && (
-                  <div className="rounded-xl p-5 border border-red-500/20 bg-red-500/5 text-xs text-red-400 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <div className="font-bold uppercase tracking-wider text-[10px] text-red-400">AI Coach Analysis Failed</div>
-                      <button
-                        onClick={() => {
-                          if (!data) return;
-                          explainMutation.reset();
-                          const { player, scores } = data;
-                          explainMutation.mutate({
-                            data: {
-                              username: player.username,
-                              level: player.level,
-                              overallScore: scores.overallScore,
-                              overallGrade: scores.overallGrade,
-                              gearScore: scores.gearScore,
-                              powerScore: scores.powerScore,
-                              progressScore: scores.progressScore,
-                              wealthScore: scores.wealthScore,
-                              sword: player.sword,
-                              swordLevel: player.swordLevel,
-                              shield: player.shield,
-                              shieldLevel: player.shieldLevel,
-                              powerRaw: player.powerRaw,
-                              goldRaw: player.goldRaw,
-                              levelTier: scores.levelTier,
-                              standing: scores.standing,
-                              pvpKills: player.pvpKillCount ?? null,
-                              itemsContext: itemsContextStr,
-                            } as any,
-                          });
-                        }}
-                        className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded text-[10px] font-bold text-red-300 uppercase tracking-wider transition-all cursor-pointer"
-                      >
-                        Retry Analysis ↻
-                      </button>
-                    </div>
-                    <p className="text-white/60 leading-relaxed font-medium">
-                      {(explainMutation.error as any)?.message || "An unknown error occurred while contacting the AI Coach."}
-                    </p>
                   </div>
                 )}
 
@@ -1687,13 +1762,21 @@ export default function Result() {
                     </div>
                   </div>
                 )}
-                
+
                 <CoachChat 
                   playerContext={JSON.stringify(player)} 
                   explanation={explanation} 
+                  scores={scores}
                   onClearError={() => explainMutation.reset()}
+                  isDossierError={explainMutation.isError}
                 />
-              </div>
+              </motion.div>
+            )}
+
+            {activeTab === "history" && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
+                <HistoryTracker username={player.username} />
+              </motion.div>
             )}
           </div>
 
@@ -1851,6 +1934,8 @@ function ValuationRow({ name, level, type }: { name: string; level: number; type
 
 function PowerBreakdownSection({ player, computedStats }: { player: ParsedPlayer; computedStats?: any }) {
   const [isOpen, setIsOpen] = useState(true);
+  const [projectionDuration, setProjectionDuration] = useState<"1h" | "2h" | "3h" | "1d" | "1w" | "custom">("1h");
+  const [customHours, setCustomHours] = useState<number>(5);
 
   const p = player.powerRaw || 0;
   const swordItem = getSwordData(player.sword);
@@ -1973,6 +2058,81 @@ function PowerBreakdownSection({ player, computedStats }: { player: ParsedPlayer
               <div className="flex justify-between items-center py-1.5 font-bold text-amber-400">
                 <span>Final Damage / Hit</span>
                 <span className="font-mono text-amber-400">{formatNumber(damagePerHit)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Power Grinding Projection */}
+          <div className="space-y-3 bg-cyan-950/20 border border-cyan-500/20 p-5 rounded-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h4 className="text-xs uppercase font-black tracking-widest text-cyan-400 font-display flex items-center gap-1.5">
+                  ⚡ Power Grinding Projection
+                </h4>
+                <span className="text-[10px] text-white/50 block font-semibold mt-0.5">
+                  Projected Power gain = Power/sec ({formatNumber(powerPerSec)}) × total duration in seconds
+                </span>
+              </div>
+            </div>
+
+            {/* Duration Preset Selector */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {[
+                { key: "1h", label: "1 Hour" },
+                { key: "2h", label: "2 Hours" },
+                { key: "3h", label: "3 Hours" },
+                { key: "1d", label: "1 Day" },
+                { key: "1w", label: "1 Week" },
+                { key: "custom", label: "Custom" },
+              ].map((preset) => (
+                <button
+                  key={preset.key}
+                  onClick={() => setProjectionDuration(preset.key as any)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all border ${
+                    projectionDuration === preset.key
+                      ? "bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-sm shadow-cyan-500/20"
+                      : "bg-black/40 border-white/10 text-white/60 hover:text-white hover:border-white/20"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom Hours Input */}
+            {projectionDuration === "custom" && (
+              <div className="flex items-center gap-3 pt-2">
+                <span className="text-xs font-semibold text-white/70">Custom Duration (Hours):</span>
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.5"
+                  value={customHours}
+                  onChange={(e) => setCustomHours(Math.max(0, parseFloat(e.target.value) || 0))}
+                  className="w-28 px-3 py-1 bg-black/60 border border-cyan-500/30 rounded-md text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+            )}
+
+            {/* Display Result */}
+            <div className="bg-black/60 border border-cyan-500/30 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-2">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-400/80 block">
+                  Projected Power Gain ({projectionDuration === "custom" ? `${customHours} Hours` : projectionDuration.toUpperCase()})
+                </span>
+                <span className="text-2xl font-black font-mono text-cyan-300 tracking-tight">
+                  +{formatNumber(powerPerSec * (
+                    projectionDuration === "1h" ? 3600 :
+                    projectionDuration === "2h" ? 7200 :
+                    projectionDuration === "3h" ? 10800 :
+                    projectionDuration === "1d" ? 86400 :
+                    projectionDuration === "1w" ? 604800 :
+                    (customHours || 0) * 3600
+                  ))}
+                </span>
+              </div>
+              <div className="text-right sm:text-right text-[11px] text-white/50 font-mono">
+                <span>{powerPerSec > 0 ? `${formatNumber(powerPerSec)} Power/sec` : "0 Power/sec"} continuous grinding</span>
               </div>
             </div>
           </div>

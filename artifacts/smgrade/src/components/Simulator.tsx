@@ -20,17 +20,56 @@ const GRADE_COLOR: Record<string, string> = {
   "C+": "#888",
   C: "#888",
   D: "#e05a5a",
+  F: "#ef4444",
 };
-
 export default function Simulator({ currentPlayer, currentScores }: SimulatorProps) {
+  // Helper to extract clean weapon name
+  const getCleanSwordName = (fullName: string) => {
+    const sw = getSwordData(fullName);
+    return sw ? sw.name : "None";
+  };
+  const getCleanShieldName = (fullName: string) => {
+    const sh = getShieldData(fullName);
+    return sh ? sh.name : "None";
+  };
+
   // Input states
-  const [selectedSword, setSelectedSword] = useState(currentPlayer.sword);
-  const [swordLevel, setSwordLevel] = useState(currentPlayer.swordLevel);
-  const [selectedShield, setSelectedShield] = useState(currentPlayer.shield);
-  const [shieldLevel, setShieldLevel] = useState(currentPlayer.shieldLevel);
+  const [selectedSword, setSelectedSword] = useState(() => getCleanSwordName(currentPlayer.sword));
+  const [swordLevel, setSwordLevel] = useState(currentPlayer.swordLevel || 0);
+  const [selectedShield, setSelectedShield] = useState(() => getCleanShieldName(currentPlayer.shield));
+  const [shieldLevel, setShieldLevel] = useState(currentPlayer.shieldLevel || 0);
   
   const [powerInput, setPowerInput] = useState(currentPlayer.power);
   const [goldInput, setGoldInput] = useState(currentPlayer.gold);
+
+  // Synchronize simulator inputs automatically immediately after a new player lookup completes
+  useEffect(() => {
+    const cleanSw = getCleanSwordName(currentPlayer.sword);
+    const cleanSh = getCleanShieldName(currentPlayer.shield);
+    setSelectedSword(cleanSw);
+    setSwordLevel(cleanSw === "None" ? 0 : (currentPlayer.swordLevel || 1));
+    setSelectedShield(cleanSh);
+    setShieldLevel(cleanSh === "None" ? 0 : (currentPlayer.shieldLevel || 1));
+    setPowerInput(currentPlayer.power);
+    setGoldInput(currentPlayer.gold);
+  }, [currentPlayer]);
+
+  // When None is selected, automatically clear/reset the level selector to 0
+  useEffect(() => {
+    if (selectedSword === "None") {
+      setSwordLevel(0);
+    } else if (swordLevel === 0) {
+      setSwordLevel(1);
+    }
+  }, [selectedSword]);
+
+  useEffect(() => {
+    if (selectedShield === "None") {
+      setShieldLevel(0);
+    } else if (shieldLevel === 0) {
+      setShieldLevel(1);
+    }
+  }, [selectedShield]);
 
   // Parse custom string inputs
   const parsedPower = useMemo(() => parseNumber(powerInput), [powerInput]);
@@ -142,6 +181,7 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
                 value={selectedSword}
                 onChange={(e) => setSelectedSword(e.target.value)}
               >
+                <option value="None" className="bg-[#070b13]">None</option>
                 {SWORDS.map((s) => (
                   <option key={s.name} value={s.name} className="bg-[#070b13]">{s.name}</option>
                 ))}
@@ -150,10 +190,14 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
             <div>
               <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Level</label>
               <select
-                className="w-full bg-[#070b13] border border-white/[0.04] focus:border-amber-500/30 text-white/70 rounded-lg px-3 py-2.5 text-xs outline-none transition-colors cursor-pointer"
+                disabled={selectedSword === "None"}
+                className="w-full bg-[#070b13] border border-white/[0.04] focus:border-amber-500/30 text-white/70 rounded-lg px-3 py-2.5 text-xs outline-none transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 value={swordLevel}
                 onChange={(e) => setSwordLevel(parseInt(e.target.value))}
               >
+                {swordLevel === 0 && (
+                  <option value={0} className="bg-[#070b13]">Lv0</option>
+                )}
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => (
                   <option key={lvl} value={lvl} className="bg-[#070b13]">Lv{lvl}</option>
                 ))}
@@ -170,6 +214,7 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
                 value={selectedShield}
                 onChange={(e) => setSelectedShield(e.target.value)}
               >
+                <option value="None" className="bg-[#070b13]">None</option>
                 {SHIELDS.map((s) => (
                   <option key={s.name} value={s.name} className="bg-[#070b13]">{s.name}</option>
                 ))}
@@ -178,10 +223,14 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
             <div>
               <label className="text-[9px] uppercase tracking-wider font-bold text-white/40 block mb-1">Level</label>
               <select
-                className="w-full bg-[#070b13] border border-white/[0.04] focus:border-amber-500/30 text-white/70 rounded-lg px-3 py-2.5 text-xs outline-none transition-colors cursor-pointer"
+                disabled={selectedShield === "None"}
+                className="w-full bg-[#070b13] border border-white/[0.04] focus:border-amber-500/30 text-white/70 rounded-lg px-3 py-2.5 text-xs outline-none transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 value={shieldLevel}
                 onChange={(e) => setShieldLevel(parseInt(e.target.value))}
               >
+                {shieldLevel === 0 && (
+                  <option value={0} className="bg-[#070b13]">Lv0</option>
+                )}
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => (
                   <option key={lvl} value={lvl} className="bg-[#070b13]">Lv{lvl}</option>
                 ))}

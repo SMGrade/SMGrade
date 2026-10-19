@@ -32,6 +32,7 @@ interface ActivityLog {
   username: string;
   action: string;
   details: string;
+  ipAddress?: string;
   status?: string;
   responseTimeMs?: number;
 }
@@ -77,22 +78,29 @@ export default function MasterVault() {
   const [mostSearched, setMostSearched] = useState<MostSearched[]>([]);
   const [popularGear, setPopularGear] = useState<PopularGear | null>(null);
   const [fullDb, setFullDb] = useState<any>(null);
+  const [persistenceInfo, setPersistenceInfo] = useState<{ mode: string; note: string } | null>(null);
 
-  // Filters
+  // Filters (Lookups)
   const [filterUsername, setFilterUsername] = useState("");
+  const [filterUsernameInput, setFilterUsernameInput] = useState("");
   const [filterGrade, setFilterGrade] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterWorld, setFilterWorld] = useState("");
 
   // Activity Filters
   const [actSearch, setActSearch] = useState("");
+  const [actSearchInput, setActSearchInput] = useState("");
   const [actFilterAction, setActFilterAction] = useState("");
   const [actFilterStatus, setActFilterStatus] = useState("");
   const [actFilterDate, setActFilterDate] = useState("");
 
   const unlocked = !!token;
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
 
   const attemptUnlock = async () => {
+    if (isUnlocking) return;
+    setIsUnlocking(true);
     try {
       const res = await fetch("/api/master/unlock", {
         method: "POST",
@@ -109,6 +117,8 @@ export default function MasterVault() {
       }
     } catch {
       setError(true);
+    } finally {
+      setIsUnlocking(false);
     }
   };
 
@@ -127,9 +137,9 @@ export default function MasterVault() {
       }
       if (statsRes.ok) setStats(await statsRes.json());
 
-      // Fetch lookups with filters
+      // Fetch lookups with universal query & filters
       let lookupUrl = "/api/master/lookup-logs?";
-      if (filterUsername) lookupUrl += `username=${encodeURIComponent(filterUsername)}&`;
+      if (filterUsername) lookupUrl += `q=${encodeURIComponent(filterUsername)}&username=${encodeURIComponent(filterUsername)}&`;
       if (filterGrade) lookupUrl += `grade=${encodeURIComponent(filterGrade)}&`;
       if (filterStatus) lookupUrl += `status=${encodeURIComponent(filterStatus)}&`;
       if (filterWorld) lookupUrl += `world=${encodeURIComponent(filterWorld)}&`;
@@ -137,8 +147,10 @@ export default function MasterVault() {
       const lookupsRes = await fetch(lookupUrl, { headers });
       if (lookupsRes.ok) setLookups(await lookupsRes.json());
 
-      // Fetch activities
-      const actRes = await fetch("/api/master/activity-logs", { headers });
+      // Fetch activities with universal query
+      let actUrl = "/api/master/activity-logs?";
+      if (actSearch) actUrl += `q=${encodeURIComponent(actSearch)}&`;
+      const actRes = await fetch(actUrl, { headers });
       if (actRes.ok) setActivities(await actRes.json());
 
       // Fetch most searched
@@ -153,19 +165,84 @@ export default function MasterVault() {
       const backupRes = await fetch("/api/master/backup", { headers });
       if (backupRes.ok) setFullDb(await backupRes.json());
 
+      // Fetch health/persistence info
+      const healthRes = await fetch("/api/master/health", { headers });
+      if (healthRes.ok) {
+        const health = await healthRes.json();
+        setPersistenceInfo({ mode: health.persistenceMode || "unknown", note: health.persistenceNote || "" });
+      }
+
     } catch (err) {
       console.error("Failed to load vault statistics:", err);
     }
   };
 
+  const refreshVaultData = async () => {
+    setIsRefreshing(true);
+    await fetchVaultData();
+    setIsRefreshing(false);
+  };
+
+  // Debounce lookups search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFilterUsername(filterUsernameInput);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [filterUsernameInput]);
+
+  // Debounce activity search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setActSearch(actSearchInput);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [actSearchInput]);
+
   useEffect(() => {
     if (unlocked) {
       fetchVaultData();
     }
-  }, [unlocked, filterUsername, filterGrade, filterStatus, filterWorld]);
+  }, [unlocked, filterUsername, filterGrade, filterStatus, filterWorld, actSearch]);
 
   const triggerExport = (format: "csv" | "json") => {
     window.open(`/api/master/export-logs?format=${format}&x-master-token=${token}`, "_blank");
+  };
+
+  const handleDeleteLogs = async (type: "activity" | "audit" | "lookup" | "all") => {
+    const messages = {
+      activity: "Are you sure you want to permanently delete all player activity logs?",
+      audit: "Are you sure you want to permanently delete all system audit logs?",
+      lookup: "Are you sure you want to permanently delete all player lookup logs?",
+      all: "WARNING: Are you sure you want to permanently delete ALL activity, lookup, and system audit logs?"
+    };
+    if (!window.confirm(messages[type])) return;
+    
+    try {
+      const endpoints = {
+        activity: "/api/master/logs/delete-player-activity",
+        audit: "/api/master/logs/delete-system-audit",
+        lookup: "/api/master/logs/delete-lookup-logs",
+        all: "/api/master/logs/delete-all-logs"
+      };
+      
+      const res = await fetch(endpoints[type], {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-master-token": token 
+        }
+      });
+      if (res.ok) {
+        alert("Logs deleted successfully.");
+        fetchVaultData();
+      } else {
+        const errData = await res.json();
+        alert("Failed to delete logs: " + (errData.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      alert("Network error: " + err.message);
+    }
   };
 
   if (!unlocked) {
@@ -208,6 +285,13 @@ export default function MasterVault() {
           </Link>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={refreshVaultData}
+            disabled={isRefreshing}
+            className="text-[9px] font-black uppercase tracking-widest border border-white/10 hover:border-amber-500/30 hover:text-amber-400 px-3 py-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
+          >
+            {isRefreshing ? "↻ Refreshing..." : "↻ Refresh Logs"}
+          </button>
           <button 
             onClick={() => {
               localStorage.removeItem("smg_master_token");
@@ -219,6 +303,22 @@ export default function MasterVault() {
           </button>
         </div>
       </header>
+
+      {/* Persistence Status Banner */}
+      <div className={`border-b px-4 py-2 flex items-center gap-2 text-[10px] font-semibold ${
+        persistenceInfo?.mode === "persistent"
+          ? "bg-green-500/5 border-green-500/10 text-green-400/70"
+          : persistenceInfo?.mode === "ephemeral"
+            ? "bg-red-500/5 border-red-500/10 text-red-400/70"
+            : "bg-amber-500/5 border-amber-500/10 text-amber-400/70"
+      }`}>
+        <span>{persistenceInfo?.mode === "persistent" ? "✅" : persistenceInfo?.mode === "ephemeral" ? "⚠️" : "📁"}</span>
+        <span>
+          {persistenceInfo?.note || "Logs persist across sessions when a PostgreSQL DATABASE_URL is configured. Use ↻ Refresh Logs to fetch the latest entries at any time."}
+          {" "}
+          Use <strong>↻ Refresh Logs</strong> to manually re-fetch at any time.
+        </span>
+      </div>
 
       <div className="flex-1 max-w-7xl w-full mx-auto p-4 flex flex-col lg:flex-row gap-6">
         {/* Navigation Sidebar */}
@@ -304,8 +404,13 @@ export default function MasterVault() {
                     type="text"
                     placeholder="Filter username..."
                     className="bg-white/[0.01] border border-white/[0.03] text-white text-[10px] px-3 py-2 rounded-lg outline-none w-36 font-bold"
-                    value={filterUsername}
-                    onChange={(e) => setFilterUsername(e.target.value)}
+                    value={filterUsernameInput}
+                    onChange={(e) => setFilterUsernameInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setFilterUsername(filterUsernameInput);
+                      }
+                    }}
                   />
                   <select
                     className="bg-[#03050b] border border-white/[0.03] text-white/60 text-[10px] px-2 py-2 rounded-lg outline-none font-bold"
@@ -313,7 +418,7 @@ export default function MasterVault() {
                     onChange={(e) => setFilterGrade(e.target.value)}
                   >
                     <option value="">All Grades</option>
-                    {["S+", "S", "A+", "A", "B+", "B", "C+", "C", "D"].map(g => (
+                    {["S+", "S", "A+", "A", "B+", "B", "C+", "C", "D", "F"].map(g => (
                       <option key={g} value={g}>{g}</option>
                     ))}
                   </select>
@@ -326,6 +431,20 @@ export default function MasterVault() {
                     <option value="Success">Success</option>
                     <option value="Failed">Failed</option>
                   </select>
+                  {(filterUsernameInput || filterUsername || filterGrade || filterStatus || filterWorld) && (
+                    <button 
+                      onClick={() => {
+                        setFilterUsernameInput("");
+                        setFilterUsername("");
+                        setFilterGrade("");
+                        setFilterStatus("");
+                        setFilterWorld("");
+                      }} 
+                      className="text-[9px] font-black uppercase text-amber-400 hover:underline cursor-pointer"
+                    >
+                      Clear Filters
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex gap-2">
@@ -345,7 +464,8 @@ export default function MasterVault() {
                     <tr className="border-b border-white/[0.04] text-white/30 uppercase font-black tracking-wider bg-white/[0.01]">
                       <th className="p-3.5">Timestamp</th>
                       <th className="p-3.5">Searched</th>
-                      <th className="p-3.5">Account / IP</th>
+                      <th className="p-3.5">User Account</th>
+                      <th className="p-3.5">IP Address</th>
                       <th className="p-3.5">Status</th>
                       <th className="p-3.5 text-center">Grade</th>
                       <th className="p-3.5 text-center">Gear</th>
@@ -361,9 +481,11 @@ export default function MasterVault() {
                           {new Date(l.timestamp).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </td>
                         <td className="p-3.5 text-amber-400 font-bold">{l.usernameSearched}</td>
-                        <td className="p-3.5">
-                          <span className="block text-white/80">{l.userAccount || "Guest Search"}</span>
-                          <span className="block text-white/30 text-[9px] font-mono mt-0.5">{l.ipAddress}</span>
+                        <td className="p-3.5 text-white/80 font-bold">{l.userAccount || "Guest Search"}</td>
+                        <td className="p-3.5 font-mono">
+                          <span className="inline-block px-2 py-1 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] font-bold tracking-wide">
+                            {l.ipAddress || "N/A"}
+                          </span>
                         </td>
                         <td className="p-3.5">
                           <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
@@ -381,7 +503,7 @@ export default function MasterVault() {
                     ))}
                     {lookups.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="p-8 text-center text-white/30 italic">No search logs found matching the filter criteria.</td>
+                        <td colSpan={10} className="p-8 text-center text-white/30 italic">No search logs found matching the filter criteria.</td>
                       </tr>
                     )}
                   </tbody>
@@ -415,8 +537,13 @@ export default function MasterVault() {
                     type="text"
                     placeholder="Search username..."
                     className="bg-white/[0.01] border border-white/[0.03] text-white text-[10px] px-3 py-2 rounded-lg outline-none w-36 font-bold font-mono placeholder:text-white/20"
-                    value={actSearch}
-                    onChange={(e) => setActSearch(e.target.value)}
+                    value={actSearchInput}
+                    onChange={(e) => setActSearchInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setActSearch(actSearchInput);
+                      }
+                    }}
                   />
                   <select
                     className="bg-[#03050b] border border-white/[0.03] text-white/60 text-[10px] px-2 py-2 rounded-lg outline-none font-bold"
@@ -426,6 +553,7 @@ export default function MasterVault() {
                     <option value="">All Actions</option>
                     <option value="Player Analysis">Player Analysis</option>
                     <option value="Live Lookup">Live Lookup</option>
+                    <option value="Account Comparison">Account Comparison</option>
                     <option value="Admin Login">Admin Login</option>
                     <option value="Admin Login Attempt Failed">Login Failed</option>
                     <option value="Database Restored">Database Restored</option>
@@ -446,9 +574,10 @@ export default function MasterVault() {
                     value={actFilterDate}
                     onChange={(e) => setActFilterDate(e.target.value)}
                   />
-                  {(actSearch || actFilterAction || actFilterStatus || actFilterDate) && (
+                  {(actSearchInput || actSearch || actFilterAction || actFilterStatus || actFilterDate) && (
                     <button 
                       onClick={() => {
+                        setActSearchInput("");
                         setActSearch("");
                         setActFilterAction("");
                         setActFilterStatus("");
@@ -465,41 +594,54 @@ export default function MasterVault() {
                   <table className="w-full border-collapse text-[10px] text-left">
                     <thead>
                       <tr className="border-b border-white/[0.04] text-white/30 uppercase font-black tracking-wider bg-white/[0.01]">
-                        <th className="p-3.5 w-40">Time</th>
-                        <th className="p-3.5 w-32">Username</th>
+                        <th className="p-3.5 w-36">Time</th>
+                        <th className="p-3.5 w-28">Username</th>
                         <th className="p-3.5 w-32">Action</th>
-                        <th className="p-3.5">Status</th>
+                        <th className="p-3.5 w-36">IP Address</th>
+                        <th className="p-3.5">Details</th>
+                        <th className="p-3.5 w-24 text-right">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.02] font-semibold text-white/80">
-                      {filteredActivities.map((act) => (
-                        <tr key={act.id} className="hover:bg-white/[0.01] transition-colors font-semibold">
-                          <td className="p-3.5 text-white/40 font-mono">
-                            {new Date(act.timestamp).toLocaleString()}
-                          </td>
-                          <td className="p-3.5 text-amber-400 font-bold">{act.username}</td>
-                          <td className="p-3.5">
-                            <span className="bg-[#8ab4c9]/10 border border-[#8ab4c9]/25 text-[#8ab4c9] px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider block text-center max-w-[110px]">
-                              {act.action}
-                            </span>
-                          </td>
-                          <td className="p-3.5 flex items-center justify-between">
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                              act.status === "Success" ? "bg-[#5ecb7a]/10 border border-[#5ecb7a]/20 text-[#5ecb7a]" :
-                              act.status === "Failed" ? "bg-red-500/10 border border-red-500/20 text-red-400" :
-                              "bg-white/5 border border-white/10 text-white/60"
-                            }`}>
-                              {act.status || "Info"}
-                            </span>
-                            {act.responseTimeMs !== undefined && (
-                              <span className="text-[9px] text-white/35 font-mono ml-2">{act.responseTimeMs}ms</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredActivities.map((act) => {
+                        const extractedIp = act.ipAddress || (act.details && act.details.includes("IP: ") ? act.details.split("IP: ")[1] : null) || "N/A";
+                        return (
+                          <tr key={act.id} className="hover:bg-white/[0.01] transition-colors font-semibold">
+                            <td className="p-3.5 text-white/40 font-mono">
+                              {new Date(act.timestamp).toLocaleString()}
+                            </td>
+                            <td className="p-3.5 text-amber-400 font-bold">{act.username}</td>
+                            <td className="p-3.5">
+                              <span className="bg-[#8ab4c9]/10 border border-[#8ab4c9]/25 text-[#8ab4c9] px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider block text-center max-w-[110px]">
+                                {act.action}
+                              </span>
+                            </td>
+                            <td className="p-3.5 font-mono">
+                              <span className="inline-block px-2 py-1 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] font-bold tracking-wide">
+                                {extractedIp}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-white/70 font-mono text-[9.5px]">
+                              {act.details || "—"}
+                            </td>
+                            <td className="p-3.5 text-right">
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                                act.status === "Success" ? "bg-[#5ecb7a]/10 border border-[#5ecb7a]/20 text-[#5ecb7a]" :
+                                act.status === "Failed" ? "bg-red-500/10 border border-red-500/20 text-red-400" :
+                                "bg-white/5 border border-white/10 text-white/60"
+                              }`}>
+                                {act.status || "Info"}
+                              </span>
+                              {act.responseTimeMs !== undefined && (
+                                <span className="text-[9px] text-white/35 font-mono ml-2">{act.responseTimeMs}ms</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                       {filteredActivities.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="p-8 text-center text-white/30 italic">No player lookup logs recorded yet.</td>
+                          <td colSpan={6} className="p-8 text-center text-white/30 italic">No activity logs recorded yet.</td>
                         </tr>
                       )}
                     </tbody>
@@ -579,14 +721,42 @@ export default function MasterVault() {
           )}
 
           {activeTab === "db" && (
-            <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
-              <div className="flex justify-between items-center border-b border-white/[0.04] pb-3">
-                <h3 className="text-xs uppercase font-black tracking-widest text-amber-400 font-display">Drizzle jsonDb System Explorer</h3>
-                <span className="text-[9px] font-mono text-white/40 uppercase">Read-Only Backup Inspector</span>
+            <div className="space-y-6">
+              {/* Log Management Section */}
+              <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
+                <div className="flex justify-between items-center border-b border-white/[0.04] pb-3">
+                  <h3 className="text-xs uppercase font-black tracking-widest text-red-400 font-display font-bold">System Log Management</h3>
+                  <span className="text-[9px] font-mono text-white/40 uppercase">Danger Zone</span>
+                </div>
+                <p className="text-[11px] text-white/40 leading-relaxed font-semibold">
+                  Perform administrative database cleanup operations. Each action requires confirmation.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button onClick={() => handleDeleteLogs("activity")} className="px-4 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 text-[10px] uppercase font-black tracking-wider transition-all cursor-pointer">
+                    Delete Player Activity Logs
+                  </button>
+                  <button onClick={() => handleDeleteLogs("audit")} className="px-4 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 text-[10px] uppercase font-black tracking-wider transition-all cursor-pointer">
+                    Delete System Audit Logs
+                  </button>
+                  <button onClick={() => handleDeleteLogs("lookup")} className="px-4 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 text-[10px] uppercase font-black tracking-wider transition-all cursor-pointer">
+                    Delete Lookup Logs
+                  </button>
+                  <button onClick={() => handleDeleteLogs("all")} className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[10px] uppercase font-black tracking-wider transition-all cursor-pointer">
+                    Delete All Logs
+                  </button>
+                </div>
               </div>
-              
-              <div className="max-h-[500px] overflow-y-auto bg-black/40 p-4 rounded-xl border border-white/[0.02] font-mono text-[9px] text-[#5ecb7a]">
-                <pre>{fullDb ? JSON.stringify(fullDb, null, 2) : "Loading active database catalog..."}</pre>
+
+              {/* Db Viewer */}
+              <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
+                <div className="flex justify-between items-center border-b border-white/[0.04] pb-3">
+                  <h3 className="text-xs uppercase font-black tracking-widest text-amber-400 font-display">Drizzle jsonDb System Explorer</h3>
+                  <span className="text-[9px] font-mono text-white/40 uppercase">Read-Only Backup Inspector</span>
+                </div>
+                
+                <div className="max-h-[500px] overflow-y-auto bg-black/40 p-4 rounded-xl border border-white/[0.02] font-mono text-[9px] text-[#5ecb7a]">
+                  <pre>{fullDb ? JSON.stringify(fullDb, null, 2) : "Loading active database catalog..."}</pre>
+                </div>
               </div>
             </div>
           )}
@@ -594,6 +764,7 @@ export default function MasterVault() {
           {activeTab === "storageTest" && (
             <StorageTestPanel />
           )}
+
         </main>
       </div>
     </div>
@@ -744,3 +915,4 @@ function StorageTestPanel() {
     </div>
   );
 }
+

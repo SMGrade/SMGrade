@@ -2,6 +2,7 @@
 import {
   getBenchmarkForLevel,
   getInterpolatedBenchmark,
+  extendBenchmark,
   getSwordTier,
   getShieldTier,
 } from "./benchmark.js";
@@ -26,7 +27,7 @@ import { formatNumber, parseNumber } from "./numberParser.js";
 import type { ParsedPlayer } from "./parser.js";
 import { loadGradingConstants } from "./settings.js";
 
-export type GradeLetter = "S+" | "S" | "A+" | "A" | "B+" | "B" | "C+" | "C" | "D";
+export type GradeLetter = "S+" | "S" | "A+" | "A" | "B+" | "B" | "C+" | "C" | "D" | "F";
 
 export interface UpgradeGoal {
   name: string;
@@ -113,7 +114,7 @@ function clamp(val: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, val));
 }
 
-function scoreToGrade(score: number, constants = loadGradingConstants()): GradeLetter {
+export function scoreToGrade(score: number, constants = loadGradingConstants()): GradeLetter {
   if (score >= constants.gradeThresholdSPlus) return "S+";
   if (score >= constants.gradeThresholdS) return "S";
   if (score >= constants.gradeThresholdAPlus) return "A+";
@@ -122,7 +123,8 @@ function scoreToGrade(score: number, constants = loadGradingConstants()): GradeL
   if (score >= constants.gradeThresholdB) return "B";
   if (score >= constants.gradeThresholdCPlus) return "C+";
   if (score >= constants.gradeThresholdC) return "C";
-  return "D";
+  if (score >= 30) return "D";
+  return "F";
 }
 
 function scoreStanding(
@@ -151,22 +153,23 @@ function getPiecewiseScore(val: number, weak: number, avg: number, strong: numbe
   const logE = Math.log10(e);
 
   if (logVal <= logW) {
-    const ratio = Math.max(0, logVal / logW);
-    return clamp(Math.round(ratio * 30));
+    const ratio = logW > 0 ? Math.max(0, logVal / logW) : 0;
+    return ratio * 25;
   }
   if (logVal <= logA) {
     const ratio = (logVal - logW) / (logA - logW);
-    return clamp(Math.round(30 + ratio * 30));
+    return 25 + ratio * 25;
   }
   if (logVal <= logS) {
     const ratio = (logVal - logA) / (logS - logA);
-    return clamp(Math.round(60 + ratio * 25));
+    return 50 + ratio * 25;
   }
   if (logVal <= logE) {
     const ratio = (logVal - logS) / (logE - logS);
-    return clamp(Math.round(85 + ratio * 15));
+    return 75 + ratio * 25;
   }
-  return 100;
+  const ratio = (logVal - logE) / (logE - logS > 0 ? logE - logS : 1);
+  return 100 + ratio * 25;
 }
 
 function getLevelScore(level: number): number {
@@ -407,7 +410,7 @@ function getUpgradeAdvice(player: ParsedPlayer, constants = loadGradingConstants
   const swLevel = player.swordLevel;
   const shLevel = player.shieldLevel;
   
-  const benchmark = getInterpolatedBenchmark(player.level);
+  const benchmark = extendBenchmark(getBenchmarkForLevel(player.level));
 
   const playerWorld = (player as any).worldNumber || (player as any).rawPayload?.worldNumber || getWorldFromLevel(player.level);
 
@@ -712,7 +715,7 @@ function getLegacyUpgradeAdviceForGrading(player: ParsedPlayer, constants = load
   const swLevel = player.swordLevel;
   const shLevel = player.shieldLevel;
   
-  const benchmark = getInterpolatedBenchmark(player.level);
+  const benchmark = extendBenchmark(getBenchmarkForLevel(player.level));
 
   // Current stats base
   const curSwStats = curSw ? getSwordStats(curSw, swLevel) : { name: "None", level: 0, damage: 0, dm: 1.0, prot: 0, hm: 0, gm: 0, score: 0 };
@@ -969,7 +972,7 @@ function getLegacyUpgradeAdviceForGrading(player: ParsedPlayer, constants = load
 
 export function scorePlayer(player: ParsedPlayer): ScoreResult {
   const constants = loadGradingConstants();
-  const benchmark = getInterpolatedBenchmark(player.level);
+  const benchmark = extendBenchmark(getBenchmarkForLevel(player.level));
 
   // 1. Level Score
   const levelScore = getLevelScore(player.level);
@@ -1006,15 +1009,11 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
   const elitePPS = benchmark.elitePPH * 2.77;
   const ppsScore = getPiecewiseScore(dmgStats.powerPerSecond, weakPPS, benchmark.avgPPH * 2.77, benchmark.strongPPH * 2.77, elitePPS);
 
-  // 4. Gold Score (Decoupled from log compression, uses linear ratio comparison)
-  const goldRatio = benchmark.avgGold > 0 ? (player.goldRaw / benchmark.avgGold) * 100 : 100;
-  const goldScore = clamp(
-    Math.round(
-      goldRatio >= 100
-        ? 75 + Math.min((goldRatio - 100) * 0.25, 25)
-        : (goldRatio / 100) * 75
-    )
-  );
+  // 4. Gold Score (Dynamic log-piecewise scoring using actual benchmark/extrapolated limits)
+  const weakGold = (benchmark as any).weakGold !== undefined ? (typeof (benchmark as any).weakGold === "string" ? parseNumber((benchmark as any).weakGold) : Number((benchmark as any).weakGold)) : benchmark.avgGold * 0.1;
+  const strongGold = (benchmark as any).strongGold !== undefined ? (typeof (benchmark as any).strongGold === "string" ? parseNumber((benchmark as any).strongGold) : Number((benchmark as any).strongGold)) : benchmark.avgGold * 1.5;
+  const eliteGold = (benchmark as any).eliteGold !== undefined ? (typeof (benchmark as any).eliteGold === "string" ? parseNumber((benchmark as any).eliteGold) : Number((benchmark as any).eliteGold)) : benchmark.avgGold * 2.0;
+  const goldScore = getPiecewiseScore(player.goldRaw, weakGold, benchmark.avgGold, strongGold, eliteGold);
 
   // 5. Protection Score
   const getProtRaw = (protStr?: string) => {
@@ -1099,51 +1098,110 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
   const questsScore = 0;
   const questCount = 0;
 
+  // Clamping all scores strictly between 0 and 100
+  const finalLevelScore = clamp(Math.round(levelScore));
+  const finalPowerScore = clamp(Math.round(powerScore));
+  const finalDphScore = clamp(Math.round(dphScore));
+  const finalDpsScore = clamp(Math.round(dpsScore));
+  const finalPphScore = clamp(Math.round(pphScore));
+  const finalPpsScore = clamp(Math.round(ppsScore));
+  const finalGoldScore = clamp(Math.round(goldScore));
+  const finalProtectionScore = clamp(Math.round(protectionScore));
+  const finalHealthScore = clamp(Math.round(healthScore));
+  const finalSwordScore = clamp(Math.round(swordScore));
+  const finalShieldScore = clamp(Math.round(shieldScore));
+  const finalPetsScore = clamp(Math.round(petsScore));
+  const finalEnchantmentsScore = clamp(Math.round(enchantmentsScore));
+  const finalInventoryScore = clamp(Math.round(inventoryScore));
+  const finalStorageScore = clamp(Math.round(storageScore));
+  const finalUpgradePotentialScore = clamp(Math.round(upgradePotentialScore));
+  const finalQuestsScore = clamp(Math.round(questsScore));
+
   // Sub-grades mappings
   const subGrades = {
-    level: { score: levelScore, grade: scoreToGrade(levelScore, constants), label: "Level", value: `Lv ${player.level.toLocaleString()}` },
-    power: { score: powerScore, grade: scoreToGrade(powerScore, constants), label: "Power", value: player.power },
-    dph: { score: dphScore, grade: scoreToGrade(dphScore, constants), label: "Damage / Hit", value: formatNumber(dmgStats.damagePerHit) },
-    dps: { score: dpsScore, grade: scoreToGrade(dpsScore, constants), label: "Damage / sec", value: formatNumber(dmgStats.damagePerSecond) },
-    pph: { score: pphScore, grade: scoreToGrade(pphScore, constants), label: "Power / Hit", value: formatNumber(dmgStats.powerPerHit) },
-    pps: { score: ppsScore, grade: scoreToGrade(ppsScore, constants), label: "Power / sec", value: formatNumber(dmgStats.powerPerSecond) },
-    gold: { score: goldScore, grade: scoreToGrade(goldScore, constants), label: "Gold Balance", value: player.gold },
-    protection: { score: protectionScore, grade: scoreToGrade(protectionScore, constants), label: "Protection", value: formatNumber(protectionRaw) },
-    health: { score: healthScore, grade: scoreToGrade(healthScore, constants), label: "Health Pool", value: player.health || "0" },
-    sword: { score: swordScore, grade: scoreToGrade(swordScore, constants), label: "Equipped Sword", value: `${player.sword} Lv${player.swordLevel}` },
-    shield: { score: shieldScore, grade: scoreToGrade(shieldScore, constants), label: "Equipped Shield", value: `${player.shield} Lv${player.shieldLevel}` },
-    pets: { score: petsScore, grade: scoreToGrade(petsScore, constants), label: "Active Pets", value: `${activePets.length} Active` },
-    enchantments: { score: enchantmentsScore, grade: scoreToGrade(enchantmentsScore, constants), label: "Enchantments", value: hasSwordEnchant || hasShieldEnchant ? "Enchanted" : "None" },
-    inventory: { score: inventoryScore, grade: scoreToGrade(inventoryScore, constants), label: "Inventory Value", value: netWorth.equippedFormatted },
-    storage: { score: storageScore, grade: scoreToGrade(storageScore, constants), label: "Vault Storage", value: netWorth.storageFormatted },
-    upgradePotential: { score: upgradePotentialScore, grade: scoreToGrade(upgradePotentialScore, constants), label: "Gear Optimization", value: `${upgradePotentialScore}%` },
-    quests: { score: questsScore, grade: scoreToGrade(questsScore, constants), label: "Active Quests", value: "Disabled" }
+    level: { score: finalLevelScore, grade: scoreToGrade(finalLevelScore, constants), label: "Level", value: `Lv ${player.level.toLocaleString()}` },
+    power: { score: finalPowerScore, grade: scoreToGrade(finalPowerScore, constants), label: "Power", value: player.power },
+    dph: { score: finalDphScore, grade: scoreToGrade(finalDphScore, constants), label: "Damage / Hit", value: formatNumber(dmgStats.damagePerHit) },
+    dps: { score: finalDpsScore, grade: scoreToGrade(finalDpsScore, constants), label: "Damage / sec", value: formatNumber(dmgStats.damagePerSecond) },
+    pph: { score: finalPphScore, grade: scoreToGrade(finalPphScore, constants), label: "Power / Hit", value: formatNumber(dmgStats.powerPerHit) },
+    pps: { score: finalPpsScore, grade: scoreToGrade(finalPpsScore, constants), label: "Power / sec", value: formatNumber(dmgStats.powerPerSecond) },
+    gold: { score: finalGoldScore, grade: scoreToGrade(finalGoldScore, constants), label: "Gold Balance", value: player.gold },
+    protection: { score: finalProtectionScore, grade: scoreToGrade(finalProtectionScore, constants), label: "Protection", value: formatNumber(protectionRaw) },
+    health: { score: finalHealthScore, grade: scoreToGrade(finalHealthScore, constants), label: "Health Pool", value: player.health || "0" },
+    sword: { score: finalSwordScore, grade: scoreToGrade(finalSwordScore, constants), label: "Equipped Sword", value: `${player.sword} Lv${player.swordLevel}` },
+    shield: { score: finalShieldScore, grade: scoreToGrade(finalShieldScore, constants), label: "Equipped Shield", value: `${player.shield} Lv${player.shieldLevel}` },
+    pets: { score: finalPetsScore, grade: scoreToGrade(finalPetsScore, constants), label: "Active Pets", value: `${activePets.length} Active` },
+    enchantments: { score: finalEnchantmentsScore, grade: scoreToGrade(finalEnchantmentsScore, constants), label: "Enchantments", value: hasSwordEnchant || hasShieldEnchant ? "Enchanted" : "None" },
+    inventory: { score: finalInventoryScore, grade: scoreToGrade(finalInventoryScore, constants), label: "Inventory Value", value: netWorth.equippedFormatted },
+    storage: { score: finalStorageScore, grade: scoreToGrade(finalStorageScore, constants), label: "Vault Storage", value: netWorth.storageFormatted },
+    upgradePotential: { score: finalUpgradePotentialScore, grade: scoreToGrade(finalUpgradePotentialScore, constants), label: "Gear Optimization", value: `${finalUpgradePotentialScore}%` },
+    quests: { score: finalQuestsScore, grade: scoreToGrade(finalQuestsScore, constants), label: "Active Quests", value: "Disabled" }
   };
 
   // Derive macro scores from the actual sub-grades
   const enchantBonus = (hasSwordEnchant ? 5 : 0) + (hasShieldEnchant ? 5 : 0);
-  const gearScore = clamp(Math.round(swordScore * 0.45 + shieldScore * 0.45 + enchantBonus));
-  const combatScore = Math.round(dphScore * 0.25 + dpsScore * 0.25 + pphScore * 0.25 + ppsScore * 0.25);
-  // Recalculated without quests log dependency
-  const progressScore = Math.round(levelScore * 0.50 + upgradePotentialScore * 0.50);
-  const wealthScore = goldScore;
+  const gearScore = clamp(Math.round(finalSwordScore * 0.45 + finalShieldScore * 0.45 + enchantBonus));
+  const combatScore = clamp(Math.round(finalDphScore * 0.25 + finalDpsScore * 0.25 + finalPphScore * 0.25 + finalPpsScore * 0.25));
+  const progressScore = clamp(Math.round(finalLevelScore * 0.50 + finalUpgradePotentialScore * 0.50));
+  const finalWealthScore = finalGoldScore;
+  const wealthScore = finalWealthScore;
 
-  // Redesign weights: remove Progression Score (8%) and redistribute proportionally to Power and Gear.
-  // Power: 55% -> 60%
-  // Gear: 35% -> 38%
-  // Wealth: 2% -> 2%
-  const powerW = 0.60;
-  const gearW = 0.38;
-  const wealthW = 0.02;
-
-  // Overall index: composite representation where Power dominates
+  // Calculate overall score using dynamic database weights
   let overallScore = clamp(
     Math.round(
-      gearScore * gearW +
-      powerScore * powerW +
-      wealthScore * wealthW
+      gearScore * constants.gearWeight +
+      finalPowerScore * constants.powerWeight +
+      wealthScore * constants.wealthWeight +
+      progressScore * (constants.progressWeight ?? 0)
     )
   );
+
+  console.log("[DEBUG SCORER] Grading verification details:", {
+    playerLevel: player.level,
+    resolvedTier: benchmark.label,
+    benchmarkRowId: (benchmark as any).id || benchmark.label,
+    benchmarkPostgresValues: {
+      weakPower: benchmark.weakPower,
+      avgPower: benchmark.avgPower,
+      strongPower: benchmark.strongPower,
+      elitePower: benchmark.elitePower,
+      avgGold: benchmark.avgGold,
+      weakGold: (benchmark as any).weakGold,
+      strongGold: (benchmark as any).strongGold,
+      eliteGold: (benchmark as any).eliteGold
+    },
+    convertedNumericValues: {
+      weakPowerNum: Number(benchmark.weakPower),
+      avgPowerNum: Number(benchmark.avgPower),
+      strongPowerNum: Number(benchmark.strongPower),
+      elitePowerNum: Number(benchmark.elitePower),
+      avgGoldNum: Number(benchmark.avgGold),
+      weakGoldNum: weakGold,
+      avgGoldNum2: benchmark.avgGold,
+      strongGoldNum: strongGold,
+      eliteGoldNum: eliteGold
+    },
+    finalCalculatedScores: {
+      powerScore: finalPowerScore,
+      wealthScore: finalWealthScore,
+      gearScore: gearScore,
+      overallScore: overallScore
+    }
+  });
+
+  console.log("[DEBUG WEALTH] Wealth Score pipeline details:", {
+    rawGoldInput: player.gold,
+    parsedNumericGoldValue: player.goldRaw,
+    selectedGoldBenchmark: {
+      avgGoldRaw: (benchmark as any).avgGold,
+      avgGoldParsed: benchmark.avgGold,
+      weakGoldParsed: weakGold,
+      strongGoldParsed: strongGold,
+      eliteGoldParsed: eliteGold
+    },
+    calculatedWealthScoreBeforeClamping: goldScore,
+    finalDisplayedWealthScore: finalGoldScore
+  });
 
   const overallGrade = scoreToGrade(overallScore, constants);
   const standing = scoreStanding(player.powerRaw, benchmark);
@@ -1163,7 +1221,7 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
   }
 
   // Preserve Level progression standing:
-  const levelProgressStatus = levelScore >= 95 ? "Elite" : (levelScore >= 80 ? "Excellent" : (levelScore >= 50 ? "Balanced" : "Grind Recommended"));
+  const levelProgressStatus = finalLevelScore >= 95 ? "Elite" : (finalLevelScore >= 80 ? "Excellent" : (finalLevelScore >= 50 ? "Balanced" : "Grind Recommended"));
   diagnostics.push(`Level Progress: ${levelProgressStatus} (Lv ${player.level.toLocaleString()})`);
 
   // Preserve Upgrade Potential insight:
@@ -1174,17 +1232,17 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
   const potentialStatus = potentialGain === 0 ? "Fully Optimized" : (potentialGain <= 15 ? "Moderate Gain" : "High Gain");
   diagnostics.push(`Upgrade Potential: ${potentialStatus} (+${potentialGain}% DPS potential)`);
 
-  if (powerScore >= 80) {
+  if (finalPowerScore >= 80) {
     diagnostics.push("Power Excellent");
-  } else if (powerScore >= 55) {
+  } else if (finalPowerScore >= 55) {
     diagnostics.push("Power Balanced");
   } else {
     diagnostics.push("Power Grind Recommended");
   }
 
-  if (wealthScore >= 80) {
+  if (finalWealthScore >= 80) {
     diagnostics.push("Wealth Excellent");
-  } else if (wealthScore >= 55) {
+  } else if (finalWealthScore >= 55) {
     diagnostics.push("Wealth Balanced");
   } else {
     diagnostics.push("Wealth Grind Recommended");
@@ -1194,7 +1252,7 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
     diagnostics.push("Endgame Ready");
   }
 
-  if (swOptimized && shOptimized && powerScore >= 90 && wealthScore >= 90) {
+  if (swOptimized && shOptimized && finalPowerScore >= 90 && finalWealthScore >= 90) {
     diagnostics.push("Fully Optimized Build");
   }
 
@@ -1212,8 +1270,8 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
     {
       slotName: "Sword",
       itemName: `${player.sword} Lv${player.swordLevel}`,
-      score: swordScore,
-      grade: scoreToGrade(swordScore, constants),
+      score: finalSwordScore,
+      grade: scoreToGrade(finalSwordScore, constants),
       stat: `DS: ${formatNumber(ds)}`,
       tip: upgradeAdvice.immediate && upgradeAdvice.immediate.type === "Sword" ? {
         targetName: upgradeAdvice.immediate.name,
@@ -1226,8 +1284,8 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
     {
       slotName: "Shield",
       itemName: `${player.shield} Lv${player.shieldLevel}`,
-      score: shieldScore,
-      grade: scoreToGrade(shieldScore, constants),
+      score: finalShieldScore,
+      grade: scoreToGrade(finalShieldScore, constants),
       stat: `DM: ${ms.toFixed(1)}x`,
       tip: upgradeAdvice.immediate && upgradeAdvice.immediate.type === "Shield" ? {
         targetName: upgradeAdvice.immediate.name,
@@ -1240,8 +1298,8 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
     {
       slotName: "Power",
       itemName: player.power,
-      score: powerScore,
-      grade: scoreToGrade(powerScore, constants),
+      score: finalPowerScore,
+      grade: scoreToGrade(finalPowerScore, constants),
       stat: player.power,
       tip: null
     }
@@ -1251,10 +1309,10 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
     overallScore,
     overallGrade,
     gearScore,
-    powerScore,
+    powerScore: finalPowerScore,
     combatScore,
     progressScore,
-    wealthScore,
+    wealthScore: finalWealthScore,
     subGrades,
     standing,
     levelTier: benchmark.label,

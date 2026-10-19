@@ -2,6 +2,36 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchLivePlayerInfo, normalizeLivePlayer } from "@/lib/liveLookupEngine";
+import { formatNumber } from "@/lib/numberParser";
+
+export function ParallaxBackground({ blur = 8, brightness = 0.5, saturate = 0.9, opacity = 0.6 }) {
+  const [xy, setXy] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth) - 0.5;
+      const y = (e.clientY / window.innerHeight) - 0.5;
+      setXy({ x: x * 16, y: y * 16 });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
+  return (
+    <div 
+      className="absolute inset-[-30px] z-0 pointer-events-none transition-transform duration-700 ease-out"
+      style={{
+        backgroundImage: "url('/swordmasters_world1.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        transform: `translate3d(${xy.x}px, ${xy.y}px, 0)`,
+        filter: `blur(${blur}px) brightness(${brightness}) saturate(${saturate})`,
+        opacity: opacity,
+      }}
+    />
+  );
+}
 
 export function ParticleBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -84,6 +114,14 @@ export function ParticleBackground() {
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-40" />;
 }
 
+export function DiscordIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.893.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [, navigate] = useLocation();
   const [lookupUsername, setLookupUsername] = useState("");
@@ -92,7 +130,6 @@ export default function Home() {
   const [error, setError] = useState("");
   const [focused, setFocused] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-
 
   const analyzeLiveCharacter = async () => {
     setError("");
@@ -116,7 +153,7 @@ export default function Home() {
         });
       } catch (clientErr) {
         console.warn("Client direct lookup failed, falling back to backend API...", clientErr);
-        setConnectionStatus("CORS/Connection blocked. Routing through API proxy...");
+        setConnectionStatus("Routing query through server-side proxy...");
         
         const proxyRes = await fetch(`/api/live-lookup?username=${encodeURIComponent(userToFind)}`);
         if (!proxyRes.ok) {
@@ -141,10 +178,21 @@ export default function Home() {
       };
 
       if (!scores) {
+        const customPrices = JSON.parse(localStorage.getItem("smg_market_database_v1") || "[]");
+        const customBenchmarks = JSON.parse(localStorage.getItem("smg_benchmark_tiers_v2") || "[]");
+        const customConstants = JSON.parse(localStorage.getItem("smg_grading_settings_v1") || "null");
+        const customItems = JSON.parse(localStorage.getItem("smg_items_db_v2") || "[]");
+
         const calcRes = await fetch("/api/grade/calculate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ player: normalizedPlayer })
+          body: JSON.stringify({ 
+            player: normalizedPlayer,
+            customPrices,
+            customBenchmarks,
+            customConstants,
+            customItems
+          })
         });
         if (!calcRes.ok) {
           const errData = await calcRes.json().catch(() => ({}));
@@ -178,6 +226,8 @@ export default function Home() {
           wealthScore: scores.wealthScore,
           powerScore: scores.powerScore,
           progressionScore: scores.progressScore,
+          overallScore: scores.overallScore,
+          levelTier: scores.levelTier,
           recommendedUpgrade: scores.upgradeAdvice.immediate ? `${scores.upgradeAdvice.immediate.name} Lv${scores.upgradeAdvice.immediate.level}` : "None",
           playerLevel: normalizedPlayer.level,
           playerPower: normalizedPlayer.powerRaw,
@@ -232,12 +282,23 @@ export default function Home() {
         errMsg = "Game server request timed out. The game server did not respond in time. Please try again or copy/paste your stats manually.";
       }
       setError(errMsg);
-      setLookupLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen text-white flex flex-col relative overflow-hidden font-sans bg-[#03050b]">
+      {/* Cinematic Blurred Parallax Background */}
+      <ParallaxBackground blur={8} brightness={0.35} saturate={0.7} opacity={0.8} />
+      {/* Light Dark Overlay to ensure text readability */}
+      <div className="absolute inset-0 bg-black/55 z-0 pointer-events-none" />
+      {/* Radial Vignette */}
+      <div 
+        className="absolute inset-0 pointer-events-none z-0"
+        style={{
+          background: "radial-gradient(circle, rgba(0,0,0,0) 40%, rgba(3,5,11,0.85) 100%)"
+        }}
+      />
+
       <ParticleBackground />
 
       {/* Decorative gradients */}
@@ -247,16 +308,13 @@ export default function Home() {
       {/* Top Navbar */}
       <header className="border-b border-white/[0.04] bg-[#070b13]/60 backdrop-blur-xl px-6 py-4 flex items-center justify-between z-20 sticky top-0">
         <div className="flex items-center gap-2">
-          <span className="font-black text-xs tracking-wider px-2 py-0.5 rounded bg-amber-500/25 border border-amber-500/35 text-amber-400">
+          <span className="font-black text-xs tracking-wider px-2 py-0.5 rounded bg-amber-500/25 border border-amber-500/35 text-amber-400 font-display">
             SM
           </span>
           <span className="text-white font-extrabold text-sm tracking-tight font-display">Grade</span>
         </div>
         
         <div className="flex items-center gap-6">
-          <Link href="/arcade" className="text-[10px] text-white/50 hover:text-amber-400 transition-colors font-black uppercase tracking-widest">
-            Arcade
-          </Link>
           <Link href="/compare" className="text-[10px] text-white/50 hover:text-amber-400 transition-colors font-black uppercase tracking-widest">
             Compare
           </Link>
@@ -266,103 +324,105 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero / Landing Grid */}
-      <main className="flex-1 z-10 relative">
-        
-        <section className="max-w-6xl mx-auto px-6 py-20 lg:py-32 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Left Hero Text */}
-          <div className="space-y-8 text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.04] bg-white/[0.01] text-[9px] uppercase tracking-widest text-amber-400 font-black font-display">
-              ⚔️ Version 3.4 Active
-            </div>
+      {/* Two Large Centered Cards */}
+      <main className="flex-1 z-10 relative flex flex-col items-center justify-center p-6 min-h-[calc(100vh-68px)]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl w-full">
+          {/* Left Card: SM Grade */}
+          <motion.div
+            whileHover={{ y: -8, scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            onClick={() => setDrawerOpen(true)}
+            className="group relative cursor-pointer rounded-2xl border border-white/[0.06] bg-[#0c1020]/45 p-8 glass-panel overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-all hover:border-amber-500/30 hover:shadow-[0_0_35px_rgba(245,158,11,0.12)] flex flex-col justify-between min-h-[220px]"
+          >
+            {/* Hover Glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/0 via-amber-500/[0.01] to-amber-500/[0.04] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
             
-            <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-none font-display text-white">
-              Definitive <br />
-              <span className="glow-text-gold">Companion</span>
-            </h1>
-
-            <p className="text-white/40 text-sm md:text-base leading-relaxed max-w-lg font-medium">
-              Unlock real-time metrics, gear score card grades, deterministic leader comparisons, and intelligent tactics with the official companion engine.
-            </p>
-
-            <div className="flex gap-4">
-              <button 
-                onClick={() => {
-                  setDrawerOpen(true);
-                }}
-                className="px-8 py-4 rounded-xl button-gold text-xs font-black tracking-widest cursor-pointer shadow-[0_0_30px_rgba(245,158,11,0.15)]"
-              >
-                Analyze stats
-              </button>
-              <Link 
-                href="/compare"
-                className="px-8 py-4 rounded-xl border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.03] text-xs font-black tracking-widest uppercase text-white/80 transition-all flex items-center justify-center cursor-pointer"
-              >
-                Compare accounts
-              </Link>
-            </div>
-          </div>
-
-          {/* Right Floating Weapons Visual */}
-          <div className="relative h-[300px] sm:h-[450px] flex items-center justify-center">
-            {/* Center golden circle glow */}
-            <div className="absolute w-64 h-64 rounded-full bg-amber-500/5 blur-[70px]" />
-            
-            {/* Left float card */}
-            <motion.div 
-              animate={{ y: [0, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-              className="absolute left-4 sm:left-12 top-6 p-5 w-44 rounded-2xl border border-white/[0.03] bg-[#0c1020] shadow-[0_8px_30px_rgba(0,0,0,0.6)] z-10 glass-panel"
-            >
-              <div className="text-amber-400 text-[8px] font-black uppercase tracking-widest">Legendary Weapon</div>
-              <div className="text-white font-extrabold text-xs mt-1">Horizon</div>
-              <div className="text-white/30 text-[9px] font-mono mt-0.5">Lv10 · 39.0B DMG</div>
-              <div className="w-full bg-amber-500/10 h-1 rounded-full mt-4 overflow-hidden">
-                <div className="w-full h-full bg-amber-500" />
+            <div className="space-y-4 relative z-10">
+              <div className="inline-flex w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 items-center justify-center text-amber-400 font-bold group-hover:border-amber-500/40 transition-colors">
+                ⚔️
               </div>
-            </motion.div>
-
-            {/* Right float card */}
-            <motion.div 
-              animate={{ y: [0, 10, 0] }}
-              transition={{ repeat: Infinity, duration: 6, ease: "easeInOut", delay: 1 }}
-              className="absolute right-4 sm:right-12 bottom-6 p-5 w-44 rounded-2xl border border-white/[0.03] bg-[#0c1020] shadow-[0_8px_30px_rgba(0,0,0,0.6)] z-10 glass-panel"
-            >
-              <div className="text-amber-500 text-[8px] font-black uppercase tracking-widest">Epic Shield</div>
-              <div className="text-white font-extrabold text-xs mt-1">Sunward Bulwark</div>
-              <div className="text-white/30 text-[9px] font-mono mt-0.5">Lv4 · 1.0x MULT</div>
-              <div className="w-full bg-[#ffd700]/10 h-1 rounded-full mt-4 overflow-hidden">
-                <div className="w-[40%] h-full bg-[#ffd700]" />
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* Feature Highlights section */}
-        <section className="border-t border-white/[0.03] bg-[#070b13]/25 py-20 px-6">
-          <div className="max-w-6xl mx-auto space-y-12">
-            <div className="text-center space-y-2">
-              <span className="text-amber-450 text-[9px] font-black tracking-widest uppercase font-display">System Core</span>
-              <h2 className="text-3xl font-black tracking-tight text-white font-display">Built for Champions</h2>
+              <h2 className="text-3xl font-black tracking-tight text-white font-display">
+                SM Grade
+              </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { title: "Tactical Analyzer", desc: "Grade stats instantly with fully deterministic algorithm scoring, checking items and weapon levels." },
-                { title: "Simulated Sandboxes", desc: "Test item changes dynamically. See exactly how stats will shift before investing resources." },
-                { title: "Interactive Timelines", desc: "Save logs history profiles locally to plot DPS progression growth curves over time." },
-              ].map((feat, idx) => (
-                <div key={idx} className="p-6 rounded-xl border border-white/[0.03] bg-[#070b13]/40 glass-panel">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/5 border border-amber-500/15 flex items-center justify-center text-xs text-amber-400 mb-4">
-                    ✦
-                  </div>
-                  <h3 className="text-sm font-black text-white font-display mb-1">{feat.title}</h3>
-                  <p className="text-white/40 text-xs leading-relaxed font-medium">{feat.desc}</p>
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-amber-400 mt-6 relative z-10 group-hover:text-amber-300 transition-colors">
+              Analyze Stats <span>→</span>
+            </div>
+          </motion.div>
+
+          {/* Right Card: SM Arcade */}
+          <Link href="/arcade" className="block group">
+            <motion.div
+              whileHover={{ y: -8, scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="relative rounded-2xl border border-white/[0.06] bg-[#0c1020]/45 p-8 glass-panel overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-all hover:border-blue-500/30 hover:shadow-[0_0_35px_rgba(59,130,246,0.12)] flex flex-col justify-between min-h-[220px]"
+            >
+              {/* Hover Glow */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-500/[0.01] to-blue-500/[0.04] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              
+              <div className="space-y-4 relative z-10">
+                <div className="inline-flex w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 items-center justify-center text-blue-400 font-bold group-hover:border-blue-500/40 transition-colors">
+                  👾
                 </div>
-              ))}
+                <div>
+                  <h2 className="text-3xl font-black tracking-tight text-white font-display">
+                    SM Arcade
+                  </h2>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-blue-400/85 font-mono mt-1">
+                    SM Revenge
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-400 mt-6 relative z-10 group-hover:text-blue-300 transition-colors">
+                Play Arcade <span>→</span>
+              </div>
+            </motion.div>
+          </Link>
+        </div>
+
+        {/* Discord Feedback / Bug Reports Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.4 }}
+          className="mt-8 w-full max-w-4xl flex justify-center"
+        >
+          <a
+            href="https://discord.com/users/1466250637476892794"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative w-full sm:w-auto flex items-center justify-between sm:justify-start gap-4 px-6 py-4 rounded-2xl border border-white/[0.08] bg-[#0c1020]/50 hover:bg-[#0c1020]/80 hover:border-[#5865F2]/50 backdrop-blur-xl transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.4)] hover:shadow-[0_0_35px_rgba(88,101,242,0.22)] cursor-pointer"
+          >
+            {/* Subtle glow on hover */}
+            <div className="absolute inset-0 bg-gradient-to-r from-[#5865F2]/0 via-[#5865F2]/[0.03] to-[#5865F2]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl pointer-events-none" />
+
+            <div className="flex items-center gap-3.5 relative z-10">
+              <div className="w-10 h-10 rounded-xl bg-[#5865F2]/15 border border-[#5865F2]/30 flex items-center justify-center text-[#5865F2] group-hover:bg-[#5865F2] group-hover:text-white transition-all duration-300 shadow-[0_0_15px_rgba(88,101,242,0.2)]">
+                <DiscordIcon className="w-5 h-5 fill-current" />
+              </div>
+              <div className="flex flex-col text-left">
+                <div className="flex items-center gap-2">
+                  <span className="text-white text-sm font-black font-display tracking-tight group-hover:text-white transition-colors">
+                    Discord Feedback
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-[#5865F2]/20 border border-[#5865F2]/30 text-[#8ea1e1] text-[9px] font-black uppercase tracking-wider font-mono">
+                    Direct DM
+                  </span>
+                </div>
+                <span className="text-white/45 text-[11px] font-medium tracking-wide group-hover:text-white/75 transition-colors">
+                  Bug Reports & Update Suggestions
+                </span>
+              </div>
             </div>
-          </div>
-        </section>
+
+            <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#8ea1e1] group-hover:text-white transition-colors pl-6 border-l border-white/5 relative z-10">
+              <span>Open DM</span>
+              <span className="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </a>
+        </motion.div>
       </main>
 
       {/* Drawer Overlay for Stats Input */}

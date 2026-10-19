@@ -1,0 +1,1172 @@
+/**
+ * SMGrade Arcade — Standalone Offline Room & Game Engine Service
+ * Replaces remote Colyseus MMO server and loadbalancer with 100% offline local state.
+ * Implements full persistence, authentic mob combat & enchants, cosmetic purchases,
+ * item & pet management, and resource controls.
+ */
+
+(function () {
+  console.log('[SMGrade Standalone Room] Initializing offline server simulation layer...');
+
+  // Safe fallback for pc.AppBase / pc.Application networkManager
+  const fallbackNM = {
+    isOnSwordMasters: true,
+    worldNumber: 1,
+    localInv: { level: 1, gold: 50000000, power: 2500, activeSkinColor: 0 }
+  };
+  if (window.pc) {
+    if (pc.AppBase) {
+      Object.defineProperty(pc.AppBase.prototype, 'networkManager', {
+        get() { return this._networkManager || fallbackNM; },
+        set(v) { this._networkManager = v; },
+        configurable: true
+      });
+    }
+    if (pc.Application) {
+      Object.defineProperty(pc.Application.prototype, 'networkManager', {
+        get() { return this._networkManager || fallbackNM; },
+        set(v) { this._networkManager = v; },
+        configurable: true
+      });
+    }
+  }
+
+  // --- 1. LOCAL COLYSEUS SCHEMA EMULATOR ---
+  class LocalSchemaMap {
+    constructor() {
+      this.items = {};
+      this.addListeners = [];
+      this.removeListeners = [];
+      this.changeListeners = [];
+    }
+
+    onAdd(cb) {
+      this.addListeners.push(cb);
+      for (const [k, v] of Object.entries(this.items)) {
+        try { cb(v, k); } catch (e) { console.warn('[SchemaMap onAdd Initial Error]:', e); }
+      }
+    }
+
+    onRemove(cb) {
+      this.removeListeners.push(cb);
+    }
+
+    onChange(cb) {
+      this.changeListeners.push(cb);
+    }
+
+    add(key, val) {
+      this.items[key] = val;
+      this.addListeners.forEach(cb => {
+        try { cb(val, key); } catch (e) { console.warn('[SchemaMap onAdd Error]:', e); }
+      });
+      if (val && val.onChange) {
+        val.onChange(() => {
+          this.changeListeners.forEach(cb => {
+            try { cb(val, key); } catch (e) {}
+          });
+        });
+      }
+    }
+
+    remove(key) {
+      const val = this.items[key];
+      delete this.items[key];
+      this.removeListeners.forEach(cb => {
+        try { cb(val, key); } catch (e) {}
+      });
+    }
+
+    get length() {
+      return Object.keys(this.items).length;
+    }
+
+    [Symbol.iterator]() {
+      const entries = Object.entries(this.items).map(([k, v]) => {
+        const entry = [k, v];
+        if (v && typeof v === 'object') {
+          Object.setPrototypeOf(entry, v);
+        }
+        return entry;
+      });
+      return entries[Symbol.iterator]();
+    }
+
+    filter(cb) {
+      return Array.from(this).filter(cb);
+    }
+  }
+
+  class LocalArraySchema {
+    constructor(initialItems = []) {
+      this.items = [...initialItems];
+      this.addListeners = [];
+      this.removeListeners = [];
+      this.changeListeners = [];
+    }
+
+    onAdd(cb) {
+      this.addListeners.push(cb);
+      this.items.forEach(item => {
+        try { cb(item); } catch (e) { console.warn('[ArraySchema onAdd Initial Error]:', e); }
+      });
+    }
+
+    onRemove(cb) {
+      this.removeListeners.push(cb);
+    }
+
+    onChange(cb) {
+      this.changeListeners.push(cb);
+    }
+
+    push(item) {
+      this.items.push(item);
+      this.addListeners.forEach(cb => {
+        try { cb(item); } catch (e) { console.warn('[ArraySchema onAdd push error]:', e); }
+      });
+      this.triggerChange();
+    }
+
+    remove(item) {
+      const idx = this.items.indexOf(item);
+      if (idx !== -1) {
+        this.items.splice(idx, 1);
+        this.removeListeners.forEach(cb => {
+          try { cb(item); } catch (e) {}
+        });
+        this.triggerChange();
+      }
+    }
+
+    triggerChange() {
+      this.changeListeners.forEach(cb => {
+        try { cb(); } catch (e) {}
+      });
+    }
+
+    get length() {
+      return this.items.length;
+    }
+
+    find(cb) {
+      return this.items.find(cb);
+    }
+
+    filter(cb) {
+      return this.items.filter(cb);
+    }
+
+    forEach(cb, thisArg) {
+      return this.items.forEach(cb, thisArg);
+    }
+
+    map(cb, thisArg) {
+      return this.items.map(cb, thisArg);
+    }
+
+    some(cb, thisArg) {
+      return this.items.some(cb, thisArg);
+    }
+
+    every(cb, thisArg) {
+      return this.items.every(cb, thisArg);
+    }
+
+    includes(item) {
+      return this.items.includes(item);
+    }
+
+    indexOf(item) {
+      return this.items.indexOf(item);
+    }
+
+    slice(start, end) {
+      return this.items.slice(start, end);
+    }
+
+    [Symbol.iterator]() {
+      return this.items[Symbol.iterator]();
+    }
+  }
+
+  class LocalEntitySchema {
+    constructor(data = {}) {
+      Object.assign(this, data);
+      this._listeners = {};
+      this._changeListeners = [];
+    }
+
+    listen(prop, cb) {
+      if (!this._listeners[prop]) this._listeners[prop] = [];
+      this._listeners[prop].push(cb);
+      if (this[prop] !== undefined) {
+        try {
+          cb(this[prop], undefined);
+        } catch (e) {
+          console.warn('[LocalEntitySchema listen initial dispatch error for', prop, ']:', e);
+        }
+      }
+    }
+
+    onChange(cb) {
+      this._changeListeners.push(cb);
+    }
+
+    set(prop, val) {
+      const prev = this[prop];
+      this[prop] = val;
+      if (this._listeners[prop]) {
+        this._listeners[prop].forEach(cb => {
+          try { cb(val, prev); } catch (e) {}
+        });
+      }
+      this._changeListeners.forEach(cb => {
+        try { cb(); } catch (e) {}
+      });
+    }
+  }
+
+  // --- 2. LOCAL PERSISTENT ARCADE STATE ---
+  const STORAGE_KEY = 'smgrade_arcade_profile';
+
+  function getLocalArcadeProfile() {
+    const defaultProfile = {
+      username: localStorage.getItem('arcade_username') || ('ArcadeHero_' + Math.floor(Math.random() * 899 + 100)),
+      level: 1,
+      experience: 0,
+      gold: 50000000,
+      power: 2500,
+      powerMultiplier: 1.0,
+      maxHealth: 100,
+      health: 100,
+      activeSwordType: 1, // Old Sword
+      activeSwordLevel: 1,
+      activeSwordEnchants: [],
+      activeShieldType: 1, // Wooden Shield
+      activeShieldLevel: 1,
+      activeShieldEnchants: [],
+      swords: [
+        { itemId: 'sword_starter_01', type: 1, level: 1, enchantments: [], isLocked: false }
+      ],
+      shields: [
+        { itemId: 'shield_starter_01', type: 1, level: 1, enchantments: [], isLocked: false }
+      ],
+      pets: [],
+      activePets: [],
+      ores: [],
+      // Authentic Default Starter Cosmetics (characteristic clothing & hair)
+      activeSkinColor: 0,
+      activeFace: 0,
+      activeHair: 1,
+      activeHelmet: 0,
+      activeTorso: 1,
+      activePant: 1,
+      activeShoe: 1,
+      ownedCosmetics: {
+        skinColors: [0],
+        faces: [0],
+        hairs: [1],
+        helmets: [],
+        torsos: [1],
+        pants: [1],
+        shoes: [1]
+      }
+    };
+
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return {
+          ...defaultProfile,
+          ...parsed,
+          ownedCosmetics: {
+            ...defaultProfile.ownedCosmetics,
+            ...(parsed.ownedCosmetics || {})
+          }
+        };
+      }
+    } catch (e) {
+      console.warn('[SMGrade State Load Error]:', e);
+    }
+    return defaultProfile;
+  }
+
+  function saveLocalArcadeProfile(profile) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+      if (profile.username) localStorage.setItem('arcade_username', profile.username);
+    } catch (e) {
+      console.warn('[SMGrade State Save Error]:', e);
+    }
+  }
+
+  window.getLocalArcadeProfile = getLocalArcadeProfile;
+  window.saveLocalArcadeProfile = saveLocalArcadeProfile;
+
+  // Number Formatter Helper (supports commas and multipliers like K, M, B, T, QT, QNT, etc.)
+  function parseFormattedNumber(val) {
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    if (val === null || val === undefined) return 0;
+    val = String(val).trim().toUpperCase().replace(/,/g, '');
+    const multipliers = {
+      'K': 1e3,
+      'M': 1e6,
+      'B': 1e9,
+      'T': 1e12,
+      'QD': 1e15,
+      'QT': 1e18,
+      'QNT': 1e18,
+      'SXT': 1e21,
+      'SPT': 1e24,
+      'OCT': 1e27,
+      'NNT': 1e30
+    };
+    for (const [suf, mult] of Object.entries(multipliers)) {
+      if (val.endsWith(suf)) {
+        const num = parseFloat(val.slice(0, -suf.length));
+        if (!isNaN(num)) return num * mult;
+      }
+    }
+    const direct = parseFloat(val);
+    return isNaN(direct) ? 0 : direct;
+  }
+  window.parseFormattedNumber = parseFormattedNumber;
+
+  // --- 3. STANDALONE LOCAL ROOM CLASS ---
+  class StandaloneLocalRoom {
+    constructor(networkManager) {
+      this.networkManager = networkManager;
+      this.sessionId = 'smgrade_player_local';
+      this.name = 'world_1';
+      this.profile = getLocalArcadeProfile();
+
+      this.state = {
+        players: new LocalSchemaMap(),
+        playerInventories: new LocalSchemaMap(),
+        enemies: new LocalSchemaMap(),
+        bestPlayersInventory: new LocalSchemaMap(),
+        listen: (key, cb) => {}
+      };
+
+      this.messageHandlers = {};
+      this.mobTickInterval = null;
+      this.connection = { isOpen: true };
+      window.standaloneRoom = this;
+    }
+
+    send(type, data) {
+      this.handleClientMessage(type, data);
+    }
+
+    onMessage(type, cb) {
+      this.messageHandlers[type] = cb;
+    }
+
+    onLeave(cb) {}
+    onError(cb) {}
+
+    // Bootstrap local player & world entities
+    initWorld() {
+      console.log('[SMGrade Standalone Room] Bootstrapping offline World 1 entities...');
+
+      // A. Spawn Local Player at EXACT CANONICAL WORLD 1 SPAWN: (2, -0.25, 50)
+      const spawnX = 2;
+      const spawnY = -0.25;
+      const spawnZ = 50;
+
+      const playerSchema = new LocalEntitySchema({
+        x: spawnX,
+        y: spawnY,
+        z: spawnZ,
+        rotationY: 0,
+        isRunning: false,
+        isInAir: false,
+        isAttacking: false,
+        isDisguised: false,
+        username: this.profile.username
+      });
+      this.state.players.add(this.sessionId, playerSchema);
+
+      // B. Setup Player Inventory Schema from Persistent Profile
+      const swordsArray = (this.profile.swords && this.profile.swords.length > 0)
+        ? this.profile.swords.map(s => this.createItemSchema(s, true))
+        : [this.createItemSchema({ itemId: 'sword_starter_01', type: this.profile.activeSwordType || 1, level: this.profile.activeSwordLevel || 1, enchantments: this.profile.activeSwordEnchants || [], isLocked: false }, true)];
+
+      const shieldsArray = (this.profile.shields && this.profile.shields.length > 0)
+        ? this.profile.shields.map(s => this.createItemSchema(s, false))
+        : [this.createItemSchema({ itemId: 'shield_starter_01', type: this.profile.activeShieldType || 1, level: this.profile.activeShieldLevel || 1, enchantments: this.profile.activeShieldEnchants || [], isLocked: false }, false)];
+
+      const petsArray = (this.profile.pets || []).map(p => this.createPetSchema(p));
+      const activePetsArray = (this.profile.activePets || []).map(ap => new LocalEntitySchema(ap));
+      const oresArray = (this.profile.ores || []).map(o => this.createOreSchema(o));
+
+      const activeSwordItem = swordsArray.find(s => s.type === this.profile.activeSwordType) || swordsArray[0];
+      const activeShieldItem = shieldsArray.find(s => s.type === this.profile.activeShieldType) || shieldsArray[0];
+
+      const swordsSchema = new LocalArraySchema(swordsArray);
+      const shieldsSchema = new LocalArraySchema(shieldsArray);
+      const petsSchema = new LocalArraySchema(petsArray);
+      const activePetsSchema = new LocalArraySchema(activePetsArray);
+      const oresSchema = new LocalArraySchema(oresArray);
+
+      // Cosmetic Ownership Schemas
+      const skinColorsSchema = new LocalArraySchema(this.profile.ownedCosmetics.skinColors || [0]);
+      const facesSchema = new LocalArraySchema(this.profile.ownedCosmetics.faces || [0]);
+      const hairsSchema = new LocalArraySchema(this.profile.ownedCosmetics.hairs || [1]);
+      const helmetsSchema = new LocalArraySchema(this.profile.ownedCosmetics.helmets || []);
+      const torsosSchema = new LocalArraySchema(this.profile.ownedCosmetics.torsos || [1]);
+      const pantsSchema = new LocalArraySchema(this.profile.ownedCosmetics.pants || [1]);
+      const shoesSchema = new LocalArraySchema(this.profile.ownedCosmetics.shoes || [1]);
+
+      const invSchema = new LocalEntitySchema({
+        _id: 'local_inv_01',
+        health: this.profile.health || 100,
+        maxHealth: this.profile.maxHealth || 100,
+        level: this.profile.level || 1,
+        experience: this.profile.experience || 0,
+        gold: this.profile.gold || 50000000,
+        power: this.profile.power || 2500,
+        powerMultiplier: this.profile.powerMultiplier || 1.0,
+        activeSword: activeSwordItem,
+        activeShield: activeShieldItem,
+        swords: swordsSchema,
+        shields: shieldsSchema,
+        pets: petsSchema,
+        activePets: activePetsSchema,
+        books: new LocalArraySchema(),
+        storage: new LocalArraySchema(),
+        ores: oresSchema,
+        activeBooks: new LocalArraySchema(),
+        canClaimChestTypes: new LocalArraySchema(),
+        skinColors: skinColorsSchema,
+        faces: facesSchema,
+        hairs: hairsSchema,
+        helmets: helmetsSchema,
+        torsos: torsosSchema,
+        pants: pantsSchema,
+        shoes: shoesSchema,
+        // Active cosmetics
+        activeSkinColor: this.profile.activeSkinColor !== undefined ? this.profile.activeSkinColor : 0,
+        activeFace: this.profile.activeFace !== undefined ? this.profile.activeFace : 0,
+        activeHair: this.profile.activeHair !== undefined ? this.profile.activeHair : 1,
+        activeHelmet: this.profile.activeHelmet !== undefined ? this.profile.activeHelmet : 0,
+        activeTorso: this.profile.activeTorso !== undefined ? this.profile.activeTorso : 1,
+        activePant: this.profile.activePant !== undefined ? this.profile.activePant : 1,
+        activeShoe: this.profile.activeShoe !== undefined ? this.profile.activeShoe : 1,
+        helmetEnabled: false,
+        isMod: false,
+        isVip: true,
+        clanName: null,
+        questStatus: new LocalArraySchema(),
+        dailyQuestList: { onChange: () => {}, quests: new LocalArraySchema() }
+      });
+
+      this.state.playerInventories.add(this.sessionId, invSchema);
+
+      // C. Spawn Authentic World 1 Mobs at Canonical Scene EnemyPositions
+      this.spawnWorld1Mobs();
+
+      // D. Start Mob AI & Leashed Wander Loop
+      this.startMobAITick();
+
+      // E. Clean up Online-Only Elements and Keyboard-Help Controls
+      this.cleanupOnlineOnlyElements();
+
+      // F. Initial HUD Stats Display
+      setTimeout(() => {
+        if (this.networkManager.experienceBarLevelText?.element) {
+          this.networkManager.experienceBarLevelText.element.text = "Level " + (this.profile.level || 1);
+        }
+        if (this.networkManager.goldStatText?.element) {
+          this.networkManager.goldStatText.element.text = numRound(this.profile.gold || 50000000);
+        }
+        if (this.networkManager.powerStatText?.element) {
+          this.networkManager.powerStatText.element.text = numRound(this.profile.power || 2500);
+        }
+      }, 500);
+    }
+
+    createItemSchema(data, isSword) {
+      const enchants = (data.enchantments || []).map(e => new LocalEntitySchema({
+        type: e.type,
+        level: e.level,
+        name: e.name || ''
+      }));
+      return new LocalEntitySchema({
+        itemId: data.itemId || ((isSword ? 'sword_' : 'shield_') + Date.now() + '_' + Math.floor(Math.random() * 1000)),
+        type: data.type || 1,
+        level: data.level || 1,
+        enchantments: new LocalArraySchema(enchants),
+        isLocked: !!data.isLocked,
+        isSword: !!isSword
+      });
+    }
+
+    createPetSchema(data) {
+      const pid = data.petId || ('pet_' + Date.now() + '_' + Math.floor(Math.random() * 1000));
+      return new LocalEntitySchema({
+        petId: pid,
+        itemId: data.itemId || pid,
+        type: data.type || 0,
+        level: data.level || 1,
+        isLocked: !!data.isLocked
+      });
+    }
+
+    createOreSchema(data) {
+      return new LocalEntitySchema({
+        oreId: data.oreId || ('ore_' + Date.now() + '_' + Math.floor(Math.random() * 1000)),
+        type: data.type !== undefined ? data.type : 0,
+        isMelted: !!data.isMelted,
+        amount: data.amount || 1,
+        isLocked: !!data.isLocked
+      });
+    }
+
+    spawnWorld1Mobs() {
+      // 16 Authentic World 1 positions directly from scene 1719221.json (EnemyPositions)
+      // Slime Meadows (Roundhead slimes, type 0, maxHP 100)
+      const meadowSpawns = [
+        { id: 'mob_0', type: 0, x: 10.12, y: -0.58, z: -96.37, hp: 100, name: 'Roundhead' },
+        { id: 'mob_1', type: 0, x: 23.68, y: -0.58, z: -87.29, hp: 100, name: 'Roundhead' },
+        { id: 'mob_2', type: 0, x: 22.93, y: -0.58, z: -102.67, hp: 100, name: 'Roundhead' },
+        { id: 'mob_3', type: 0, x: 27.40, y: -0.58, z: -116.05, hp: 100, name: 'Roundhead' },
+        { id: 'mob_4', type: 0, x: 11.16, y: -0.58, z: -128.46, hp: 100, name: 'Roundhead' },
+        { id: 'mob_5', type: 0, x: 3.76, y: -0.58, z: -111.08, hp: 100, name: 'Roundhead' },
+        { id: 'mob_6', type: 0, x: -31.58, y: -0.58, z: -107.98, hp: 100, name: 'Roundhead' },
+        { id: 'mob_7', type: 0, x: -39.78, y: -0.58, z: -121.54, hp: 100, name: 'Roundhead' },
+        { id: 'mob_8', type: 0, x: -30.00, y: -0.58, z: -132.37, hp: 100, name: 'Roundhead' },
+        { id: 'mob_9', type: 0, x: -21.94, y: -0.58, z: -119.26, hp: 100, name: 'Roundhead' },
+        { id: 'mob_10', type: 0, x: -46.60, y: -0.58, z: -108.50, hp: 100, name: 'Roundhead' }
+      ];
+
+      // Upper Forest Mountain Plateau (Forest Orcs, type 1, maxHP 2500)
+      const plateauSpawns = [
+        { id: 'mob_11', type: 1, x: 10.81, y: 6.49, z: -178.31, hp: 2500, name: 'Forest Orc' },
+        { id: 'mob_12', type: 1, x: -19.12, y: 6.49, z: -217.03, hp: 2500, name: 'Forest Orc' },
+        { id: 'mob_13', type: 1, x: 20.24, y: 6.49, z: -202.83, hp: 2500, name: 'Forest Orc' },
+        { id: 'mob_14', type: 1, x: 1.46, y: 6.49, z: -222.95, hp: 2500, name: 'Forest Orc' },
+        { id: 'mob_15', type: 1, x: 2.25, y: 6.49, z: -208.74, hp: 2500, name: 'Forest Orc' }
+      ];
+
+      const allSpawns = [...meadowSpawns, ...plateauSpawns];
+
+      allSpawns.forEach(spawn => {
+        const mob = new LocalEntitySchema({
+          enemyId: spawn.id,
+          type: spawn.type,
+          x: spawn.x,
+          y: spawn.y,
+          z: spawn.z,
+          rotationY: Math.random() * 360,
+          health: spawn.hp,
+          maxHealth: spawn.hp,
+          isBurning: false,
+          isFreezing: false,
+          homeX: spawn.x,
+          homeY: spawn.y,
+          homeZ: spawn.z
+        });
+        this.state.enemies.add(spawn.id, mob);
+      });
+
+      console.log(`[SMGrade Standalone Room] Spawned ${allSpawns.length} authentic World 1 combat mobs in their designated zones.`);
+    }
+
+    startMobAITick() {
+      if (this.mobTickInterval) clearInterval(this.mobTickInterval);
+
+      this.mobTickInterval = setInterval(() => {
+        const playerEnt = this.networkManager.currentPlayerEntity;
+        if (!playerEnt) return;
+        const playerPos = playerEnt.getPosition();
+        const playerCtrl = playerEnt.script?.playerController;
+
+        for (const [id, mob] of Object.entries(this.state.enemies.items)) {
+          if (mob.health <= 0) continue;
+          const mobEnt = this.networkManager.enemies[id];
+          if (!mobEnt) continue;
+          const ec = mobEnt.script?.enemyController;
+
+          const dx = playerPos.x - mob.x;
+          const dz = playerPos.z - mob.z;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          const distFromHome = Math.hypot(mob.x - mob.homeX, mob.z - mob.homeZ);
+          const isNorthOfBoundary = mob.z > -60;
+
+          // Proximity trigger: any mob in attack range is valid to hit
+          if (ec) {
+            if (dist <= 6.0 && mob.health > 0 && !ec.isDied) {
+              ec.canGetDamage = true;
+              ec.targetPlayer = playerEnt;
+              if (ec.ring) ec.ring.enabled = true;
+              if (playerCtrl && !playerCtrl.nearEnemies.includes(ec)) {
+                playerCtrl.nearEnemies.push(ec);
+              }
+            } else if (dist > 6.5) {
+              ec.canGetDamage = false;
+              if (ec.ring) ec.ring.enabled = false;
+              if (playerCtrl) {
+                const idx = playerCtrl.nearEnemies.indexOf(ec);
+                if (idx !== -1) playerCtrl.nearEnemies.splice(idx, 1);
+              }
+            }
+          }
+
+          // Aggro: player is in combat area (z < -65) and within 10 units
+          if (dist < 10 && dist > 2.0 && playerPos.z < -60 && distFromHome < 14 && !isNorthOfBoundary) {
+            const speed = mob.isFreezing ? 0.11 : 0.22; // Freeze slows down speed
+            mob.x += (dx / dist) * speed;
+            mob.z += (dz / dist) * speed;
+            mob.rotationY = Math.atan2(dx, dz) * (180 / Math.PI);
+            mob.set('rotationY', mob.rotationY);
+          } else if (dist <= 2.2 && playerPos.z < -60) {
+            // Trigger attack animation and hit player
+            if (ec && !ec.canDamage && !ec.isDied && mob.health > 0) {
+              ec.targetPlayer = playerEnt;
+              ec.attack(id);
+            }
+          } else {
+            // Return home or gentle wander
+            if (distFromHome > 4.5 || isNorthOfBoundary) {
+              const backDx = mob.homeX - mob.x;
+              const backDz = mob.homeZ - mob.z;
+              const backDist = Math.hypot(backDx, backDz);
+              if (backDist > 0.1) {
+                const returnSpeed = 0.25;
+                mob.x += (backDx / backDist) * returnSpeed;
+                mob.z += (backDz / backDist) * returnSpeed;
+                mob.rotationY = Math.atan2(backDx, backDz) * (180 / Math.PI);
+                mob.set('rotationY', mob.rotationY);
+              }
+            } else {
+              if (Math.random() < 0.05) {
+                const wanderAngle = Math.random() * Math.PI * 2;
+                const wanderDist = Math.random() * 1.8;
+                mob.x = mob.homeX + Math.cos(wanderAngle) * wanderDist;
+                mob.z = mob.homeZ + Math.sin(wanderAngle) * wanderDist;
+                if (mob.z > -65) mob.z = -65;
+                mob.rotationY = wanderAngle * (180 / Math.PI);
+                mob.set('rotationY', mob.rotationY);
+              }
+            }
+          }
+        }
+      }, 150);
+    }
+
+    handleClientMessage(type, data) {
+      const inv = this.state.playerInventories.items[this.sessionId];
+
+      // 1. COMBAT & DAMAGE (with authentic enchants)
+      if (type === 'Client:EnemyController:checkDamage') {
+        const mob = this.state.enemies.items[data.enemyId];
+        if (!mob || mob.health <= 0) return;
+
+        const playerCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
+        const activeSword = inv?.activeSword;
+        const activeSwordType = activeSword?.type || 1;
+        const activeSwordLevel = activeSword?.level || 1;
+        const swordsCatalog = window.SWORDMASTERS_SWORDS || (window.StaticData && StaticData.swords) || [];
+        const swordData = swordsCatalog[activeSwordType] || { damage: 10 };
+
+        // Base damage calculation
+        const baseDmg = swordData.damage || 10;
+        const powerMult = inv?.powerMultiplier || 1.0;
+        const levelMult = activeSwordLevel;
+        let finalDamage = Math.max(1, Math.round(baseDmg * levelMult * powerMult));
+
+        // Evaluate sword enchantments
+        const swordEnchants = activeSword?.enchantments?.items || [];
+        const flame = swordEnchants.find(e => e.type === 0 || e.name === 'Flame');
+        const freeze = swordEnchants.find(e => e.type === 3 || e.name === 'Freeze');
+        const looting = swordEnchants.find(e => e.type === 2 || e.name === 'Looting');
+
+        // Flame effect
+        if (flame && flame.level > 0) {
+          mob.set('isBurning', true);
+          finalDamage += Math.round(finalDamage * 0.25 * flame.level);
+          setTimeout(() => { mob.set('isBurning', false); }, 3000);
+        }
+
+        // Freeze effect
+        if (freeze && freeze.level > 0) {
+          mob.set('isFreezing', true);
+          setTimeout(() => { mob.set('isFreezing', false); }, 3000);
+        }
+
+        mob.health = Math.max(0, mob.health - finalDamage);
+        mob.set('health', mob.health);
+
+        const mobEnt = this.networkManager.enemies[data.enemyId];
+        const ec = mobEnt?.script?.enemyController;
+
+        // Looting coin drop multiplier
+        let coinDropCount = 3;
+        let coinValue = 50;
+        if (looting && looting.level > 0) {
+          coinDropCount = Math.round(3 * (1 + looting.level * 0.5));
+          coinValue = Math.round(50 * (1 + looting.level * 0.5));
+        }
+
+        // Fire Server:EnemyController:getDamage to trigger authentic animations, particles, popping text & sound
+        this.networkManager.app.fire("Server:EnemyController:getDamage", data.enemyId, finalDamage, true, coinDropCount, coinValue, finalDamage);
+
+        // Mob Defeated
+        if (mob.health <= 0) {
+          const goldAward = coinValue * coinDropCount;
+          this.networkManager.goldAmount = (this.networkManager.goldAmount || 0) + goldAward;
+          inv.set('gold', this.networkManager.goldAmount);
+          if (this.networkManager.goldStatText?.element) {
+            this.networkManager.goldStatText.element.text = numRound(this.networkManager.goldAmount);
+          }
+          this.networkManager.app.fire('enemyDied', mob.type);
+
+          // Persist updated gold
+          this.profile.gold = this.networkManager.goldAmount;
+          saveLocalArcadeProfile(this.profile);
+
+          // Respawn after 5 seconds at home position
+          setTimeout(() => {
+            mob.health = mob.maxHealth;
+            mob.x = mob.homeX;
+            mob.y = mob.homeY;
+            mob.z = mob.homeZ;
+            mob.set('health', mob.maxHealth);
+            if (mobEnt) {
+              mobEnt.setPosition(mob.homeX, mob.homeY, mob.homeZ);
+              if (ec) {
+                ec.hp = mob.maxHealth;
+                ec.isDied = false;
+                ec.canDamage = false;
+                ec.canDropCoin = false;
+                if (ec.enemyModel) ec.enemyModel.enabled = true;
+                if (ec.healthBar) ec.healthBar.setup();
+              }
+            }
+          }, 5000);
+        }
+      }
+
+      // 1B. ENEMY ATTACK HIT PLAYER (Damage player, update healthbar, trigger Thorns)
+      else if (type === 'Client:EnemyController:playerGotDamage') {
+        const mob = this.state.enemies.items[data.enemyId];
+        if (!mob || mob.health <= 0 || !inv) return;
+
+        const mobEnt = this.networkManager.enemies[data.enemyId];
+        const enemyBaseDmg = mob.type === 1 ? 45 : 12;
+
+        const activeShield = inv.activeShield;
+        const shieldType = activeShield?.type || 1;
+        const shieldLevel = activeShield?.level || 1;
+        const shieldsCatalog = window.SWORDMASTERS_SHIELDS || (window.StaticData && StaticData.shields) || [];
+        const shieldData = shieldsCatalog[shieldType] || { damageProtection: 100 };
+        const prot = (shieldData.damageProtection || 100) * shieldLevel;
+
+        const damageReduction = Math.min(0.85, prot / (prot + 200));
+        const damageTaken = Math.max(1, Math.round(enemyBaseDmg * (1 - damageReduction)));
+
+        const currentHealth = inv.health !== undefined ? inv.health : 100;
+        const newHealth = Math.max(0, currentHealth - damageTaken);
+        inv.set('health', newHealth);
+        this.profile.health = newHealth;
+
+        const playerEnt = this.networkManager.currentPlayerEntity;
+        if (playerEnt && mobEnt) {
+          const kb = playerEnt.getPosition().clone().sub(mobEnt.getPosition()).mul(new pc.Vec3(4, 1, 4));
+          if (playerEnt.script?.playerController) {
+            playerEnt.script.playerController.getDamage(kb);
+          }
+        }
+
+        // Shield Thorns Retaliation
+        const shieldEnchants = activeShield?.enchantments?.items || [];
+        const thorns = shieldEnchants.find(e => e.type === 1 || e.name === 'Thorns');
+        if (thorns && thorns.level > 0) {
+          const thornsDmg = Math.round(25 * thorns.level);
+          mob.health = Math.max(0, mob.health - thornsDmg);
+          mob.set('health', mob.health);
+          this.networkManager.app.fire("Server:EnemyController:getDamage", data.enemyId, thornsDmg, true, 1, 10, thornsDmg);
+        }
+
+        // Respawn if health depleted
+        if (newHealth <= 0) {
+          setTimeout(() => {
+            const maxHp = inv.maxHealth || 100;
+            inv.set('health', maxHp);
+            this.profile.health = maxHp;
+            if (playerEnt) {
+              playerEnt.setPosition(2, -0.25, 50);
+              if (playerEnt.script?.playerController) {
+                playerEnt.script.playerController.hp = maxHp;
+              }
+            }
+          }, 1500);
+        }
+      }
+
+      // 2. WEAPON EQUIPMENT SWITCHING
+      else if (type === 'Client:SlotController:equipOrUnequipWeapon') {
+        if (!inv) return;
+
+        if (data.isSword) {
+          const swordItem = inv.swords.find(s => s.itemId === data.itemId);
+          if (swordItem && data.equip) {
+            inv.activeSword.set('type', swordItem.type);
+            inv.activeSword.set('level', swordItem.level);
+            inv.activeSword.set('itemId', swordItem.itemId);
+            inv.activeSword.set('enchantments', swordItem.enchantments);
+            inv.set('activeSword', inv.activeSword);
+            this.profile.activeSwordType = swordItem.type;
+            this.profile.activeSwordLevel = swordItem.level;
+            this.profile.activeSwordEnchants = swordItem.enchantments.items || [];
+            saveLocalArcadeProfile(this.profile);
+          }
+        } else {
+          const shieldItem = inv.shields.find(s => s.itemId === data.itemId);
+          if (shieldItem && data.equip) {
+            inv.activeShield.set('type', shieldItem.type);
+            inv.activeShield.set('level', shieldItem.level);
+            inv.activeShield.set('itemId', shieldItem.itemId);
+            inv.activeShield.set('enchantments', shieldItem.enchantments);
+            inv.set('activeShield', inv.activeShield);
+            this.profile.activeShieldType = shieldItem.type;
+            this.profile.activeShieldLevel = shieldItem.level;
+            this.profile.activeShieldEnchants = shieldItem.enchantments.items || [];
+            saveLocalArcadeProfile(this.profile);
+          }
+        }
+      }
+
+      // 3. ITEM SELLING
+      else if (type === 'Client:InventoryController:sellItem') {
+        if (!inv) return;
+        const swordsCatalog = window.SWORDMASTERS_SWORDS || (window.StaticData && StaticData.swords) || [];
+        const shieldsCatalog = window.SWORDMASTERS_SHIELDS || (window.StaticData && StaticData.shields) || [];
+
+        if (data.isSword) {
+          const idx = inv.swords.items.findIndex(s => s.itemId === data.itemId);
+          if (idx !== -1) {
+            const item = inv.swords.items[idx];
+            const meta = swordsCatalog[item.type] || { priceGold: 100 };
+            const sellPrice = Math.round((meta.priceGold || 100) * 0.5);
+            inv.swords.items.splice(idx, 1);
+            inv.swords.triggerChange();
+            inv.set('gold', (inv.gold || 0) + sellPrice);
+            this.networkManager.goldAmount = inv.gold;
+            if (this.networkManager.goldStatText?.element) {
+              this.networkManager.goldStatText.element.text = numRound(inv.gold);
+            }
+            this.persistInventory();
+          }
+        } else {
+          const idx = inv.shields.items.findIndex(s => s.itemId === data.itemId);
+          if (idx !== -1) {
+            const item = inv.shields.items[idx];
+            const meta = shieldsCatalog[item.type] || { priceGold: 100 };
+            const sellPrice = Math.round((meta.priceGold || 100) * 0.5);
+            inv.shields.items.splice(idx, 1);
+            inv.shields.triggerChange();
+            inv.set('gold', (inv.gold || 0) + sellPrice);
+            this.networkManager.goldAmount = inv.gold;
+            if (this.networkManager.goldStatText?.element) {
+              this.networkManager.goldStatText.element.text = numRound(inv.gold);
+            }
+            this.persistInventory();
+          }
+        }
+      }
+
+      // 4. COSMETICS PURCHASE & EQUIPPING (Phase 11)
+      else if (type === 'Client:CustomizeController:buyCustomize') {
+        if (!inv) return;
+        const itemType = data.itemType; // 0: skinColor, 1: face, 2: hair, 3: helmet, 4: torso, 5: pant, 6: shoe
+        const cosmeticId = data.type;
+
+        // Map itemType to schema array
+        const schemaMap = {
+          0: { prop: 'skinColors', activeProp: 'activeSkinColor', event: 'CustomizeSlotController:boughtNewSkinColor' },
+          1: { prop: 'faces', activeProp: 'activeFace', event: 'CustomizeSlotController:boughtNewFaceType' },
+          2: { prop: 'hairs', activeProp: 'activeHair', event: 'CustomizeSlotController:boughtNewHair' },
+          3: { prop: 'helmets', activeProp: 'activeHelmet', event: 'BlacksmithItemController:boughtNewHelmet' },
+          4: { prop: 'torsos', activeProp: 'activeTorso', event: 'BlacksmithItemController:boughtNewTorso' },
+          5: { prop: 'pants', activeProp: 'activePant', event: 'BlacksmithItemController:boughtNewPant' },
+          6: { prop: 'shoes', activeProp: 'activeShoe', event: 'BlacksmithItemController:boughtNewShoe' }
+        };
+
+        const target = schemaMap[itemType];
+        if (!target) return;
+
+        // Deduct price if not already owned
+        const ownedArray = inv[target.prop];
+        if (ownedArray && !ownedArray.items.includes(cosmeticId)) {
+          ownedArray.push(cosmeticId);
+          if (!this.profile.ownedCosmetics[target.prop].includes(cosmeticId)) {
+            this.profile.ownedCosmetics[target.prop].push(cosmeticId);
+          }
+        }
+
+        // Equip the cosmetic
+        inv.set(target.activeProp, cosmeticId);
+        this.profile[target.activeProp] = cosmeticId;
+        saveLocalArcadeProfile(this.profile);
+
+        // Notify client controllers
+        this.networkManager.app.fire(target.event, cosmeticId);
+        console.log(`[SMGrade Standalone] Cosmetic purchased and equipped: ${target.activeProp} = ${cosmeticId}`);
+      }
+    }
+
+    persistInventory() {
+      const inv = this.state.playerInventories.items[this.sessionId];
+      if (!inv) return;
+
+      this.profile.swords = inv.swords.items.map(s => ({
+        itemId: s.itemId,
+        type: s.type,
+        level: s.level,
+        enchantments: (s.enchantments.items || []).map(e => ({ type: e.type, level: e.level, name: e.name })),
+        isLocked: s.isLocked
+      }));
+
+      this.profile.shields = inv.shields.items.map(s => ({
+        itemId: s.itemId,
+        type: s.type,
+        level: s.level,
+        enchantments: (s.enchantments.items || []).map(e => ({ type: e.type, level: e.level, name: e.name })),
+        isLocked: s.isLocked
+      }));
+
+      this.profile.pets = inv.pets.items.map(p => ({
+        itemId: p.itemId || p.petId,
+        petId: p.petId || p.itemId,
+        type: p.type,
+        level: p.level || 1,
+        isLocked: !!p.isLocked
+      }));
+
+      this.profile.ores = inv.ores.items.map(o => ({
+        oreId: o.oreId,
+        type: o.type,
+        isMelted: o.isMelted,
+        amount: o.amount,
+        isLocked: o.isLocked
+      }));
+
+      this.profile.gold = inv.gold;
+      this.profile.power = inv.power;
+      this.profile.level = inv.level;
+
+      saveLocalArcadeProfile(this.profile);
+    }
+
+    cleanupOnlineOnlyElements() {
+      const app = this.networkManager.app;
+      if (!app || !app.root) return;
+
+      // 1. Completely remove and disable ESC Menu (Requirement 9)
+      const settingsBtn = app.root.findByName('SettingsButton');
+      if (settingsBtn) {
+        settingsBtn.enabled = false;
+        if (settingsBtn.button) settingsBtn.button.active = false;
+      }
+
+      const gameUI = app.root.findByName('GameUI');
+      if (gameUI && gameUI.script && gameUI.script.menuController) {
+        const mc = gameUI.script.menuController;
+        mc.enableDisableMenu = function () { /* suppressed in standalone */ };
+        if (mc.menuUI) mc.menuUI.enabled = false;
+        if (mc.settingsPanel) mc.settingsPanel.enabled = false;
+        if (mc.changePasswordPanel) mc.changePasswordPanel.enabled = false;
+        if (mc.buyVIPButton) mc.buyVIPButton.enabled = false;
+      }
+      if (window.MenuController) {
+        window.MenuController.prototype.enableDisableMenu = function () { /* suppressed */ };
+      }
+
+      // 2. Disable Trade World, Clan World, VIP promotions, and online leaderboards
+      const onlineEntities = [
+        'TradePortal',
+        'ClanButton', 'ClanNPC', 'WaitingForPlayersText',
+        'GiftVIP', 'BuyVIP', 'BuyVIPButton', 'VipMaker', 'VIPController', 'Board',
+        'LeaderArea', 'LeaderArea2', 'LeaderboardEnabler',
+        'KillScoreboard', 'KillScoreboard2'
+      ];
+
+      onlineEntities.forEach(name => {
+        const ent = app.root.findByName(name);
+        if (ent) {
+          ent.enabled = false;
+          if (ent.collision) ent.collision.enabled = false;
+          console.log(`[SMGrade Standalone Room] Disabled online-only entity: ${name}`);
+        }
+      });
+
+      const vipNpc = app.root.findByGuid('c694788b-21f6-4805-88ea-c6d94f06bf2a');
+      if (vipNpc) {
+        vipNpc.enabled = false;
+        if (vipNpc.collision) vipNpc.collision.enabled = false;
+      }
+      const vipBoard = app.root.findByGuid('164a74d0-2164-4b11-86e6-429efe85131e');
+      if (vipBoard) {
+        vipBoard.enabled = false;
+        if (vipBoard.collision) vipBoard.collision.enabled = false;
+      }
+
+      // 3. Keyboard-Help section cleanup: Retain ONLY I, P, T. Remove ESC, Y, U, Clan
+      const buttonsGroup = app.root.findByName('ButtonsGroup');
+      if (buttonsGroup && buttonsGroup.children) {
+        buttonsGroup.children.forEach(btn => {
+          if (btn.name === 'SettingsButton') {
+            btn.enabled = false;
+            if (btn.button) btn.button.active = false;
+          } else if (btn.name === 'DailyQuestButton') {
+            btn.enabled = false;
+          } else if (btn.name === 'FriendListButton') {
+            btn.enabled = false;
+          } else if (btn.name === 'ClanButton') {
+            btn.enabled = false;
+          }
+        });
+        console.log('[SMGrade Standalone Room] Keyboard-help section configured: only I, P, T retained.');
+      }
+    }
+  }
+
+  // --- 4. STANDALONE GLOBAL HELPER API ---
+
+  // Add Item to Inventory (Requirement 3 & 5: NEVER auto-equip)
+  window.addStandaloneItem = function (opts) {
+    const room = window.standaloneRoom;
+    if (!room) return;
+    const inv = room.state.playerInventories.items[room.sessionId];
+    if (!inv) return;
+
+    const isSword = opts.isSword !== false;
+    const itemSchema = room.createItemSchema({
+      type: opts.type !== undefined ? opts.type : 1,
+      level: opts.level || 1,
+      enchantments: opts.enchantments || [],
+      isLocked: false
+    }, isSword);
+
+    if (isSword) {
+      inv.swords.push(itemSchema);
+    } else {
+      inv.shields.push(itemSchema);
+    }
+
+    room.persistInventory();
+    if (room.networkManager?.inventoryController) {
+      room.networkManager.items[itemSchema.itemId] = itemSchema;
+      room.networkManager.inventoryController.sortInventory();
+    }
+    console.log(`[SMGrade Standalone API] Stored ${isSword ? 'sword' : 'shield'} type ${opts.type} level ${opts.level} in inventory. Equipped item unchanged.`);
+    return itemSchema;
+  };
+
+  // Add Pet to Inventory (Requirement 4 & 5: NEVER auto-equip or auto-summon)
+  window.addStandalonePet = function (opts) {
+    const room = window.standaloneRoom;
+    if (!room) return;
+    const inv = room.state.playerInventories.items[room.sessionId];
+    if (!inv) return;
+
+    const count = Math.max(1, parseInt(opts.amount, 10) || 1);
+    const petType = opts.type !== undefined ? opts.type : 0;
+    let lastPetSchema = null;
+
+    for (let i = 0; i < count; i++) {
+      const petSchema = room.createPetSchema({
+        type: petType,
+        level: 1,
+        isLocked: false
+      });
+
+      inv.pets.push(petSchema);
+      if (room.networkManager) {
+        room.networkManager.petItems[petSchema.itemId] = petSchema;
+      }
+      lastPetSchema = petSchema;
+    }
+
+    room.persistInventory();
+    if (room.networkManager?.petUIController) {
+      room.networkManager.petUIController.sortInventory();
+    }
+    console.log(`[SMGrade Standalone API] Stored ${count}x pet type ${petType} in pet inventory. Active pets unchanged.`);
+    return lastPetSchema;
+  };
+
+  // Add Ore (Phase 8)
+  window.addStandaloneOre = function (opts) {
+    const room = window.standaloneRoom;
+    if (!room) return;
+    const inv = room.state.playerInventories.items[room.sessionId];
+    if (!inv) return;
+
+    const oreSchema = room.createOreSchema({
+      type: opts.type !== undefined ? opts.type : 0,
+      isMelted: !!opts.isMelted,
+      amount: opts.amount || 1,
+      isLocked: false
+    });
+
+    inv.ores.push(oreSchema);
+    room.persistInventory();
+    console.log(`[SMGrade Standalone API] Added ore type ${opts.type} (melted: ${opts.isMelted}) x${opts.amount}.`);
+    return oreSchema;
+  };
+
+  // Edit Resources (Requirement 6 & 7)
+  window.setStandaloneResource = function (type, val) {
+    const room = window.standaloneRoom;
+    if (!room) return;
+    const inv = room.state.playerInventories.items[room.sessionId];
+    if (!inv) return;
+
+    const num = parseFormattedNumber(val);
+    if (type === 'gold') {
+      inv.set('gold', num);
+      room.networkManager.goldAmount = num;
+      if (room.networkManager.goldStatText?.element) {
+        room.networkManager.goldStatText.element.text = numRound(num);
+      }
+      room.profile.gold = num;
+    } else if (type === 'power') {
+      inv.set('power', num);
+      room.networkManager.powerAmount = num;
+      if (room.networkManager.powerStatText?.element) {
+        room.networkManager.powerStatText.element.text = numRound(num);
+      }
+      room.profile.power = num;
+    } else if (type === 'level') {
+      const lvl = Math.max(1, Math.round(num));
+      inv.set('level', lvl);
+      if (room.networkManager) {
+        room.networkManager.lastLevelUpExp = Math.pow(lvl, 4);
+        if (room.networkManager.experienceBarLevelText?.element) {
+          room.networkManager.experienceBarLevelText.element.text = "Level " + (typeof numRound === 'function' ? numRound(lvl) : lvl);
+        }
+      }
+      const pCtrl = room.networkManager?.currentPlayerEntity?.script?.playerController;
+      if (pCtrl) pCtrl.level = lvl;
+      room.profile.level = lvl;
+    }
+    saveLocalArcadeProfile(room.profile);
+    console.log(`[SMGrade Standalone API] Set ${type} to ${num}`);
+  };
+
+  // Global factory function used by NetworkManager.joinServer
+  window.createStandaloneOfflineRoom = function (networkManager) {
+    const room = new StandaloneLocalRoom(networkManager);
+    setTimeout(() => {
+      room.initWorld();
+    }, 100);
+    return room;
+  };
+
+  console.log('[SMGrade Standalone Room] Standalone room service registered.');
+})();

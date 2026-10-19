@@ -1,4 +1,4 @@
-import type { ScoreResult } from "./scorer";
+import { scoreToGrade, type ScoreResult } from "./scorer.js";
 import type { ParsedPlayer } from "./parser";
 import { resolveItemByGameType } from "./gearDatabase";
 
@@ -313,18 +313,6 @@ export function generateShareCard(
   const cardW = 196;
   const cardH = 68;
 
-  const getScoreLetter = (s: number) => {
-    if (s >= 95) return "S+";
-    if (s >= 90) return "S";
-    if (s >= 83) return "A+";
-    if (s >= 75) return "A";
-    if (s >= 67) return "B+";
-    if (s >= 58) return "B";
-    if (s >= 48) return "C+";
-    if (s >= 38) return "C";
-    return "D";
-  };
-
   metricsList.forEach((m, i) => {
     const col = i % 2;
     const row = Math.floor(i / 2);
@@ -353,7 +341,7 @@ export function generateShareCard(
       ctx.fillText(`${m.score}%`, cx + 12, cy + 38);
 
       // Grade badge
-      const badgeLetter = getScoreLetter(m.score!);
+      const badgeLetter = scoreToGrade(m.score!);
 
       ctx.textAlign = "right";
       ctx.fillStyle = `${badgeColor}15`;

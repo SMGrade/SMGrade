@@ -1,0 +1,5 @@
+db_storage.json
+data/arcade_scores.json
+scratch/
+*.json.bak
+.vercel

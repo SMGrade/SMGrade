@@ -2722,6 +2722,7 @@ export function saveTypeMappings(mappings: TypeMappingsTable): void {
 }
 
 export function resolveItemByGameType(type: number, category: "sword" | "shield" | "pet"): GameItem | null {
+  if (type <= 0) return null;
   const mappings = loadTypeMappings();
   const name = category === "sword" ? mappings.swords[type] 
              : category === "shield" ? mappings.shields[type] 
@@ -2745,9 +2746,12 @@ export function resolveItemByGameType(type: number, category: "sword" | "shield"
 
   if (found) return found;
 
-  const defaultFallback = DEFAULT_ITEMS.find((i) => i.type === category) || DEFAULT_ITEMS[0];
-  return {
-    ...defaultFallback,
-    name: defaultFallback.name
-  };
+  if (category === "pet") {
+    const defaultFallback = DEFAULT_ITEMS.find((i) => i.type === category) || DEFAULT_ITEMS[0];
+    return {
+      ...defaultFallback,
+      name: defaultFallback.name
+    };
+  }
+  return null;
 }

@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover' />
+  <meta charset='utf-8'>
+  <link rel="stylesheet" type="text/css" href="styles.css">
+  <link rel="stylesheet" type="text/css" href="smgrade-overlay.css">
+  <title>Sword Masters - Original Runtime Proof of Concept</title>
+  
+  <!-- Poki SDK Shim for offline / local sandbox reliability -->
+  <script>
+    window.PokiSDK = {
+      init: () => Promise.resolve(),
+      gameLoadingStart: () => {},
+      gameLoadingFinished: () => {},
+      gameplayStart: () => {},
+      gameplayStop: () => {},
+      commercialBreak: () => Promise.resolve(),
+      rewardedBreak: () => Promise.resolve(true),
+      enableEventTracking: () => {},
+      setDebug: () => {}
+    };
+
+    // Offline Network Interceptor: Block all remote loadbalancer / server endpoints
+    (function() {
+      const origXHR = window.XMLHttpRequest.prototype.open;
+      window.XMLHttpRequest.prototype.open = function(method, url, ...args) {
+        if (typeof url === 'string' && (url.includes('loadbalancer.swordmasters.io') || url.includes('/api/server/') || url.includes('/api/user/'))) {
+          console.warn('[SMGrade Standalone Offline] Blocked remote request to:', url, 'FROM STACK:\n' + new Error().stack);
+          this._isBlockedRemote = true;
+        }
+        return origXHR.call(this, method, url, ...args);
+      };
+      const origSend = window.XMLHttpRequest.prototype.send;
+      window.XMLHttpRequest.prototype.send = function(data) {
+        if (this._isBlockedRemote) {
+          setTimeout(() => {
+            Object.defineProperty(this, 'status', { value: 200, writable: false });
+            Object.defineProperty(this, 'responseText', { value: JSON.stringify({ success: true, result: { serverIp: '127.0.0.1', port: 2567 } }), writable: false });
+            if (typeof this.onload === 'function') this.onload();
+            if (typeof this.onreadystatechange === 'function') {
+              Object.defineProperty(this, 'readyState', { value: 4, writable: false });
+              this.onreadystatechange();
+            }
+          }, 0);
+          return;
+        }
+        return origSend.call(this, data);
+      };
+    })();
+  </script>
+  <script src="playcanvas-stable.min.js"></script>
+  <script>
+    // Force PlayCanvas to load the local patched __game-scripts.js instead of remote CDN
+    if (window.pc && pc.Asset) {
+      const _origGetFileUrl = pc.Asset.prototype.getFileUrl;
+      pc.Asset.prototype.getFileUrl = function() {
+        if (this.type === 'script' && this.file && this.file.url === '__game-scripts.js') {
+          return '/original-runtime/__game-scripts.js';
+        }
+        return _origGetFileUrl.call(this);
+      };
+      console.log('[SMGrade Standalone Offline] Script asset routing patched to local __game-scripts.js');
+    }
+  </script>
+  <script src="colyseus.js"></script>
+  <script src="Data.js"></script>
+  <script src="GameAnalytics.js"></script>
+  <script src="__settings__.js"></script>
+</head>
+<body>
+  <script src="__modules__.js"></script>
+  <script src="smgrade-standalone-room.js"></script>
+  <script src="__start__.js"></script>
+  <script src="__loading__.js"></script>
+  <script src="smgrade-overlay.js"></script>
+</body>
+</html>

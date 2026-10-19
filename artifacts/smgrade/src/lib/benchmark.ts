@@ -1,6 +1,8 @@
 // Deterministic benchmark database built from real SwordMasters player data
 // Fully editable and configurable in SMGrade Version 2.0.
 
+import { parseNumber } from "./numberParser.js";
+
 export interface BenchmarkTier {
   label: string;
   minLevel: number;
@@ -54,105 +56,230 @@ const BENCHMARK_STORAGE_KEY = "smg_benchmark_tiers_v2";
 
 export const DEFAULT_BENCHMARKS: BenchmarkTier[] = [
   {
-    label: "Beginner",
+    label: "Initiate I",
     minLevel: 1,
     maxLevel: 999,
-    weakPower: 1e8,
+    weakPower: 100e6,
     avgPower: 5e9,
     strongPower: 20e9,
     elitePower: 100e9,
-    avgGold: 1e7
+    avgGold: 10e6
   },
   {
-    label: "Early",
+    label: "Initiate II",
     minLevel: 1000,
-    maxLevel: 7999,
-    weakPower: 1e17,
-    avgPower: 4e17,
-    strongPower: 6e17,
+    maxLevel: 4999,
+    weakPower: 10e15,
+    avgPower: 200e15,
+    strongPower: 600e15,
     elitePower: 1e18,
-    avgGold: 1e8
+    avgGold: 800e12
   },
   {
-    label: "Mid-Early",
-    minLevel: 8000,
-    maxLevel: 13999,
+    label: "Wanderer I",
+    minLevel: 5000,
+    maxLevel: 9999,
+    weakPower: 100e15,
+    avgPower: 600e15,
+    strongPower: 2e18,
+    elitePower: 6e18,
+    avgGold: 2e15
+  },
+  {
+    label: "Wanderer II",
+    minLevel: 10000,
+    maxLevel: 14999,
     weakPower: 5e18,
-    avgPower: 1e19,
-    strongPower: 3e19,
-    elitePower: 6e19,
-    avgGold: 3e16
+    avgPower: 20e18,
+    strongPower: 35e18,
+    elitePower: 80e18,
+    avgGold: 10e15
   },
   {
-    label: "Mid",
-    minLevel: 14000,
+    label: "Warrior I",
+    minLevel: 15000,
     maxLevel: 19999,
-    weakPower: 1e19,
-    avgPower: 5e19,
-    strongPower: 1.6e20,
-    elitePower: 3e20,
-    avgGold: 1e17
+    weakPower: 10e18,
+    avgPower: 50e18,
+    strongPower: 65e18,
+    elitePower: 100e18,
+    avgGold: 30e15
   },
   {
-    label: "Mid-High",
+    label: "Warrior II",
     minLevel: 20000,
-    maxLevel: 39999,
-    weakPower: 7e19,
-    avgPower: 2e20,
-    strongPower: 1e21,
-    elitePower: 5e21,
-    avgGold: 1e18
+    maxLevel: 24999,
+    weakPower: 20e18,
+    avgPower: 60e18,
+    strongPower: 140e18,
+    elitePower: 220e18,
+    avgGold: 50e15
   },
   {
-    label: "Veteran",
+    label: "Veteran I",
+    minLevel: 25000,
+    maxLevel: 29999,
+    weakPower: 30e18,
+    avgPower: 80e18,
+    strongPower: 200e18,
+    elitePower: 300e18,
+    avgGold: 60e15
+  },
+  {
+    label: "Veteran II",
+    minLevel: 30000,
+    maxLevel: 34999,
+    weakPower: 50e18,
+    avgPower: 150e18,
+    strongPower: 300e18,
+    elitePower: 450e18,
+    avgGold: 80e15
+  },
+  {
+    label: "Champion I",
+    minLevel: 35000,
+    maxLevel: 39999,
+    weakPower: 80e18,
+    avgPower: 240e18,
+    strongPower: 450e18,
+    elitePower: 600e18,
+    avgGold: 100e15
+  },
+  {
+    label: "Champion II",
     minLevel: 40000,
+    maxLevel: 44999,
+    weakPower: 90e18,
+    avgPower: 260e18,
+    strongPower: 500e18,
+    elitePower: 800e18,
+    avgGold: 150e15
+  },
+  {
+    label: "Elite I",
+    minLevel: 45000,
+    maxLevel: 49999,
+    weakPower: 100e18,
+    avgPower: 280e18,
+    strongPower: 600e18,
+    elitePower: 1e21,
+    avgGold: 250e15
+  },
+  {
+    label: "Elite II",
+    minLevel: 50000,
+    maxLevel: 54999,
+    weakPower: 150e18,
+    avgPower: 300e18,
+    strongPower: 800e18,
+    elitePower: 1.5e21,
+    avgGold: 500e15
+  },
+  {
+    label: "Sentinel I",
+    minLevel: 55000,
     maxLevel: 59999,
-    weakPower: 4e20,
-    avgPower: 1e21,
+    weakPower: 250e18,
+    avgPower: 350e18,
+    strongPower: 1e21,
+    elitePower: 2e21,
+    avgGold: 550e15
+  },
+  {
+    label: "Sentinel II",
+    minLevel: 60000,
+    maxLevel: 64999,
+    weakPower: 300e18,
+    avgPower: 500e18,
+    strongPower: 1.5e21,
+    elitePower: 3e21,
+    avgGold: 650e15
+  },
+  {
+    label: "Ascendant I",
+    minLevel: 65000,
+    maxLevel: 69999,
+    weakPower: 350e18,
+    avgPower: 600e18,
+    strongPower: 2e21,
+    elitePower: 4e21,
+    avgGold: 950e15
+  },
+  {
+    label: "Ascendant II",
+    minLevel: 70000,
+    maxLevel: 79999,
+    weakPower: 450e18,
+    avgPower: 750e18,
+    strongPower: 3e21,
+    elitePower: 6e21,
+    avgGold: 2e18
+  },
+  {
+    label: "Legend I",
+    minLevel: 80000,
+    maxLevel: 89999,
+    weakPower: 600e18,
+    avgPower: 900e18,
     strongPower: 5e21,
-    elitePower: 2e22,
+    elitePower: 10e21,
     avgGold: 5e18
   },
   {
-    label: "Champion",
-    minLevel: 60000,
-    maxLevel: 79999,
-    weakPower: 2e21,
-    avgPower: 5e21,
-    strongPower: 2e22,
-    elitePower: 8e22,
-    avgGold: 1e19
+    label: "Legend II",
+    minLevel: 90000,
+    maxLevel: 99999,
+    weakPower: 1e21,
+    avgPower: 1.6e21,
+    strongPower: 8e21,
+    elitePower: 20e21,
+    avgGold: 20e18
   },
   {
-    label: "Elite",
-    minLevel: 80000,
+    label: "Immortal",
+    minLevel: 100000,
     maxLevel: Infinity,
-    weakPower: 5e21,
-    avgPower: 1e22,
-    strongPower: 8e22,
-    elitePower: 1e23,
-    avgGold: 1e20
+    weakPower: 2e21,
+    avgPower: 5e21,
+    strongPower: 20e21,
+    elitePower: 50e21,
+    avgGold: 50e18
   }
 ];
 
 export function extendBenchmark(bt: BenchmarkTier): ExtendedBenchmarkTier {
-  const weakDPH = Math.round(Math.sqrt(bt.weakPower) * 5 + 10);
-  const avgDPH = Math.round(Math.sqrt(bt.avgPower) * 15 + 15);
-  const strongDPH = Math.round(Math.sqrt(bt.strongPower) * 40 + 100);
-  const eliteDPH = Math.round(Math.sqrt(bt.elitePower) * 100 + 1000);
-  
-  const weakPPH = Math.round(Math.sqrt(bt.weakPower) * 2);
-  const avgPPH = Math.round(Math.sqrt(bt.avgPower) * 5);
-  const strongPPH = Math.round(Math.sqrt(bt.strongPower) * 10);
-  const elitePPH = Math.round(Math.sqrt(bt.elitePower) * 20);
+  const weakPower = typeof bt.weakPower === "string" ? parseNumber(bt.weakPower) : Number(bt.weakPower || 0);
+  const avgPower = typeof bt.avgPower === "string" ? parseNumber(bt.avgPower) : Number(bt.avgPower || 0);
+  const strongPower = typeof bt.strongPower === "string" ? parseNumber(bt.strongPower) : Number(bt.strongPower || 0);
+  const elitePower = typeof bt.elitePower === "string" ? parseNumber(bt.elitePower) : Number(bt.elitePower || 0);
+  const avgGold = typeof bt.avgGold === "string" ? parseNumber(bt.avgGold) : Number(bt.avgGold || 0);
 
-  const weakProt = Math.round(Math.sqrt(bt.weakPower) * 0.5);
-  const avgProt = Math.round(Math.sqrt(bt.avgPower) * 2);
-  const strongProt = Math.round(Math.sqrt(bt.strongPower) * 6);
-  const eliteProt = Math.round(Math.sqrt(bt.elitePower) * 15);
+  const weakDPH = Math.round(Math.sqrt(weakPower) * 5 + 10);
+  const avgDPH = Math.round(Math.sqrt(avgPower) * 15 + 15);
+  const strongDPH = Math.round(Math.sqrt(strongPower) * 40 + 100);
+  const eliteDPH = Math.round(Math.sqrt(elitePower) * 100 + 1000);
+  
+  const weakPPH = Math.round(Math.sqrt(weakPower) * 2);
+  const avgPPH = Math.round(Math.sqrt(avgPower) * 5);
+  const strongPPH = Math.round(Math.sqrt(strongPower) * 10);
+  const elitePPH = Math.round(Math.sqrt(elitePower) * 20);
+
+  const weakProt = Math.round(Math.sqrt(weakPower) * 0.5);
+  const avgProt = Math.round(Math.sqrt(avgPower) * 2);
+  const strongProt = Math.round(Math.sqrt(strongPower) * 6);
+  const eliteProt = Math.round(Math.sqrt(elitePower) * 15);
+
+  const parsedBt = {
+    ...bt,
+    weakPower,
+    avgPower,
+    strongPower,
+    elitePower,
+    avgGold,
+  };
 
   return {
-    ...bt,
+    ...parsedBt,
     weakDPH,
     avgDPH,
     strongDPH,
@@ -176,8 +303,8 @@ export function extendBenchmark(bt: BenchmarkTier): ExtendedBenchmarkTier {
     avgWeaponTier: 5,
     avgShieldTier: 5,
     avgPetTier: 5,
-    avgStorageValue: bt.avgGold * 1.5,
-    avgInventoryValue: bt.avgGold * 2.0,
+    avgStorageValue: avgGold * 1.5,
+    avgInventoryValue: avgGold * 2.0,
   };
 }
 
@@ -224,48 +351,7 @@ export function getBenchmarkForLevel(level: number): BenchmarkTier {
 }
 
 export function getInterpolatedBenchmark(level: number): ExtendedBenchmarkTier {
-  const matched = getBenchmarkForLevel(level);
-  const tiers = loadBenchmarkTiers();
-
-  const reprLevels = [500, 4500, 11000, 17000, 30000, 50000, 70000, 100000];
-
-  if (level <= reprLevels[0]) return extendBenchmark(tiers[0]);
-  if (level >= reprLevels[reprLevels.length - 1]) {
-    return extendBenchmark(tiers[tiers.length - 1]);
-  }
-
-  let idx = 0;
-  for (let i = 0; i < reprLevels.length - 1; i++) {
-    if (level >= reprLevels[i] && level < reprLevels[i + 1]) {
-      idx = i;
-      break;
-    }
-  }
-
-  const L1 = reprLevels[idx];
-  const L2 = reprLevels[idx + 1];
-  const T1 = tiers[idx] || tiers[tiers.length - 1];
-  const T2 = tiers[idx + 1] || tiers[tiers.length - 1];
-
-  const r = (level - L1) / (L2 - L1);
-
-  const logInterp = (v1: number, v2: number) => {
-    if (v1 <= 0 || v2 <= 0) return 0;
-    return Math.pow(10, (1 - r) * Math.log10(v1) + r * Math.log10(v2));
-  };
-
-  const coreInterp: BenchmarkTier = {
-    label: matched.label,
-    minLevel: T1.minLevel,
-    maxLevel: T2.maxLevel,
-    weakPower: logInterp(T1.weakPower, T2.weakPower),
-    avgPower: logInterp(T1.avgPower, T2.avgPower),
-    strongPower: logInterp(T1.strongPower, T2.strongPower),
-    elitePower: logInterp(T1.elitePower, T2.elitePower),
-    avgGold: logInterp(T1.avgGold, T2.avgGold),
-  };
-
-  return extendBenchmark(coreInterp);
+  return extendBenchmark(getBenchmarkForLevel(level));
 }
 
 // Gear rank loaders for backward compatibility

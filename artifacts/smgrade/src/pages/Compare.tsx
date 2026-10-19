@@ -37,6 +37,7 @@ const GRADE_COLOR: Record<string, string> = {
   "C+": "#888",
   C: "#888",
   D: "#e05a5a",
+  F: "#ef4444",
 };
 
 export default function Compare() {
@@ -149,6 +150,27 @@ export default function Compare() {
         damagePerHit: dmgStats2.damagePerHit,
         dps: dmgStats2.damagePerSecond,
       });
+
+      // Track account comparison in backend data/history
+      fetch("/api/master/log-comparison", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          player1: {
+            username: data1.username,
+            level: data1.level,
+            overallGrade: sc1.overallGrade,
+            overallScore: sc1.overallScore
+          },
+          player2: {
+            username: data2.username,
+            level: data2.level,
+            overallGrade: sc2.overallGrade,
+            overallScore: sc2.overallScore
+          },
+          winner: sc1.overallScore >= sc2.overallScore ? data1.username : data2.username
+        })
+      }).catch(err => console.warn("[Compare] Failed to log comparison to backend:", err));
     } catch (e: any) {
       setError(e.message || "Failed to compare players on the server.");
     }

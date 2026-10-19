@@ -1,0 +1,575 @@
+/* SMGrade Arcade In-Game Overlay Styles */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --sm-gold: #f59e0b;
+  --sm-gold-glow: rgba(245, 158, 11, 0.35);
+  --sm-gold-bright: #fbbf24;
+  --sm-dark: #0a0e17;
+  --sm-panel: rgba(13, 20, 32, 0.95);
+  --sm-panel-border: rgba(245, 158, 11, 0.35);
+  --sm-card-bg: rgba(22, 33, 52, 0.88);
+  --sm-card-hover: rgba(35, 52, 82, 0.98);
+  --sm-common: #4ade80;
+  --sm-rare: #38bdf8;
+  --sm-epic: #c084fc;
+  --sm-legendary: #fbbf24;
+}
+
+/* Compact HUD Resource Controls (Top-Left under Health Bar) */
+/* Compact HUD '+' Controls positioned directly beside native HUD stats (Requirement 6 & 7) */
+.smgrade-plus-btn {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1000;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  padding: 0;
+}
+
+.smgrade-plus-btn:hover {
+  transform: scale(1.18);
+}
+
+.smgrade-plus-btn.gold {
+  top: 24px;
+  left: 172px;
+  background: rgba(245, 158, 11, 0.28);
+  border: 1.5px solid #fbbf24;
+  color: #fbbf24;
+}
+.smgrade-plus-btn.gold:hover {
+  background: rgba(245, 158, 11, 0.65);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
+}
+
+.smgrade-plus-btn.power {
+  top: 56px;
+  left: 172px;
+  background: rgba(192, 132, 252, 0.28);
+  border: 1.5px solid #c084fc;
+  color: #c084fc;
+}
+.smgrade-plus-btn.power:hover {
+  background: rgba(192, 132, 252, 0.65);
+  box-shadow: 0 0 12px rgba(192, 132, 252, 0.6);
+}
+
+.smgrade-plus-btn.level {
+  bottom: 28px;
+  left: 245px;
+  background: rgba(56, 189, 248, 0.28);
+  border: 1.5px solid #38bdf8;
+  color: #38bdf8;
+}
+.smgrade-plus-btn.level:hover {
+  background: rgba(56, 189, 248, 0.65);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+}
+
+.smgrade-plus-btn.ore {
+  bottom: 28px;
+  left: 275px;
+  background: rgba(52, 211, 153, 0.28);
+  border: 1.5px solid #34d399;
+  color: #34d399;
+}
+.smgrade-plus-btn.ore:hover {
+  background: rgba(52, 211, 153, 0.65);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.6);
+}
+
+/* In-Inventory / In-Pet Trigger Buttons */
+#sm-inv-add-trigger {
+  position: absolute;
+  top: 36px;
+  right: 120px;
+  z-index: 1500;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+  border: 1.5px solid #fbbf24;
+  color: #0a0e17;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 12px rgba(245, 158, 11, 0.4);
+  font-family: 'Inter', system-ui, sans-serif;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#sm-inv-add-trigger:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6);
+}
+
+#sm-pet-add-trigger {
+  position: absolute;
+  top: 36px;
+  right: 120px;
+  z-index: 1500;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.95), rgba(14, 165, 233, 0.95));
+  border: 1.5px solid #38bdf8;
+  color: #0a0e17;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 12px rgba(56, 189, 248, 0.4);
+  font-family: 'Inter', system-ui, sans-serif;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#sm-pet-add-trigger:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.6);
+}
+
+/* Modals Overlay */
+.smgrade-modal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-out;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.smgrade-modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.smgrade-modal-dialog {
+  background: var(--sm-panel);
+  border: 1.5px solid var(--sm-panel-border);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 24px var(--sm-gold-glow);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 820px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #fff;
+  transform: scale(0.96);
+  transition: transform 0.2s ease-out;
+}
+
+.smgrade-modal-overlay.active .smgrade-modal-dialog {
+  transform: scale(1);
+}
+
+.smgrade-modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.smgrade-modal-title {
+  font-family: 'Cinzel', serif;
+  font-size: 19px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.smgrade-modal-title .highlight {
+  color: var(--sm-gold);
+}
+
+.smgrade-modal-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 26px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.smgrade-modal-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.smgrade-modal-controls {
+  padding: 14px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.smgrade-tabs {
+  display: flex;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.smgrade-tab-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 6px 16px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.smgrade-tab-btn.active {
+  background: var(--sm-gold);
+  color: #0a0e17;
+  box-shadow: 0 2px 8px var(--sm-gold-glow);
+}
+
+.smgrade-search-input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  outline: none;
+  width: 170px;
+  transition: border 0.15s ease;
+}
+
+.smgrade-search-input:focus {
+  border-color: var(--sm-gold);
+}
+
+.smgrade-select {
+  background: #111a2c;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Grid & Cards */
+.smgrade-grid {
+  padding: 18px 24px;
+  overflow-y: scroll !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  max-height: 460px;
+  min-height: 200px;
+  flex: 1;
+  pointer-events: auto !important;
+}
+
+.smgrade-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.smgrade-grid::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+}
+
+.smgrade-grid::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.55);
+  border-radius: 4px;
+}
+
+.smgrade-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.85);
+}
+
+.smgrade-card {
+  background: var(--sm-card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.smgrade-card:hover {
+  background: var(--sm-card-hover);
+  border-color: rgba(245, 158, 11, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.smgrade-card.selected {
+  border-color: var(--sm-gold);
+  background: rgba(245, 158, 11, 0.12);
+  box-shadow: 0 0 16px var(--sm-gold-glow);
+}
+
+.smgrade-card-img-wrap {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.smgrade-card-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
+}
+
+.smgrade-card-name {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #fff;
+  margin-bottom: 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smgrade-card-badge {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.smgrade-card-badge.Common { background: rgba(74, 222, 128, 0.15); color: var(--sm-common); }
+.smgrade-card-badge.Rare { background: rgba(56, 189, 248, 0.15); color: var(--sm-rare); }
+.smgrade-card-badge.Epic { background: rgba(192, 132, 252, 0.15); color: var(--sm-epic); }
+.smgrade-card-badge.Legendary { background: rgba(251, 191, 36, 0.15); color: var(--sm-legendary); }
+
+/* Level Selector with Plus / Minus Controls */
+.smgrade-level-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 3px 8px;
+}
+
+.smgrade-level-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.smgrade-level-btn:hover {
+  background: var(--sm-gold);
+  color: #0a0e17;
+}
+
+.smgrade-level-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fbbf24;
+  min-width: 60px;
+  text-align: center;
+}
+
+/* Enchants Configuration Box */
+.smgrade-enchants-box {
+  padding: 14px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.smgrade-enchant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.smgrade-enchant-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Modal Footer */
+.smgrade-modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.smgrade-btn-primary {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  color: #0a0e17;
+  padding: 9px 24px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 4px 14px var(--sm-gold-glow);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.smgrade-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.5);
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+}
+
+.smgrade-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Toast Notifications */
+#smgrade-toast-container {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.smgrade-toast {
+  background: rgba(13, 20, 32, 0.95);
+  border: 1px solid var(--sm-gold);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 12px var(--sm-gold-glow);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideInRight 0.25s ease-out;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Nickname Start Screen */
+#smgrade-start-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 4000;
+  background: rgba(6, 10, 18, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+#smgrade-start-panel.active {
+  display: flex;
+}
+
+.smgrade-start-card {
+  background: var(--sm-panel);
+  border: 1.5px solid var(--sm-panel-border);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 32px var(--sm-gold-glow);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 440px;
+  padding: 36px 32px;
+  text-align: center;
+  color: #fff;
+  animation: cardFadeIn 0.3s ease-out;
+}
+
+@keyframes cardFadeIn {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}

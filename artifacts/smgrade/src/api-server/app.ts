@@ -98,6 +98,8 @@ app.get("*any", (req: any, res: any) => {
         res.status(404).send("Front-end asset folder not built. Run pnpm run build first.");
       }
     });
+  } else {
+    res.status(404).json({ error: "Not Found" });
   }
 });
 

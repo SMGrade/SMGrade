@@ -1,0 +1,1005 @@
+{
+  "layers": {
+    "0": {
+      "name": "Base",
+      "states": [
+        0,
+        1,
+        2,
+        3,
+        16816386128505710,
+        16816392937295558,
+        16816409288685192,
+        16816411968596142
+      ],
+      "transitions": [
+        0,
+        16816387627941552,
+        16816387714869244,
+        16816393417321292,
+        16816409510773940,
+        16816412087546024,
+        16816412665818784,
+        16816728129278412
+      ],
+      "blendType": "OVERWRITE",
+      "weight": 1
+    },
+    "1": {
+      "name": "UpBody",
+      "states": [
+        16816793518186066,
+        1681679351818771,
+        16816793518186158,
+        16817533016373784,
+        16817559522286734,
+        16822031554458368
+      ],
+      "transitions": [
+        16816793518185060,
+        16817661107376476,
+        1682203160990166
+      ],
+      "blendType": "OVERWRITE",
+      "weight": 0
+    },
+    "2": {
+      "name": "OVERRIDE",
+      "states": [
+        16829696685157308,
+        16829696685158356,
+        16829696685153016,
+        16829696685155404,
+        16829697218099636,
+        16858300273015498,
+        16858306670778546,
+        16858307480102132,
+        16858307511517700,
+        1685971542566686,
+        17380654800115438,
+        17390061962405624,
+        17390062309095568,
+        17390062332215396,
+        17390063037125632,
+        17390063522556012,
+        17390063622406218,
+        17390063837132672,
+        17390063910059690,
+        17390064139305972,
+        17390064212141236
+      ],
+      "transitions": [
+        16829696685153562,
+        16829697296674032,
+        16829710240524088,
+        16858301481262236,
+        16858307057075298,
+        16858307547071524,
+        16858307566203026,
+        16858339989813908,
+        16858340718492204,
+        16858340856558260,
+        16858340909407672,
+        16859715820719428,
+        16859716534169888,
+        17380654876056092,
+        17380654892753012,
+        17390062015068856,
+        17390062601697336,
+        17390062633441078,
+        1739006316574593,
+        17390064395557322,
+        17390064415679814,
+        1739006443704106,
+        17390064458315654,
+        17390064478248144,
+        17390064516347576
+      ],
+      "blendType": "OVERWRITE",
+      "weight": 0
+    }
+  },
+  "states": {
+    "0": {
+      "name": "START",
+      "id": 0,
+      "posX": 49.999999999999204,
+      "posY": 99.9999999999998,
+      "nodeType": 3
+    },
+    "1": {
+      "name": "ANY",
+      "id": 1,
+      "posX": 49.99999999999784,
+      "posY": 149.99999999999966,
+      "nodeType": 4
+    },
+    "2": {
+      "name": "END",
+      "id": 2,
+      "posX": 1309.9999999999995,
+      "posY": 309.9999999999998,
+      "nodeType": 5
+    },
+    "3": {
+      "name": "Idle",
+      "id": 3,
+      "speed": 1,
+      "loop": true,
+      "posX": 50,
+      "posY": -70,
+      "nodeType": 1,
+      "defaultState": true
+    },
+    "16816386128505710": {
+      "nodeType": 0,
+      "id": 16816386128505710,
+      "posX": 680.0000000000002,
+      "posY": 19.999999999999886,
+      "name": "Run",
+      "speed": 1,
+      "loop": true
+    },
+    "16816392937295558": {
+      "nodeType": 0,
+      "id": 16816392937295558,
+      "posX": 270,
+      "posY": 270,
+      "name": "JumpStart",
+      "speed": 1,
+      "loop": false
+    },
+    "16816409288685192": {
+      "nodeType": 0,
+      "id": 16816409288685192,
+      "posX": 680.0000000000002,
+      "posY": 260,
+      "name": "JumpAir",
+      "speed": 1,
+      "loop": true
+    },
+    "16816411968596142": {
+      "nodeType": 0,
+      "id": 16816411968596142,
+      "posX": 960.0000000000003,
+      "posY": 260,
+      "name": "JumpEnd",
+      "speed": 1,
+      "loop": false
+    },
+    "16816793518186066": {
+      "name": "START",
+      "id": 16816793518186066,
+      "posX": 49.99999999999986,
+      "posY": 89.99999999999997,
+      "nodeType": 3
+    },
+    "1681679351818771": {
+      "name": "ANY",
+      "id": 1681679351818771,
+      "posX": 49.99999999999972,
+      "posY": 149.99999999999997,
+      "nodeType": 4
+    },
+    "16816793518186158": {
+      "name": "END",
+      "id": 16816793518186158,
+      "posX": 749.9999999999998,
+      "posY": 250.00000000000003,
+      "nodeType": 5
+    },
+    "16817533016373784": {
+      "nodeType": 1,
+      "id": 16817533016373784,
+      "posX": 50,
+      "posY": -70,
+      "name": "Idle",
+      "speed": 1,
+      "loop": true,
+      "defaultState": true
+    },
+    "16817559522286734": {
+      "nodeType": 0,
+      "id": 16817559522286734,
+      "posX": 440,
+      "posY": 20,
+      "name": "Slash0",
+      "speed": 1.6,
+      "loop": false
+    },
+    "16817711029253600": {
+      "name": "Initial State",
+      "id": 16817711029253600,
+      "speed": 1,
+      "loop": true,
+      "posX": 400,
+      "posY": 50,
+      "nodeType": 1,
+      "defaultState": true
+    },
+    "16817711029257792": {
+      "name": "START",
+      "id": 16817711029257792,
+      "posX": 50,
+      "posY": 100,
+      "nodeType": 3
+    },
+    "16817711029254216": {
+      "name": "ANY",
+      "id": 16817711029254216,
+      "posX": 50,
+      "posY": 150,
+      "nodeType": 4
+    },
+    "16817711029256868": {
+      "name": "END",
+      "id": 16817711029256868,
+      "posX": 50,
+      "posY": 200,
+      "nodeType": 5
+    },
+    "16822031554458368": {
+      "nodeType": 0,
+      "id": 16822031554458368,
+      "posX": 450,
+      "posY": 190,
+      "name": "Slash1",
+      "speed": 1.6,
+      "loop": false
+    },
+    "16829696685155404": {
+      "name": "Initial State",
+      "id": 16829696685155404,
+      "speed": 1,
+      "loop": false,
+      "posX": 49.999999999999545,
+      "posY": -80.00000000000017,
+      "nodeType": 1,
+      "defaultState": true
+    },
+    "16829696685157308": {
+      "name": "START",
+      "id": 16829696685157308,
+      "posX": 50,
+      "posY": 100,
+      "nodeType": 3
+    },
+    "16829696685158356": {
+      "name": "ANY",
+      "id": 16829696685158356,
+      "posX": 860.0000000000018,
+      "posY": 119.9999999999996,
+      "nodeType": 4
+    },
+    "16829696685153016": {
+      "name": "END",
+      "id": 16829696685153016,
+      "posX": -20.000000000000682,
+      "posY": 590.0000000000001,
+      "nodeType": 5
+    },
+    "16829697218099636": {
+      "nodeType": 0,
+      "id": 16829697218099636,
+      "posX": -700.0000000000007,
+      "posY": 299.9999999999999,
+      "name": "Died",
+      "speed": 1,
+      "loop": false
+    },
+    "16858300273015498": {
+      "nodeType": 0,
+      "id": 16858300273015498,
+      "posX": -380.0000000000002,
+      "posY": 299.99999999999983,
+      "name": "Strike Master",
+      "speed": 1,
+      "loop": false
+    },
+    "16858306670778546": {
+      "nodeType": 0,
+      "id": 16858306670778546,
+      "posX": -120.00000000000034,
+      "posY": 299.9999999999999,
+      "name": "The Storm Whirl",
+      "speed": 1,
+      "loop": false
+    },
+    "16858307480102132": {
+      "nodeType": 0,
+      "id": 16858307480102132,
+      "posX": 129.99999999999977,
+      "posY": 299.9999999999999,
+      "name": "Frostborn Conjuring",
+      "speed": 1,
+      "loop": false
+    },
+    "16858307511517700": {
+      "nodeType": 0,
+      "id": 16858307511517700,
+      "posX": 389.9999999999995,
+      "posY": 300.00000000000006,
+      "name": "Lightning Conduit",
+      "speed": 1,
+      "loop": false
+    },
+    "1685971542566686": {
+      "nodeType": 0,
+      "id": 1685971542566686,
+      "posX": 650,
+      "posY": 299.9999999999999,
+      "name": "Arcane Chronoblast",
+      "speed": 1,
+      "loop": false
+    },
+    "17380654800115438": {
+      "nodeType": 0,
+      "id": 17380654800115438,
+      "posX": 909.9999999999998,
+      "posY": 290,
+      "name": "Sitting",
+      "speed": 1,
+      "loop": true
+    },
+    "17390061962405624": {
+      "nodeType": 0,
+      "id": 17390061962405624,
+      "posX": 1410.000000000001,
+      "posY": 139.9999999999998,
+      "name": "dance1",
+      "speed": 1,
+      "loop": true
+    },
+    "17390062309095568": {
+      "nodeType": 0,
+      "id": 17390062309095568,
+      "posX": 1410.000000000001,
+      "posY": 299.9999999999999,
+      "name": "dance2",
+      "speed": 1,
+      "loop": true
+    },
+    "17390062332215396": {
+      "nodeType": 0,
+      "id": 17390062332215396,
+      "posX": 1410.000000000001,
+      "posY": 449.9999999999999,
+      "name": "dance3",
+      "speed": 1,
+      "loop": true
+    },
+    "17390063037125632": {
+      "nodeType": 0,
+      "id": 17390063037125632,
+      "posX": 1150.0000000000007,
+      "posY": 289.99999999999983,
+      "name": "sit",
+      "speed": 1,
+      "loop": false
+    },
+    "17390063522556012": {
+      "nodeType": 0,
+      "id": 17390063522556012,
+      "posX": 1670.000000000002,
+      "posY": 299.9999999999998,
+      "name": "chill",
+      "speed": 1,
+      "loop": true
+    },
+    "17390063622406218": {
+      "nodeType": 0,
+      "id": 17390063622406218,
+      "posX": 1930.000000000002,
+      "posY": 149.99999999999977,
+      "name": "workout1",
+      "speed": 1,
+      "loop": true
+    },
+    "17390063837132672": {
+      "nodeType": 0,
+      "id": 17390063837132672,
+      "posX": 1930.000000000002,
+      "posY": 299.9999999999998,
+      "name": "workout2",
+      "speed": 1,
+      "loop": true
+    },
+    "17390063910059690": {
+      "nodeType": 0,
+      "id": 17390063910059690,
+      "posX": 1930.0000000000018,
+      "posY": 450,
+      "name": "workout3",
+      "speed": 1,
+      "loop": true
+    },
+    "17390064139305972": {
+      "nodeType": 0,
+      "id": 17390064139305972,
+      "posX": 2180.0000000000023,
+      "posY": 299.9999999999998,
+      "name": "die",
+      "speed": 1,
+      "loop": false
+    },
+    "17390064212141236": {
+      "nodeType": 0,
+      "id": 17390064212141236,
+      "posX": 2430.0000000000027,
+      "posY": 299.9999999999998,
+      "name": "showoff",
+      "speed": 1,
+      "loop": true
+    }
+  },
+  "transitions": {
+    "0": {
+      "from": 0,
+      "to": 3,
+      "defaultTransition": true,
+      "edgeType": 1,
+      "conditions": {}
+    },
+    "16816387627941552": {
+      "exitTime": 0,
+      "from": 1,
+      "to": 16816386128505710,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "isRunning",
+          "predicate": "EQUAL_TO",
+          "value": true
+        },
+        "1": {
+          "parameterName": "isInAir",
+          "predicate": "EQUAL_TO",
+          "value": false
+        }
+      },
+      "time": 0.2,
+      "transitionOffset": 0.2
+    },
+    "16816387714869244": {
+      "exitTime": 0,
+      "from": 16816386128505710,
+      "to": 2,
+      "edgeType": 1,
+      "conditions": {
+        "0": {
+          "parameterName": "isRunning",
+          "predicate": "EQUAL_TO",
+          "value": false
+        }
+      },
+      "time": 0.1,
+      "transitionOffset": 0.1
+    },
+    "16816393417321292": {
+      "exitTime": 0,
+      "from": 1,
+      "to": 16816392937295558,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "Jump",
+          "predicate": "EQUAL_TO",
+          "value": true
+        }
+      },
+      "time": 0.1,
+      "transitionOffset": 0
+    },
+    "16816409510773940": {
+      "exitTime": 0,
+      "from": 16816392937295558,
+      "to": 16816409288685192,
+      "edgeType": 1,
+      "conditions": {
+        "0": {
+          "parameterName": "isInAir",
+          "predicate": "EQUAL_TO",
+          "value": true
+        }
+      },
+      "time": 0.5,
+      "transitionOffset": 0.5
+    },
+    "16816412087546024": {
+      "exitTime": 0,
+      "from": 16816409288685192,
+      "to": 16816411968596142,
+      "edgeType": 1,
+      "conditions": {
+        "0": {
+          "parameterName": "isInAir",
+          "predicate": "EQUAL_TO",
+          "value": false
+        }
+      },
+      "time": 0.2,
+      "transitionOffset": 0.2
+    },
+    "16816412665818784": {
+      "exitTime": 1,
+      "from": 16816411968596142,
+      "to": 2,
+      "edgeType": 1,
+      "conditions": {},
+      "time": 0.5,
+      "transitionOffset": 0.5,
+      "interruptionSource": "NONE"
+    },
+    "16816728129278412": {
+      "exitTime": 0,
+      "from": 1,
+      "to": 16816409288685192,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "isInAir",
+          "predicate": "EQUAL_TO",
+          "value": true
+        }
+      },
+      "time": 0.1,
+      "transitionOffset": 0.1
+    },
+    "16816793518185060": {
+      "from": 16816793518186066,
+      "to": 16817533016373784,
+      "defaultTransition": true,
+      "edgeType": 1,
+      "conditions": {}
+    },
+    "16817661107376476": {
+      "exitTime": 0,
+      "from": 1681679351818771,
+      "to": 16817559522286734,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "Attack0",
+          "predicate": "EQUAL_TO",
+          "value": true
+        }
+      },
+      "interruptionSource": "NONE",
+      "transitionOffset": 0,
+      "time": 0.1
+    },
+    "16817711029259128": {
+      "from": 16817711029257792,
+      "to": 16817711029253600,
+      "defaultTransition": true,
+      "edgeType": 1,
+      "conditions": {}
+    },
+    "1682203160990166": {
+      "exitTime": 0,
+      "from": 1681679351818771,
+      "to": 16822031554458368,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "Attack1",
+          "predicate": "EQUAL_TO",
+          "value": true
+        }
+      },
+      "interruptionSource": "NONE",
+      "time": 0.1
+    },
+    "16829696685153562": {
+      "from": 16829696685157308,
+      "to": 16829696685155404,
+      "defaultTransition": true,
+      "edgeType": 1,
+      "conditions": {}
+    },
+    "16829697296674032": {
+      "exitTime": 0,
+      "from": 16829696685158356,
+      "to": 16829697218099636,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "isDied",
+          "predicate": "EQUAL_TO",
+          "value": true
+        }
+      },
+      "time": 0.2
+    },
+    "16829710240524088": {
+      "exitTime": 0,
+      "from": 16829697218099636,
+      "to": 16829696685153016,
+      "edgeType": 1,
+      "conditions": {
+        "0": {
+          "parameterName": "isDied",
+          "predicate": "EQUAL_TO",
+          "value": false
+        }
+      }
+    },
+    "16858301481262236": {
+      "exitTime": 0,
+      "from": 16829696685158356,
+      "to": 16858300273015498,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "Skill_StrikeMaster",
+          "predicate": "EQUAL_TO",
+          "value": true
+        },
+        "1": {
+          "parameterName": "isDied",
+          "predicate": "EQUAL_TO",
+          "value": false
+        }
+      },
+      "time": 0.2
+    },
+    "16858307057075298": {
+      "exitTime": 0,
+      "from": 16829696685158356,
+      "to": 16858306670778546,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "Skill_TheStormWhirl",
+          "predicate": "EQUAL_TO",
+          "value": true
+        },
+        "1": {
+          "parameterName": "isDied",
+          "predicate": "EQUAL_TO",
+          "value": false
+        }
+      },
+      "time": 0.2
+    },
+    "16858307547071524": {
+      "exitTime": 0,
+      "from": 16829696685158356,
+      "to": 16858307480102132,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "Skill_FrostbornConjuring",
+          "predicate": "EQUAL_TO",
+          "value": true
+        },
+        "1": {
+          "parameterName": "isDied",
+          "predicate": "EQUAL_TO",
+          "value": false
+        }
+      },
+      "time": 0.2
+    },
+    "16858307566203026": {
+      "exitTime": 0,
+      "from": 16829696685158356,
+      "to": 16858307511517700,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "Skill_LightningConduit",
+          "predicate": "EQUAL_TO",
+          "value": true
+        },
+        "1": {
+          "parameterName": "isDied",
+          "predicate": "EQUAL_TO",
+          "value": false
+        }
+      },
+      "time": 0.2
+    },
+    "16858339989813908": {
+      "exitTime": 1,
+      "from": 16858300273015498,
+      "to": 16829696685153016,
+      "edgeType": 1,
+      "conditions": {},
+      "time": 0.1
+    },
+    "16858340718492204": {
+      "exitTime": 1,
+      "from": 16858306670778546,
+      "to": 16829696685153016,
+      "edgeType": 1,
+      "conditions": {},
+      "time": 0.1
+    },
+    "16858340856558260": {
+      "exitTime": 1,
+      "from": 16858307480102132,
+      "to": 16829696685153016,
+      "edgeType": 1,
+      "conditions": {},
+      "time": 0.1
+    },
+    "16858340909407672": {
+      "exitTime": 1,
+      "from": 16858307511517700,
+      "to": 16829696685153016,
+      "edgeType": 1,
+      "conditions": {},
+      "time": 0.1
+    },
+    "16859715820719428": {
+      "exitTime": 0,
+      "from": 16829696685158356,
+      "to": 1685971542566686,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "isDied",
+          "predicate": "EQUAL_TO",
+          "value": false
+        },
+        "1": {
+          "parameterName": "Skill_ArcaneChronoblast",
+          "predicate": "EQUAL_TO",
+          "value": true
+        }
+      },
+      "time": 0.2
+    },
+    "16859716534169888": {
+      "exitTime": 1,
+      "from": 1685971542566686,
+      "to": 16829696685153016,
+      "edgeType": 1,
+      "conditions": {},
+      "time": 0.1
+    },
+    "17380654876056092": {
+      "exitTime": 0,
+      "interruptionSource": "NONE",
+      "from": 16829696685158356,
+      "to": 17380654800115438,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "isSitting",
+          "predicate": "EQUAL_TO",
+          "value": true
+        }
+      },
+      "time": 0.2
+    },
+    "17380654892753012": {
+      "exitTime": 0,
+      "interruptionSource": "NONE",
+      "from": 17380654800115438,
+      "to": 16829696685153016,
+      "edgeType": 1,
+      "conditions": {
+        "0": {
+          "parameterName": "isSitting",
+          "predicate": "EQUAL_TO",
+          "value": false
+        }
+      },
+      "time": 0.1
+    },
+    "17390062015068856": {
+      "exitTime": 0,
+      "interruptionSource": "NONE",
+      "from": 16829696685158356,
+      "to": 17390061962405624,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "animState",
+          "predicate": "EQUAL_TO",
+          "value": 2
+        }
+      }
+    },
+    "17390062601697336": {
+      "exitTime": 0,
+      "interruptionSource": "NONE",
+      "from": 16829696685158356,
+      "to": 17390062309095568,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "animState",
+          "predicate": "EQUAL_TO",
+          "value": 3
+        }
+      }
+    },
+    "17390062633441078": {
+      "exitTime": 0,
+      "interruptionSource": "NONE",
+      "from": 16829696685158356,
+      "to": 17390062332215396,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "animState",
+          "predicate": "EQUAL_TO",
+          "value": 4
+        }
+      }
+    },
+    "1739006316574593": {
+      "exitTime": 0,
+      "interruptionSource": "NONE",
+      "from": 16829696685158356,
+      "to": 17390063037125632,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "animState",
+          "predicate": "EQUAL_TO",
+          "value": 1
+        }
+      }
+    },
+    "17390064395557322": {
+      "exitTime": 0,
+      "interruptionSource": "NONE",
+      "from": 16829696685158356,
+      "to": 17390063522556012,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "animState",
+          "predicate": "EQUAL_TO",
+          "value": 5
+        }
+      }
+    },
+    "17390064415679814": {
+      "exitTime": 0,
+      "interruptionSource": "NONE",
+      "from": 16829696685158356,
+      "to": 17390063622406218,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "animState",
+          "predicate": "EQUAL_TO",
+          "value": 6
+        }
+      }
+    },
+    "1739006443704106": {
+      "exitTime": 0,
+      "interruptionSource": "NONE",
+      "from": 16829696685158356,
+      "to": 17390063837132672,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "animState",
+          "predicate": "EQUAL_TO",
+          "value": 7
+        }
+      }
+    },
+    "17390064458315654": {
+      "exitTime": 0,
+      "interruptionSource": "NONE",
+      "from": 16829696685158356,
+      "to": 17390063910059690,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "animState",
+          "predicate": "EQUAL_TO",
+          "value": 8
+        }
+      }
+    },
+    "17390064478248144": {
+      "exitTime": 0,
+      "interruptionSource": "NONE",
+      "from": 16829696685158356,
+      "to": 17390064139305972,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "animState",
+          "predicate": "EQUAL_TO",
+          "value": 9
+        }
+      }
+    },
+    "17390064516347576": {
+      "exitTime": 0,
+      "interruptionSource": "NONE",
+      "from": 16829696685158356,
+      "to": 17390064212141236,
+      "edgeType": 3,
+      "conditions": {
+        "0": {
+          "parameterName": "animState",
+          "predicate": "EQUAL_TO",
+          "value": 10
+        }
+      }
+    }
+  },
+  "parameters": {
+    "0": {
+      "name": "isRunning",
+      "type": "BOOLEAN",
+      "value": false
+    },
+    "1": {
+      "name": "Jump",
+      "type": "TRIGGER",
+      "value": false
+    },
+    "2": {
+      "name": "isInAir",
+      "type": "BOOLEAN",
+      "value": false
+    },
+    "3": {
+      "name": "Attack0",
+      "type": "TRIGGER",
+      "value": false
+    },
+    "4": {
+      "name": "Attack1",
+      "type": "TRIGGER",
+      "value": false
+    },
+    "5": {
+      "name": "isDied",
+      "type": "BOOLEAN",
+      "value": false
+    },
+    "6": {
+      "name": "Skill_StrikeMaster",
+      "type": "TRIGGER",
+      "value": false
+    },
+    "7": {
+      "name": "Skill_TheStormWhirl",
+      "type": "TRIGGER",
+      "value": false
+    },
+    "8": {
+      "name": "Skill_FrostbornConjuring",
+      "type": "TRIGGER",
+      "value": false
+    },
+    "9": {
+      "name": "Skill_LightningConduit",
+      "type": "TRIGGER",
+      "value": false
+    },
+    "10": {
+      "name": "Skill_ArcaneChronoblast",
+      "type": "TRIGGER",
+      "value": false
+    },
+    "11": {
+      "name": "Skill_EtherealRift",
+      "type": "TRIGGER",
+      "value": false
+    },
+    "12": {
+      "name": "isSitting",
+      "type": "BOOLEAN",
+      "value": false
+    },
+    "13": {
+      "name": "animState",
+      "type": "INTEGER",
+      "value": 0
+    }
+  }
+}

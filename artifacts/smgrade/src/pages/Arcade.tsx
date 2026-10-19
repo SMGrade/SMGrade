@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ParticleBackground } from "./Home";
+import { ParticleBackground, ParallaxBackground } from "./Home";
 
 interface Particle {
   id: number;
@@ -131,35 +131,84 @@ const playSound = (type: "hit" | "crit" | "combo" | "kill" | "rage" | "upgrade" 
   }
 };
 
-function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: boolean; isCrit: boolean; blink: boolean }) {
+function DwarfSVG({ 
+  isHurt, 
+  isDead, 
+  isCrit, 
+  blink, 
+  hitDirection = "right", 
+  deathVariant = 0 
+}: { 
+  isHurt: boolean; 
+  isDead: boolean; 
+  isCrit: boolean; 
+  blink: boolean; 
+  hitDirection?: "left" | "right"; 
+  deathVariant?: number 
+}) {
+  const xMult = hitDirection === "left" ? -1 : 1;
+  const rotMult = hitDirection === "left" ? -1 : 1;
+
+  // Death physics keyframes
+  let xKeyframes = [0, 35 * xMult, 110 * xMult, 135 * xMult, 140 * xMult];
+  let yKeyframes = [0, -35, 125, 105, 115];
+  let rotKeyframes = [0, 25 * rotMult, 100 * rotMult, 82 * rotMult, 90 * rotMult];
+  let scaleYKeyframes = [1, 1.12, 0.28, 0.65, 0.55];
+  let scaleXKeyframes = [1, 0.88, 1.30, 0.88, 0.95];
+
+  if (deathVariant === 1) {
+    // Heavy drop variant
+    xKeyframes = [0, 15 * xMult, 45 * xMult, 55 * xMult, 60 * xMult];
+    yKeyframes = [0, -18, 135, 120, 125];
+    rotKeyframes = [0, 15 * rotMult, 95 * rotMult, 85 * rotMult, 90 * rotMult];
+    scaleYKeyframes = [1, 1.05, 0.18, 0.50, 0.45];
+    scaleXKeyframes = [1, 0.95, 1.45, 0.90, 0.98];
+  } else if (deathVariant === 2) {
+    // High spin variant
+    xKeyframes = [0, 65 * xMult, 145 * xMult, 165 * xMult, 170 * xMult];
+    yKeyframes = [0, -65, 120, 100, 110];
+    rotKeyframes = [0, 45 * rotMult, 190 * rotMult, 165 * rotMult, 180 * rotMult];
+    scaleYKeyframes = [1, 1.20, 0.38, 0.70, 0.60];
+    scaleXKeyframes = [1, 0.80, 1.20, 0.85, 0.90];
+  }
+
+  // Hit direction scaling and rotations for hit reactions
+  const hitRot = 16 * rotMult;
+  const hitCritRot = 24 * rotMult;
+  const hitX = 22 * xMult;
+  const hitCritX = 35 * xMult;
+
   return (
     <motion.svg
       width="220"
       height="260"
       viewBox="0 0 200 250"
       className="overflow-visible"
-      key={isDead ? "dead" : "alive"}
+      key={isDead ? `dead-${deathVariant}-${hitDirection}` : "alive"}
       initial={isDead ? { scale: 1, opacity: 1, y: 0, rotate: 0, x: 0 } : { x: 120, opacity: 0, scale: 0.85, rotate: 8, y: 0 }}
       animate={isDead ? {
-        scaleY: 0.12,
-        scaleX: 1.45,
-        y: 110,
-        rotate: 90,
-        filter: "grayscale(0.8) brightness(0.4)",
-        opacity: [1, 1, 0]
+        x: xKeyframes,
+        y: yKeyframes,
+        rotate: rotKeyframes,
+        scaleY: scaleYKeyframes,
+        scaleX: scaleXKeyframes,
+        filter: "grayscale(0.85) brightness(0.35)",
+        opacity: [1, 1, 1, 0.9, 0]
       } : isCrit ? {
-        scaleY: [1, 0.40, 1.50, 0.70, 1.20, 1],
-        scaleX: [1, 1.60, 0.45, 1.30, 0.80, 1],
-        rotate: [0, -25, 20, -10, 5, 0],
-        y: [0, 15, -12, 4, 0],
-        filter: "brightness(2) contrast(1.5)",
+        scaleY: [1, 0.42, 1.45, 0.72, 1.15, 1],
+        scaleX: [1, 1.55, 0.48, 1.25, 0.82, 1],
+        rotate: [0, -hitCritRot, hitCritRot * 0.7, -hitCritRot * 0.35, hitCritRot * 0.15, 0],
+        x: [0, hitCritX, -hitCritX * 0.6, hitCritX * 0.3, 0],
+        y: [0, 16, -14, 5, 0],
+        filter: "brightness(2.2) contrast(1.6)",
         opacity: 1,
         scale: 1
       } : isHurt ? {
-        scaleY: [1, 0.60, 1.35, 0.85, 1.05, 1],
-        scaleX: [1, 1.40, 0.65, 1.15, 0.95, 1],
-        rotate: [0, -18, 14, -7, 3, 0],
-        y: [0, 8, -6, 2, 0],
+        scaleY: [1, 0.58, 1.30, 0.88, 1.04, 1],
+        scaleX: [1, 1.35, 0.68, 1.12, 0.94, 1],
+        rotate: [0, -hitRot, hitRot * 0.7, -hitRot * 0.3, hitRot * 0.1, 0],
+        x: [0, hitX, -hitX * 0.5, hitX * 0.25, 0],
+        y: [0, 9, -7, 3, 0],
         opacity: 1,
         scale: 1
       } : {
@@ -169,7 +218,7 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
         opacity: 1,
         rotate: 0
       }}
-      transition={isDead ? { duration: 0.45 } : isCrit ? { duration: 0.5, ease: "easeOut" } : isHurt ? { duration: 0.3, ease: "easeOut" } : { type: "spring", stiffness: 60, damping: 10, mass: 1.2 }}
+      transition={isDead ? { duration: 0.85, ease: "easeInOut" } : isCrit ? { duration: 0.55, ease: "easeOut" } : isHurt ? { duration: 0.35, ease: "easeOut" } : { type: "spring", stiffness: 60, damping: 10, mass: 1.2 }}
     >
       <defs>
         {/* Soft Drop Shadows for 3D depth */}
@@ -252,83 +301,94 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
         }}
         style={{ originX: "100px", originY: "220px" }}
       >
-        {/* Massive Stone/Iron Hammer Head behind shoulder */}
+        {/* Massive Stone/Iron Hammer Head behind shoulder - Low Poly Facets */}
         <g filter="url(#dwarf-shadow)">
-          <path d="M 12 18 L 44 34 L 36 50 L 4 34 Z" fill="url(#dwarfHammerHeadGrad)" stroke="#1e293b" strokeWidth="1.2" />
+          <polygon points="12,18 44,34 36,50 4,34" fill="#64748b" stroke="#334155" strokeWidth="1" />
+          <polygon points="4,34 36,50 30,55 0,38" fill="#475569" stroke="#1e293b" strokeWidth="1" />
         </g>
-        {/* Wooden handle stick behind back */}
-        <path d="M 54 85 L 26 35 L 38 29 L 66 79 Z" fill="url(#dwarfHandleGrad)" stroke="#1c0d0a" strokeWidth="1.2" filter="url(#dwarf-shadow)" />
+        {/* Wooden handle stick behind back - Low Poly Facets */}
+        <polygon points="56,85 24,35 34,29 66,79" fill="#4d3227" stroke="#2b1a13" strokeWidth="1" filter="url(#dwarf-shadow)" />
 
-        {/* Tunic (White Tank Top Sleeveless Shirt) with U-neck details */}
+        {/* Tunic (White Tank Top Sleeveless Shirt) - Low Poly Facets */}
         <g filter="url(#dwarf-shadow)">
           {/* Skin neck & shoulders visible under tank top */}
-          <rect x="74" y="105" width="52" height="25" fill="url(#dwarfSkinGrad)" />
-          {/* Tank top path with U-shaped neckline */}
-          <path d="M 60 122 L 72 106 H 82 Q 100 128 118 106 H 128 L 140 122 V 205 H 60 Z" fill="url(#dwarfTunic)" stroke="#d4d4d4" strokeWidth="1" />
+          <polygon points="76,105 124,105 130,122 70,122" fill="#fddbb0" />
+          {/* Tank top panels */}
+          <polygon points="60,122 85,106 88,205 60,205" fill="#e5e5e5" stroke="#cccccc" strokeWidth="0.8" />
+          <polygon points="85,106 115,106 112,205 88,205" fill="#f5f5f5" stroke="#d4d4d4" strokeWidth="0.8" />
+          <polygon points="115,106 140,122 140,205 112,205" fill="#d4d4d4" stroke="#b5b5b5" strokeWidth="0.8" />
         </g>
 
-        {/* Trousers (Brown pants) */}
+        {/* Trousers (Brown pants) - Low Poly Facets */}
         <g filter="url(#dwarf-shadow)">
-          <path d="M 64 205 L 136 205 L 132 225 L 68 225 Z" fill="#3b2314" />
+          <polygon points="60,205 88,205 88,218 64,218" fill="#301606" />
+          <polygon points="88,205 112,205 112,218 88,218" fill="#45220c" />
+          <polygon points="112,205 140,205 136,218 112,218" fill="#301606" />
         </g>
 
-        {/* Crotch Apron Pouch with X stitch as in reference image */}
+        {/* Crotch Apron Pouch with X stitch - Low Poly Facet */}
         <g filter="url(#dwarf-shadow)">
-          <path d="M 88 195 Q 100 188 112 195 L 110 212 Q 100 220 90 212 Z" fill="url(#dwarfApron)" stroke="#1c0d0a" strokeWidth="1.2" />
-          <path d="M 96 200 L 104 208 M 104 200 L 96 208" stroke="#1c0d0a" strokeWidth="1.5" strokeLinecap="round" />
+          <polygon points="90,195 110,195 114,208 100,214 86,208" fill="#5c3f34" stroke="#27140f" strokeWidth="1.2" />
+          <path d="M 96 201 L 104 209 M 104 201 L 96 209" stroke="#1c0d0a" strokeWidth="1.8" strokeLinecap="square" />
         </g>
 
-        {/* Green leg cuffs at knees */}
-        <rect x="72" y="218" width="16" height="9" fill="#15803d" stroke="#166534" strokeWidth="0.8" />
-        <rect x="112" y="218" width="16" height="9" fill="#15803d" stroke="#166534" strokeWidth="0.8" />
+        {/* Green leg cuffs at knees - Low Poly Facets */}
+        <polygon points="68,218 88,218 88,227 68,227" fill="#16a34a" stroke="#15803d" strokeWidth="1" />
+        <polygon points="112,218 132,218 132,227 112,227" fill="#16a34a" stroke="#15803d" strokeWidth="1" />
 
-        {/* Leather folded cuff boots */}
+        {/* Leather folded cuff boots - Low Poly Facets */}
         <g filter="url(#dwarf-shadow)">
-          {/* Left cuff & boot folded cuff */}
-          <ellipse cx="80" cy="227" rx="12" ry="4.5" fill="#50352c" stroke="#1f110c" strokeWidth="1" />
-          <path d="M 68 227 C 68 220, 92 220, 92 227 L 93 246 Q 80 250 67 246 Z" fill="url(#dwarfBoot)" stroke="#1f110c" strokeWidth="1" />
-
-          {/* Right cuff & boot folded cuff */}
-          <ellipse cx="120" cy="227" rx="12" ry="4.5" fill="#50352c" stroke="#1f110c" strokeWidth="1" />
-          <path d="M 108 227 C 108 220, 132 220, 132 227 L 133 246 Q 120 250 107 246 Z" fill="url(#dwarfBoot)" stroke="#1f110c" strokeWidth="1" />
+          {/* Left boot */}
+          <polygon points="64,227 92,227 92,246 66,246" fill="#45220c" stroke="#1f110c" strokeWidth="1" />
+          <polygon points="66,246 92,246 90,250 62,250" fill="#301606" stroke="#1f110c" strokeWidth="1" />
+          
+          {/* Right boot */}
+          <polygon points="108,227 136,227 134,246 108,246" fill="#45220c" stroke="#1f110c" strokeWidth="1" />
+          <polygon points="108,246 134,246 138,250 110,250" fill="#301606" stroke="#1f110c" strokeWidth="1" />
         </g>
 
-        {/* Thick skin arms hanging straight down */}
+        {/* Segmented skin arms - Low Poly Facets */}
         <g filter="url(#dwarf-shadow)">
-          <path d="M 52 120 L 52 195" stroke="url(#dwarfSkinGrad)" strokeWidth="18" strokeLinecap="round" />
-          <circle cx="52" cy="195" r="10" fill="#fddbb0" stroke="#ea580c" strokeWidth="1.2" />
+          {/* Left arm */}
+          <polygon points="56,122 70,122 66,155 52,155" fill="#fddbb0" stroke="#f97316" strokeWidth="0.8" />
+          <polygon points="52,155 66,155 60,188 48,188" fill="#e59b6e" stroke="#ea580c" strokeWidth="0.8" />
+          <polygon points="46,188 62,188 58,198 48,198" fill="#fddbb0" stroke="#ea580c" strokeWidth="0.8" />
 
-          <path d="M 148 120 L 148 195" stroke="url(#dwarfSkinGrad)" strokeWidth="18" strokeLinecap="round" />
-          <circle cx="148" cy="195" r="10" fill="#fddbb0" stroke="#ea580c" strokeWidth="1.2" />
+          {/* Right arm */}
+          <polygon points="130,122 144,122 148,155 134,155" fill="#fddbb0" stroke="#f97316" strokeWidth="0.8" />
+          <polygon points="134,155 148,155 152,188 140,188" fill="#e59b6e" stroke="#ea580c" strokeWidth="0.8" />
+          <polygon points="138,188 154,188 152,198 142,198" fill="#fddbb0" stroke="#ea580c" strokeWidth="0.8" />
         </g>
 
-        {/* Large Back Beard layer - tapered to point */}
-        <path d="M 54 90 L 146 90 L 138 185 Q 120 220 100 224 Q 80 220 62 185 Z" fill="#1c0e0b" />
-
-        {/* Front Beard (Vertical lock details) - tapered to point */}
+        {/* Faceted pointed Beard (Tapered, not covering the whole body) */}
         <g filter="url(#dwarf-shadow)">
-          <path d="M 58 92 L 142 92 L 136 182 Q 120 216 100 220 Q 80 216 64 182 Z" fill="url(#dwarfBeardGrad)" />
-          {/* Shading/lighting lines on beard */}
-          <path d="M 80 102 L 85 195" stroke="#78584c" strokeWidth="2.0" opacity="0.35" strokeLinecap="round" />
-          <path d="M 120 102 L 115 195" stroke="#78584c" strokeWidth="2.0" opacity="0.35" strokeLinecap="round" />
-          <path d="M 100 104 L 100 205" stroke="#3d251d" strokeWidth="2.5" opacity="0.65" strokeLinecap="round" />
+          <polygon points="56,92 70,92 80,150" fill="#4f2710" stroke="#2e1a14" strokeWidth="0.5" />
+          <polygon points="70,92 90,92 100,180 80,150" fill="#783e19" stroke="#5c3f34" strokeWidth="0.5" />
+          <polygon points="90,92 110,92 100,180" fill="#a05a2c" stroke="#5c3f34" strokeWidth="0.5" />
+          <polygon points="110,92 130,92 120,150 100,180" fill="#6e3b1c" stroke="#5c3f34" strokeWidth="0.5" />
+          <polygon points="130,92 144,92 120,150" fill="#3c1b08" stroke="#2e1a14" strokeWidth="0.5" />
         </g>
 
-        {/* Soft Rounded Face Shape */}
-        <rect x="66" y="66" width="68" height="34" rx="10" fill="url(#dwarfFaceGrad)" stroke="#1c0d0a" strokeWidth="1" />
-
-        {/* Mustache curls down on the sides */}
+        {/* Blocky Hexagonal Face Shapes */}
         <g filter="url(#dwarf-shadow)">
-          <path d="M 60 92 Q 100 114 140 92 Q 100 102 60 92 Z" fill="#301c15" stroke="#1c0d0a" strokeWidth="1" />
+          <polygon points="66,66 75,55 70,92 60,86" fill="#e59b6e" stroke="#c27847" strokeWidth="0.8" />
+          <polygon points="75,55 125,55 130,92 70,92" fill="#fddbb0" stroke="#e59b6e" strokeWidth="0.8" />
+          <polygon points="125,55 134,66 140,86 130,92" fill="#c27847" stroke="#a15827" strokeWidth="0.8" />
         </g>
 
-        {/* Bushy Angled Eyebrows */}
+        {/* Low-Poly Mustache */}
         <g filter="url(#dwarf-shadow)">
-          <path d="M 56 64 C 70 54, 94 62, 94 72 C 84 72, 70 70, 56 64 Z" fill="#2d1a12" stroke="#1c0d0a" strokeWidth="1" />
-          <path d="M 144 64 C 130 54, 106 62, 106 72 C 116 72, 130 70, 144 64 Z" fill="#2d1a12" stroke="#1c0d0a" strokeWidth="1" />
+          <polygon points="98,90 66,95 72,106 100,94" fill="#502d18" stroke="#2d1a12" strokeWidth="0.8" />
+          <polygon points="102,90 134,95 128,106 100,94" fill="#3d1f0f" stroke="#2d1a12" strokeWidth="0.8" />
         </g>
 
-        {/* Eyes (Round black circular beads, spaced apart as in reference) - NO NOSE rendered here */}
+        {/* Bushy Angled Eyebrows - Low Poly */}
+        <g filter="url(#dwarf-shadow)">
+          <polygon points="68,64 94,66 92,72 70,70" fill="#4f2710" stroke="#1c0d0a" strokeWidth="0.8" />
+          <polygon points="106,66 132,64 130,70 108,72" fill="#3c1b08" stroke="#1c0d0a" strokeWidth="0.8" />
+        </g>
+
+        {/* Eyes (spaced apart) */}
         <g>
           {isDead || isCrit ? (
             <>
@@ -348,13 +408,13 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
               {/* Blink Eyelids */}
               <motion.path 
                 d="M 70 74 Q 80 84 90 74 Z" 
-                fill="url(#dwarfFaceGrad)"
+                fill="url(#dwarfSkinGrad)"
                 animate={blink ? { scaleY: 1 } : { scaleY: 0 }}
                 style={{ originY: 0 }}
               />
               <motion.path 
                 d="M 110 74 Q 120 84 130 74 Z" 
-                fill="url(#dwarfFaceGrad)"
+                fill="url(#dwarfSkinGrad)"
                 animate={blink ? { scaleY: 1 } : { scaleY: 0 }}
                 style={{ originY: 0 }}
               />
@@ -362,21 +422,23 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
           )}
         </g>
 
-        {/* Burgundy Cap/Bandanna with Drooping Left Tail tie */}
+        {/* Burgundy Cap/Bandanna - Low Poly Facets */}
         <g filter="url(#dwarf-shadow)">
-          {/* Cap dome */}
-          <path d="M 64 70 C 64 30, 136 30, 136 70 Z" fill="url(#dwarfCapGrad)" stroke="#450a0a" strokeWidth="1" />
+          <polygon points="76,35 124,35 132,55 68,55" fill="#ef4444" stroke="#991b1b" strokeWidth="1" />
+          <polygon points="64,48 76,35 68,55" fill="#dc2626" stroke="#991b1b" strokeWidth="1" />
+          <polygon points="124,35 136,48 132,55" fill="#b91c1c" stroke="#7f1d1d" strokeWidth="1" />
+          <polygon points="66,55 134,55 136,70 64,70" fill="#b91c1c" stroke="#7f1d1d" strokeWidth="1" />
+          
           {/* Bandanna knot */}
-          <circle cx="62" cy="70" r="5" fill="#ef4444" stroke="#450a0a" strokeWidth="1" />
-          {/* Drooping bandanna tail 1 */}
-          <path d="M 62 70 Q 42 75, 34 105 Q 42 110, 48 95 Q 52 82, 62 74 Z" fill="url(#dwarfCapGrad)" stroke="#450a0a" strokeWidth="1" />
-          {/* Drooping bandanna tail 2 */}
-          <path d="M 60 72 Q 46 85, 42 115 Q 48 118, 54 105 Q 56 92, 60 76 Z" fill="url(#dwarfCapGrad)" stroke="#450a0a" strokeWidth="1" />
+          <polygon points="60,65 66,60 66,74 58,70" fill="#ef4444" stroke="#991b1b" strokeWidth="1" />
+          {/* Drooping bandanna tails */}
+          <polygon points="60,70 42,75 36,98 48,90" fill="#b91c1c" stroke="#7f1d1d" strokeWidth="1" />
+          <polygon points="58,72 46,85 40,105 50,100" fill="#991b1b" stroke="#7f1d1d" strokeWidth="1" />
         </g>
 
         {/* Mouth/Expression */}
         {isHurt || isDead ? (
-          <ellipse cx="100" cy="108" rx="5" ry="7" fill="#1c0d0a" />
+          <polygon points="96,104 104,104 102,112 98,112" fill="#1c0d0a" />
         ) : (
           <path d="M 95 106 Q 100 109 105 106" stroke="#1c0d0a" strokeWidth="2.2" strokeLinecap="round" fill="none" />
         )}
@@ -385,35 +447,84 @@ function DwarfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: 
   );
 }
 
-function ElfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: boolean; isCrit: boolean; blink: boolean }) {
+function ElfSVG({ 
+  isHurt, 
+  isDead, 
+  isCrit, 
+  blink, 
+  hitDirection = "left", 
+  deathVariant = 0 
+}: { 
+  isHurt: boolean; 
+  isDead: boolean; 
+  isCrit: boolean; 
+  blink: boolean; 
+  hitDirection?: "left" | "right"; 
+  deathVariant?: number 
+}) {
+  const xMult = hitDirection === "left" ? -1 : 1;
+  const rotMult = hitDirection === "left" ? -1 : 1;
+
+  // Death physics keyframes
+  let xKeyframes = [0, 35 * xMult, 110 * xMult, 135 * xMult, 140 * xMult];
+  let yKeyframes = [0, -35, 125, 105, 115];
+  let rotKeyframes = [0, 25 * rotMult, 100 * rotMult, 82 * rotMult, 90 * rotMult];
+  let scaleYKeyframes = [1, 1.12, 0.28, 0.65, 0.55];
+  let scaleXKeyframes = [1, 0.88, 1.30, 0.88, 0.95];
+
+  if (deathVariant === 1) {
+    // Heavy drop variant
+    xKeyframes = [0, 15 * xMult, 45 * xMult, 55 * xMult, 60 * xMult];
+    yKeyframes = [0, -18, 135, 120, 125];
+    rotKeyframes = [0, 15 * rotMult, 95 * rotMult, 85 * rotMult, 90 * rotMult];
+    scaleYKeyframes = [1, 1.05, 0.18, 0.50, 0.45];
+    scaleXKeyframes = [1, 0.95, 1.45, 0.90, 0.98];
+  } else if (deathVariant === 2) {
+    // High spin variant
+    xKeyframes = [0, 65 * xMult, 145 * xMult, 165 * xMult, 170 * xMult];
+    yKeyframes = [0, -65, 120, 100, 110];
+    rotKeyframes = [0, 45 * rotMult, 190 * rotMult, 165 * rotMult, 180 * rotMult];
+    scaleYKeyframes = [1, 1.20, 0.38, 0.70, 0.60];
+    scaleXKeyframes = [1, 0.80, 1.20, 0.85, 0.90];
+  }
+
+  // Hit direction scaling and rotations for hit reactions
+  const hitRot = 16 * rotMult;
+  const hitCritRot = 24 * rotMult;
+  const hitX = 22 * xMult;
+  const hitCritX = 35 * xMult;
+
   return (
     <motion.svg
       width="220"
       height="260"
       viewBox="0 0 200 250"
       className="overflow-visible"
-      key={isDead ? "dead" : "alive"}
+      key={isDead ? `dead-${deathVariant}-${hitDirection}` : "alive"}
       initial={isDead ? { scale: 1, opacity: 1, y: 0, rotate: 0, x: 0 } : { x: -120, opacity: 0, scale: 0.85, rotate: -8, y: 0 }}
       animate={isDead ? {
-        scaleY: 0.12,
-        scaleX: 1.45,
-        y: 110,
-        rotate: -90,
-        filter: "grayscale(0.8) brightness(0.4)",
-        opacity: [1, 1, 0]
+        x: xKeyframes,
+        y: yKeyframes,
+        rotate: rotKeyframes,
+        scaleY: scaleYKeyframes,
+        scaleX: scaleXKeyframes,
+        filter: "grayscale(0.85) brightness(0.35)",
+        opacity: [1, 1, 1, 0.9, 0]
       } : isCrit ? {
-        scaleY: [1, 0.40, 1.50, 0.70, 1.20, 1],
-        scaleX: [1, 1.60, 0.50, 1.30, 0.80, 1],
-        rotate: [0, 25, -20, 10, -5, 0],
-        y: [0, 15, -12, 4, 0],
-        filter: "brightness(2) contrast(1.5)",
+        scaleY: [1, 0.42, 1.45, 0.72, 1.15, 1],
+        scaleX: [1, 1.55, 0.48, 1.25, 0.82, 1],
+        rotate: [0, -hitCritRot, hitCritRot * 0.7, -hitCritRot * 0.35, hitCritRot * 0.15, 0],
+        x: [0, hitCritX, -hitCritX * 0.6, hitCritX * 0.3, 0],
+        y: [0, 16, -14, 5, 0],
+        filter: "brightness(2.2) contrast(1.6)",
         opacity: 1,
         scale: 1
       } : isHurt ? {
-        scaleY: [1, 0.65, 1.28, 0.89, 1.04, 1],
-        scaleX: [1, 1.34, 0.72, 1.10, 0.96, 1],
-        rotate: [0, 15, -12, 6, -3, 0],
-        y: [0, 8, -6, 2, 0],
+        scaleY: [1, 0.58, 1.30, 0.88, 1.04, 1],
+        scaleX: [1, 1.35, 0.68, 1.12, 0.94, 1],
+        rotate: [0, -hitRot, hitRot * 0.7, -hitRot * 0.3, hitRot * 0.1, 0],
+        x: [0, hitX, -hitX * 0.5, hitX * 0.25, 0],
+        y: [0, 9, -7, 3, 0],
         opacity: 1,
         scale: 1
       } : {
@@ -423,7 +534,7 @@ function ElfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: bo
         opacity: 1,
         rotate: 0
       }}
-      transition={isDead ? { duration: 0.45 } : isCrit ? { duration: 0.5, ease: "easeOut" } : isHurt ? { duration: 0.3, ease: "easeOut" } : { type: "spring", stiffness: 60, damping: 10, mass: 1.2 }}
+      transition={isDead ? { duration: 0.85, ease: "easeInOut" } : isCrit ? { duration: 0.55, ease: "easeOut" } : isHurt ? { duration: 0.35, ease: "easeOut" } : { type: "spring", stiffness: 60, damping: 10, mass: 1.2 }}
     >
       <defs>
         {/* Soft Shadows */}
@@ -669,6 +780,16 @@ function ElfSVG({ isHurt, isDead, isCrit, blink }: { isHurt: boolean; isDead: bo
 }
 
 export default function Arcade() {
+  // Mode: 'original' | 'puncher'
+  const [arcadeMode, setArcadeMode] = useState<"original" | "puncher">(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const m = params.get("mode") || params.get("game");
+      if (m === "puncher" || m === "2d") return "puncher";
+    }
+    return "original";
+  });
+
   // Game states: 'select' | 'play'
   const [gameState, setGameState] = useState<"select" | "play">("select");
   const [playerChar, setPlayerChar] = useState<"dwarf" | "elf">("dwarf");
@@ -683,6 +804,19 @@ export default function Arcade() {
   const [defeats, setDefeats] = useState(0);
 
   const [arcadeUsername, setArcadeUsername] = useState<string>(() => localStorage.getItem("smg_arcade_username") || "");
+  const [arcadeUserId, setArcadeUserId] = useState<string>(() => {
+    let uid = localStorage.getItem("smg_arcade_user_id");
+    if (!uid) {
+      const existingName = localStorage.getItem("smg_arcade_username");
+      if (existingName) {
+        uid = existingName.toLowerCase();
+      } else {
+        uid = "sec-" + Math.random().toString(36).substring(2, 15) + "-" + Math.random().toString(36).substring(2, 15);
+      }
+      localStorage.setItem("smg_arcade_user_id", uid);
+    }
+    return uid;
+  });
   const [leaderboardWindow, setLeaderboardWindow] = useState<"daily" | "weekly" | "all-time">("all-time");
   const [leaderboardData, setLeaderboardData] = useState<any>(null);
 
@@ -720,10 +854,36 @@ export default function Arcade() {
   const [playerAttackAnim, setPlayerAttackAnim] = useState(false);
   const [targetHurtAnim, setTargetHurtAnim] = useState(false);
   const [targetDead, setTargetDead] = useState(false);
+  const [hitDirection, setHitDirection] = useState<"left" | "right">("right");
+  const [deathVariant, setDeathVariant] = useState<number>(0);
   const [spellEffect, setSpellEffect] = useState<"lightning" | "meteor" | "nuke" | null>(null);
 
   // Dynamic reaction text
   const [reactionBubble, setReactionBubble] = useState<string | null>(null);
+
+  const handleEnterArena = async (val: string) => {
+    if (val.length < 3) {
+      alert("Nickname must be at least 3 characters.");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/master/arcade/check-username?username=${encodeURIComponent(val)}&userId=${encodeURIComponent(arcadeUserId)}`);
+      if (!res.ok) {
+        alert("Verification server offline.");
+        return;
+      }
+      const data = await res.json();
+      if (data.exists) {
+        alert("This username is already taken.");
+        return;
+      }
+      localStorage.setItem("smg_arcade_username", val);
+      setArcadeUsername(val);
+      playSound("upgrade");
+    } catch (err) {
+      alert("Verification failed: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
 
   // Particles & floating texts
   const [particles, setParticles] = useState<Particle[]>([]);
@@ -890,8 +1050,17 @@ export default function Arcade() {
   };
 
   // Trigger weapon hit logic
-  const handleAttack = () => {
+  const handleAttack = (e?: React.MouseEvent) => {
     if (gameState === "select" || isHitStopped || targetDead) return;
+
+    let dir: "left" | "right" = Math.random() < 0.5 ? "left" : "right";
+    if (e && e.currentTarget) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const centerX = rect.width / 2;
+      dir = clickX < centerX ? "left" : "right";
+    }
+    setHitDirection(dir);
 
     // Reset reaction
     if (Math.random() < 0.2) setReactionBubble(null);
@@ -1036,6 +1205,7 @@ export default function Arcade() {
   // Target defeat animation sequence
   const handleTargetDefeat = (finalDmg: number) => {
     setTargetDead(true);
+    setDeathVariant(Math.floor(Math.random() * 3));
     setReactionBubble("ARGH! Refund authorized!");
     playSound("kill");
     
@@ -1066,6 +1236,7 @@ export default function Arcade() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          userId: arcadeUserId,
           username: arcadeUsername,
           dwarfKills: playerChar === "dwarf" ? 1 : 0,
           elfKills: playerChar === "elf" ? 1 : 0,
@@ -1179,8 +1350,137 @@ export default function Arcade() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [gameState, playerChar, targetHp, activeWeapon, rage, totalHits, defeats, achievements, targetDead, isHitStopped]);
 
+  const renderLeaderboards = () => (
+    <div className="w-full p-6 rounded-2xl border border-amber-500/15 bg-gradient-to-b from-[#0c1020]/80 to-[#070b13]/90 glass-panel space-y-5 shadow-[0_0_40px_rgba(245,158,11,0.06)]">
+      <div className="flex items-center justify-between border-b border-amber-500/10 pb-4">
+        <div className="text-sm font-black bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-500 bg-clip-text text-transparent uppercase tracking-wider flex items-center gap-2">
+          🏆 Global Leaderboards
+        </div>
+        <div className="flex gap-1.5">
+          {(["daily", "weekly", "all-time"] as const).map(w => (
+            <button
+              key={w}
+              onClick={(e) => { e.stopPropagation(); setLeaderboardWindow(w); playSound("click"); }}
+              className={`px-3 py-1 rounded-lg text-[9px] uppercase font-black tracking-wider transition-all cursor-pointer ${
+                leaderboardWindow === w 
+                  ? "bg-amber-500/20 border border-amber-500/40 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.2)]" 
+                  : "bg-white/[0.02] border border-white/[0.04] text-white/40 hover:text-white hover:border-white/10"
+              }`}
+            >
+              {w === "all-time" ? "All Time" : (w === "weekly" ? "Weekly" : "Daily")}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 3 Leaderboard Categories — Always Side-by-Side in ONE Row */}
+      <div className="w-full overflow-x-auto pb-2 scrollbar-thin">
+        <div className="flex flex-row flex-nowrap gap-4 min-w-[800px] lg:min-w-0 lg:grid lg:grid-cols-3">
+
+          {/* ☠️ Top 10 Total Kills */}
+          <div className="min-w-[260px] flex-1 flex-shrink-0 p-4 rounded-xl border border-amber-500/10 bg-black/20">
+            <div className="text-[11px] text-amber-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2 font-mono">
+              ☠️ Top 10 — Total Kills
+            </div>
+            <div className="space-y-1.5">
+              {leaderboardData?.totalKills && leaderboardData.totalKills.length > 0 ? (
+                leaderboardData.totalKills.slice(0, 10).map((entry: any, index: number) => {
+                  const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
+                  return (
+                    <div key={index} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${
+                      isMe ? "bg-amber-500/15 border border-amber-500/25 shadow-[0_0_12px_rgba(245,158,11,0.08)]" : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.03]"
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
+                          index === 0 ? "bg-[#ffd700]/20 text-[#ffd700] border-2 border-[#ffd700]/50 shadow-[0_0_8px_rgba(255,215,0,0.3)]" : 
+                          (index === 1 ? "bg-[#c0c0c0]/20 text-[#c0c0c0] border-2 border-[#c0c0c0]/50" : 
+                          (index === 2 ? "bg-[#cd7f32]/20 text-[#cd7f32] border-2 border-[#cd7f32]/50" : "bg-white/5 text-white/30 border border-white/5"))
+                        }`}>{index + 1}</span>
+                        <span className={`font-bold text-[12px] ${isMe ? "text-amber-300 font-extrabold" : "text-white/90"}`}>{entry.username}</span>
+                      </div>
+                      <span className={`font-black text-sm tabular-nums ${isMe ? "text-amber-400" : (index === 0 ? "text-[#ffd700]" : "text-amber-500/80")}`}>{entry.score}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-[11px] text-white/20 text-center py-6 font-mono">No records yet — be the first!</div>
+              )}
+            </div>
+          </div>
+
+          {/* 🧔 Top 10 Dwarf Kills */}
+          <div className="min-w-[260px] flex-1 flex-shrink-0 p-4 rounded-xl border border-amber-500/10 bg-black/20">
+            <div className="text-[11px] text-amber-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2 font-mono">
+              🧔 Top 10 — Dwarf Kills
+            </div>
+            <div className="space-y-1.5">
+              {leaderboardData?.dwarfKills && leaderboardData.dwarfKills.length > 0 ? (
+                leaderboardData.dwarfKills.slice(0, 10).map((entry: any, index: number) => {
+                  const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
+                  return (
+                    <div key={index} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${
+                      isMe ? "bg-amber-500/15 border border-amber-500/25 shadow-[0_0_12px_rgba(245,158,11,0.08)]" : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.03]"
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
+                          index === 0 ? "bg-[#ffd700]/20 text-[#ffd700] border-2 border-[#ffd700]/50 shadow-[0_0_8px_rgba(255,215,0,0.3)]" : 
+                          (index === 1 ? "bg-[#c0c0c0]/20 text-[#c0c0c0] border-2 border-[#c0c0c0]/50" : 
+                          (index === 2 ? "bg-[#cd7f32]/20 text-[#cd7f32] border-2 border-[#cd7f32]/50" : "bg-white/5 text-white/30 border border-white/5"))
+                        }`}>{index + 1}</span>
+                        <span className={`font-bold text-[12px] ${isMe ? "text-amber-300 font-extrabold" : "text-white/90"}`}>{entry.username}</span>
+                      </div>
+                      <span className={`font-black text-sm tabular-nums ${isMe ? "text-amber-400" : (index === 0 ? "text-[#ffd700]" : "text-amber-500/80")}`}>{entry.score}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-[11px] text-white/20 text-center py-6 font-mono">No records yet — be the first!</div>
+              )}
+            </div>
+          </div>
+
+          {/* 🧝 Top 10 Elf Kills */}
+          <div className="min-w-[260px] flex-1 flex-shrink-0 p-4 rounded-xl border border-emerald-500/10 bg-black/20">
+            <div className="text-[11px] text-emerald-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2 font-mono">
+              🧝 Top 10 — Elf Kills
+            </div>
+            <div className="space-y-1.5">
+              {leaderboardData?.elfKills && leaderboardData.elfKills.length > 0 ? (
+                leaderboardData.elfKills.slice(0, 10).map((entry: any, index: number) => {
+                  const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
+                  return (
+                    <div key={index} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${
+                      isMe ? "bg-emerald-500/15 border border-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.08)]" : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.03]"
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
+                          index === 0 ? "bg-[#ffd700]/20 text-[#ffd700] border-2 border-[#ffd700]/50 shadow-[0_0_8px_rgba(255,215,0,0.3)]" : 
+                          (index === 1 ? "bg-[#c0c0c0]/20 text-[#c0c0c0] border-2 border-[#c0c0c0]/50" : 
+                          (index === 2 ? "bg-[#cd7f32]/20 text-[#cd7f32] border-2 border-[#cd7f32]/50" : "bg-white/5 text-white/30 border border-white/5"))
+                        }`}>{index + 1}</span>
+                        <span className={`font-bold text-[12px] ${isMe ? "text-emerald-300 font-extrabold" : "text-white/90"}`}>{entry.username}</span>
+                      </div>
+                      <span className={`font-black text-sm tabular-nums ${isMe ? "text-emerald-400" : (index === 0 ? "text-[#ffd700]" : "text-emerald-400/80")}`}>{entry.score}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-[11px] text-white/20 text-center py-6 font-mono">No records yet — be the first!</div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className={`min-h-screen text-white flex flex-col relative overflow-hidden font-sans bg-[#03050b] select-none ${screenShake ? "animate-shake" : ""}`}>
+      {/* Immersive Colorful Parallax Background */}
+      <ParallaxBackground blur={2} brightness={0.75} saturate={1.2} opacity={0.8} />
+      {/* Dark Overlay for readability */}
+      <div className="absolute inset-0 bg-black/40 z-0 pointer-events-none" />
       <ParticleBackground />
 
       {/* Decorative neon back aura */}
@@ -1236,7 +1536,54 @@ export default function Arcade() {
           }
         `}</style>
         
-        {/* Slow Mo Overlay */}
+        {/* Arcade Mode Switcher: SwordMasters 3D vs 2D Dwarf Puncher */}
+        <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[#090d19]/80 border border-white/[0.08] shadow-lg">
+            <button
+              onClick={() => setArcadeMode("original")}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition cursor-pointer ${
+                arcadeMode === "original"
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 shadow-md shadow-emerald-500/20"
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span>🎮</span>
+              <span>SwordMasters (Original Game)</span>
+            </button>
+            <button
+              onClick={() => setArcadeMode("puncher")}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition cursor-pointer ${
+                arcadeMode === "puncher"
+                  ? "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md shadow-red-500/20"
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span>🥊</span>
+              <span>Dwarf Puncher (2D Arcade)</span>
+            </button>
+          </div>
+
+          <div className="text-[11px] text-white/40 hidden sm:flex items-center gap-2 font-mono">
+            {arcadeMode === "original" ? (
+              <span className="text-emerald-400 font-bold">Authentic PlayCanvas Engine & Live Colyseus MMO</span>
+            ) : (
+              <span className="text-rose-400/90 font-bold">Classic 2D Reflex Mini-Game</span>
+            )}
+          </div>
+        </div>
+
+        {arcadeMode === "original" ? (
+          <div className="relative w-full max-w-6xl mx-auto rounded-3xl overflow-hidden shadow-2xl border border-white/10 aspect-[16/9] min-h-[620px] bg-black">
+            <iframe
+              src="/original-runtime/index.html"
+              title="SwordMasters Original Runtime"
+              className="w-full h-full border-0 select-none"
+              allow="autoplay; fullscreen; clipboard-read; clipboard-write"
+            />
+          </div>
+        ) : (
+          <>
+            {/* Slow Mo Overlay */}
         <AnimatePresence>
           {isSlowMo && (
             <motion.div 
@@ -1286,13 +1633,7 @@ export default function Arcade() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       const val = (e.target as HTMLInputElement).value.trim();
-                      if (val.length >= 3) {
-                        localStorage.setItem("smg_arcade_username", val);
-                        setArcadeUsername(val);
-                        playSound("upgrade");
-                      } else {
-                        alert("Nickname must be at least 3 characters.");
-                      }
+                      handleEnterArena(val);
                     }
                   }}
                 />
@@ -1302,13 +1643,7 @@ export default function Arcade() {
                 onClick={() => {
                   const input = document.getElementById("arcade-username-input") as HTMLInputElement;
                   const val = input?.value.trim() || "";
-                  if (val.length >= 3) {
-                    localStorage.setItem("smg_arcade_username", val);
-                    setArcadeUsername(val);
-                    playSound("upgrade");
-                  } else {
-                    alert("Nickname must be at least 3 characters.");
-                  }
+                  handleEnterArena(val);
                 }}
                 className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-black text-xs uppercase tracking-widest transition-all shadow-[0_4px_20px_rgba(245,158,11,0.25)] cursor-pointer"
               >
@@ -1321,7 +1656,7 @@ export default function Arcade() {
           <motion.div 
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex-1 flex flex-col justify-center items-center py-10 max-w-3xl mx-auto w-full space-y-8"
+            className="flex-1 flex flex-col justify-center items-center py-10 max-w-5xl mx-auto w-full space-y-8"
           >
             <div className="text-center space-y-2">
               <span className="text-amber-400 font-black text-[9px] uppercase tracking-widest font-mono">Stress Relief Parody Mini-game</span>
@@ -1373,6 +1708,11 @@ export default function Arcade() {
                   Play as Elf
                 </button>
               </div>
+            </div>
+
+            {/* Global Leaderboards on Select Screen */}
+            <div className="w-full pt-4">
+              {renderLeaderboards()}
             </div>
           </motion.div>
         ) : (
@@ -1604,6 +1944,8 @@ export default function Arcade() {
                         isDead={targetDead} 
                         isCrit={combo > 5 && Math.random() < 0.25} 
                         blink={blink} 
+                        hitDirection={hitDirection}
+                        deathVariant={deathVariant}
                       />
                     ) : (
                       <ElfSVG 
@@ -1611,6 +1953,8 @@ export default function Arcade() {
                         isDead={targetDead} 
                         isCrit={combo > 5 && Math.random() < 0.25} 
                         blink={blink} 
+                        hitDirection={hitDirection}
+                        deathVariant={deathVariant}
                       />
                     )}
                   </div>
@@ -1771,128 +2115,6 @@ export default function Arcade() {
                 </button>
               </div>
 
-              {/* LIVE LEADERBOARDS — Top 10 Only */}
-              <div className="p-6 rounded-2xl border border-amber-500/15 bg-gradient-to-b from-[#0c1020]/80 to-[#070b13]/90 glass-panel space-y-5 shadow-[0_0_40px_rgba(245,158,11,0.06)]">
-                <div className="flex items-center justify-between border-b border-amber-500/10 pb-4">
-                  <div className="text-sm font-black bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-500 bg-clip-text text-transparent uppercase tracking-wider flex items-center gap-2">
-                    🏆 Global Leaderboards
-                  </div>
-                  <div className="flex gap-1.5">
-                    {(["daily", "weekly", "all-time"] as const).map(w => (
-                      <button
-                        key={w}
-                        onClick={(e) => { e.stopPropagation(); setLeaderboardWindow(w); playSound("click"); }}
-                        className={`px-3 py-1 rounded-lg text-[9px] uppercase font-black tracking-wider transition-all cursor-pointer ${
-                          leaderboardWindow === w 
-                            ? "bg-amber-500/20 border border-amber-500/40 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.2)]" 
-                            : "bg-white/[0.02] border border-white/[0.04] text-white/40 hover:text-white hover:border-white/10"
-                        }`}
-                      >
-                        {w === "all-time" ? "All Time" : (w === "weekly" ? "Weekly" : "Daily")}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 3 Leaderboard Categories — Stacked Full-Width */}
-                <div className="space-y-5">
-
-                  {/* ☠️ Top 10 Total Kills */}
-                  <div className="p-4 rounded-xl border border-amber-500/10 bg-black/20">
-                    <div className="text-[11px] text-amber-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2 font-mono">
-                      ☠️ Top 10 — Total Kills
-                    </div>
-                    <div className="space-y-1.5">
-                      {leaderboardData?.totalKills && leaderboardData.totalKills.length > 0 ? (
-                        leaderboardData.totalKills.slice(0, 10).map((entry: any, index: number) => {
-                          const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
-                          return (
-                            <div key={index} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${
-                              isMe ? "bg-amber-500/15 border border-amber-500/25 shadow-[0_0_12px_rgba(245,158,11,0.08)]" : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.03]"
-                            }`}>
-                              <div className="flex items-center gap-3">
-                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
-                                  index === 0 ? "bg-[#ffd700]/20 text-[#ffd700] border-2 border-[#ffd700]/50 shadow-[0_0_8px_rgba(255,215,0,0.3)]" : 
-                                  (index === 1 ? "bg-[#c0c0c0]/20 text-[#c0c0c0] border-2 border-[#c0c0c0]/50" : 
-                                  (index === 2 ? "bg-[#cd7f32]/20 text-[#cd7f32] border-2 border-[#cd7f32]/50" : "bg-white/5 text-white/30 border border-white/5"))
-                                }`}>{index + 1}</span>
-                                <span className={`font-bold text-[12px] ${isMe ? "text-amber-300 font-extrabold" : "text-white/90"}`}>{entry.username}</span>
-                              </div>
-                              <span className={`font-black text-sm tabular-nums ${isMe ? "text-amber-400" : (index === 0 ? "text-[#ffd700]" : "text-amber-500/80")}`}>{entry.score}</span>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="text-[11px] text-white/20 text-center py-6 font-mono">No records yet — be the first!</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 🧔 Top 10 Dwarf Kills */}
-                  <div className="p-4 rounded-xl border border-amber-500/10 bg-black/20">
-                    <div className="text-[11px] text-amber-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2 font-mono">
-                      🧔 Top 10 — Dwarf Kills
-                    </div>
-                    <div className="space-y-1.5">
-                      {leaderboardData?.dwarfKills && leaderboardData.dwarfKills.length > 0 ? (
-                        leaderboardData.dwarfKills.slice(0, 10).map((entry: any, index: number) => {
-                          const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
-                          return (
-                            <div key={index} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${
-                              isMe ? "bg-amber-500/15 border border-amber-500/25 shadow-[0_0_12px_rgba(245,158,11,0.08)]" : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.03]"
-                            }`}>
-                              <div className="flex items-center gap-3">
-                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
-                                  index === 0 ? "bg-[#ffd700]/20 text-[#ffd700] border-2 border-[#ffd700]/50 shadow-[0_0_8px_rgba(255,215,0,0.3)]" : 
-                                  (index === 1 ? "bg-[#c0c0c0]/20 text-[#c0c0c0] border-2 border-[#c0c0c0]/50" : 
-                                  (index === 2 ? "bg-[#cd7f32]/20 text-[#cd7f32] border-2 border-[#cd7f32]/50" : "bg-white/5 text-white/30 border border-white/5"))
-                                }`}>{index + 1}</span>
-                                <span className={`font-bold text-[12px] ${isMe ? "text-amber-300 font-extrabold" : "text-white/90"}`}>{entry.username}</span>
-                              </div>
-                              <span className={`font-black text-sm tabular-nums ${isMe ? "text-amber-400" : (index === 0 ? "text-[#ffd700]" : "text-amber-500/80")}`}>{entry.score}</span>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="text-[11px] text-white/20 text-center py-6 font-mono">No records yet — be the first!</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 🧝 Top 10 Elf Kills */}
-                  <div className="p-4 rounded-xl border border-emerald-500/10 bg-black/20">
-                    <div className="text-[11px] text-emerald-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2 font-mono">
-                      🧝 Top 10 — Elf Kills
-                    </div>
-                    <div className="space-y-1.5">
-                      {leaderboardData?.elfKills && leaderboardData.elfKills.length > 0 ? (
-                        leaderboardData.elfKills.slice(0, 10).map((entry: any, index: number) => {
-                          const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
-                          return (
-                            <div key={index} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${
-                              isMe ? "bg-emerald-500/15 border border-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.08)]" : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.03]"
-                            }`}>
-                              <div className="flex items-center gap-3">
-                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
-                                  index === 0 ? "bg-[#ffd700]/20 text-[#ffd700] border-2 border-[#ffd700]/50 shadow-[0_0_8px_rgba(255,215,0,0.3)]" : 
-                                  (index === 1 ? "bg-[#c0c0c0]/20 text-[#c0c0c0] border-2 border-[#c0c0c0]/50" : 
-                                  (index === 2 ? "bg-[#cd7f32]/20 text-[#cd7f32] border-2 border-[#cd7f32]/50" : "bg-white/5 text-white/30 border border-white/5"))
-                                }`}>{index + 1}</span>
-                                <span className={`font-bold text-[12px] ${isMe ? "text-emerald-300 font-extrabold" : "text-white/90"}`}>{entry.username}</span>
-                              </div>
-                              <span className={`font-black text-sm tabular-nums ${isMe ? "text-emerald-400" : (index === 0 ? "text-[#ffd700]" : "text-emerald-400/80")}`}>{entry.score}</span>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="text-[11px] text-white/20 text-center py-6 font-mono">No records yet — be the first!</div>
-                      )}
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
               {/* REVENGE ACHIEVEMENTS */}
               <div className="p-5 rounded-xl border border-white/[0.04] bg-[#070b13]/60 glass-panel space-y-3">
                 <div className="text-xs font-black text-white uppercase tracking-widest border-b border-white/[0.04] pb-2">CHALLENGES</div>
@@ -1923,8 +2145,15 @@ export default function Arcade() {
 
             </div>
 
+            {/* LIVE LEADERBOARDS — Full Width Container */}
+            <div className="col-span-1 lg:col-span-12">
+              {renderLeaderboards()}
+            </div>
+
           </div>
         )}
+      </>
+    )}
 
       </main>
 

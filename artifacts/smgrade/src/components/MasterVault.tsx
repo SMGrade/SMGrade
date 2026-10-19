@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 
 interface MasterVaultProps {
@@ -67,8 +67,9 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
   const [mostSearched, setMostSearched] = useState<any[]>([]);
 
   // States for logs
-  const [activities, setActivities] = useState<ActivityLogEntry[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
   const [actSearch, setActSearch] = useState("");
+  const [actSearchInput, setActSearchInput] = useState("");
   const [actFilterAction, setActFilterAction] = useState("");
   const [actFilterStatus, setActFilterStatus] = useState("");
   const [actFilterDate, setActFilterDate] = useState("");
@@ -89,9 +90,17 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setActSearch(actSearchInput);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [actSearchInput]);
+
   useEffect(() => {
     loadTabContent();
-  }, [activeTab]);
+  }, [activeTab, actSearch]);
 
   async function loadTabContent() {
     setLoading(true);
@@ -101,19 +110,24 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
       const headers = { "x-master-token": token };
       if (activeTab === "analytics") {
         const res = await fetch("/api/master/analytics", { headers });
+        if (res.status === 401) { onLock(); return; }
         if (res.ok) setAnalytics(await res.json());
         const pgRes = await fetch("/api/master/popular-gear", { headers });
         if (pgRes.ok) setPopularGear(await pgRes.json());
         const msRes = await fetch("/api/master/most-searched", { headers });
         if (msRes.ok) setMostSearched(await msRes.json());
       } else if (activeTab === "logins") {
-        const res = await fetch("/api/master/activity-logs", { headers });
+        const queryUrl = `/api/master/lookup-logs?q=${encodeURIComponent(actSearch)}`;
+        const res = await fetch(queryUrl, { headers });
+        if (res.status === 401) { onLock(); return; }
         if (res.ok) setActivities(await res.json());
       } else if (activeTab === "audits") {
         const res = await fetch("/api/master/audit-logs", { headers });
+        if (res.status === 401) { onLock(); return; }
         if (res.ok) setAudits(await res.json());
       } else if (activeTab === "health") {
         const res = await fetch("/api/master/health", { headers });
+        if (res.status === 401) { onLock(); return; }
         if (res.ok) setHealth(await res.json());
       }
     } catch {
@@ -164,6 +178,42 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
       }
     } catch (e) {
       setRestoreError("Invalid JSON structure. Please check backup formatting.");
+    }
+  }
+
+  async function handleDeleteLogs(type: "activity" | "audit" | "lookup" | "all") {
+    const messages = {
+      activity: "Are you sure you want to permanently delete all player activity logs?",
+      audit: "Are you sure you want to permanently delete all system audit logs?",
+      lookup: "Are you sure you want to permanently delete all player lookup logs?",
+      all: "WARNING: Are you sure you want to permanently delete ALL activity, lookup, and system audit logs?"
+    };
+    if (!window.confirm(messages[type])) return;
+    
+    try {
+      const endpoints = {
+        activity: "/api/master/logs/delete-player-activity",
+        audit: "/api/master/logs/delete-system-audit",
+        lookup: "/api/master/logs/delete-lookup-logs",
+        all: "/api/master/logs/delete-all-logs"
+      };
+      
+      const res = await fetch(endpoints[type], {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-master-token": token 
+        }
+      });
+      if (res.ok) {
+        alert("Logs deleted successfully.");
+        loadTabContent();
+      } else {
+        const errData = await res.json();
+        alert("Failed to delete logs: " + (errData.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      alert("Network error: " + err.message);
     }
   }
 
@@ -309,14 +359,8 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
 
             {activeTab === "logins" && (() => {
               const filteredActivities = activities.filter(act => {
-                if (actSearch && !act.username.toLowerCase().includes(actSearch.toLowerCase())) return false;
-                if (actFilterAction && act.action !== actFilterAction) return false;
-                if (actFilterStatus) {
-                  const s = act.status || "Info";
-                  if (actFilterStatus === "Info" && s === "Success") return false;
-                  if (actFilterStatus === "Info" && s === "Failed") return false;
-                  if (actFilterStatus !== "Info" && s !== actFilterStatus) return false;
-                }
+                if (actSearch && !act.usernameSearched?.toLowerCase().includes(actSearch.toLowerCase())) return false;
+                if (actFilterStatus && act.grade !== actFilterStatus) return false;
                 if (actFilterDate) {
                   const datePart = new Date(act.timestamp).toISOString().split('T')[0];
                   if (datePart !== actFilterDate) return false;
@@ -330,32 +374,32 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
                   <div className="border border-white/[0.04] rounded-xl p-4 bg-[#070b13]/60 glass-panel flex flex-wrap gap-3 items-center">
                     <input
                       type="text"
-                      placeholder="Search username..."
-                      className="bg-white/[0.01] border border-white/[0.03] text-white text-[10px] px-3 py-2 rounded-lg outline-none w-36 font-bold font-mono placeholder:text-white/20"
-                      value={actSearch}
-                      onChange={(e) => setActSearch(e.target.value)}
+                      placeholder="Search username, IP (e.g. 49.204), date (2026-09-01 or 01/09/2026), grade..."
+                      className="bg-white/[0.01] border border-white/[0.03] text-white text-[10px] px-3 py-2 rounded-lg outline-none w-96 font-bold font-mono placeholder:text-white/30"
+                      value={actSearchInput}
+                      onChange={(e) => setActSearchInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          setActSearch(actSearchInput);
+                        }
+                      }}
                     />
-                    <select
-                      className="bg-[#03050b] border border-white/[0.03] text-white/60 text-[10px] px-2 py-2 rounded-lg outline-none font-bold"
-                      value={actFilterAction}
-                      onChange={(e) => setActFilterAction(e.target.value)}
-                    >
-                      <option value="">All Actions</option>
-                      <option value="Player Analysis">Player Analysis</option>
-                      <option value="Live Lookup">Live Lookup</option>
-                      <option value="Admin Login">Admin Login</option>
-                      <option value="Admin Login Attempt Failed">Login Failed</option>
-                      <option value="Database Restored">Database Restored</option>
-                    </select>
                     <select
                       className="bg-[#03050b] border border-white/[0.03] text-white/60 text-[10px] px-2 py-2 rounded-lg outline-none font-bold"
                       value={actFilterStatus}
                       onChange={(e) => setActFilterStatus(e.target.value)}
                     >
-                      <option value="">All Statuses</option>
-                      <option value="Success">Success</option>
-                      <option value="Failed">Failed</option>
-                      <option value="Info">Info/Other</option>
+                      <option value="">All Grades</option>
+                      <option value="S+">S+</option>
+                      <option value="S">S</option>
+                      <option value="A+">A+</option>
+                      <option value="A">A</option>
+                      <option value="B+">B+</option>
+                      <option value="B">B</option>
+                      <option value="C+">C+</option>
+                      <option value="C">C</option>
+                      <option value="D">D</option>
+                      <option value="F">F</option>
                     </select>
                     <input
                       type="date"
@@ -363,11 +407,11 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
                       value={actFilterDate}
                       onChange={(e) => setActFilterDate(e.target.value)}
                     />
-                    {(actSearch || actFilterAction || actFilterStatus || actFilterDate) && (
+                    {(actSearchInput || actSearch || actFilterStatus || actFilterDate) && (
                       <button 
                         onClick={() => {
+                          setActSearchInput("");
                           setActSearch("");
-                          setActFilterAction("");
                           setActFilterStatus("");
                           setActFilterDate("");
                         }} 
@@ -379,39 +423,49 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
                   </div>
 
                   <div className="border border-white/[0.04] rounded-xl overflow-hidden bg-white/[0.01] glass-panel">
-                    <div className="grid grid-cols-4 px-4 py-3 border-b border-white/[0.04] bg-white/[0.01] text-[9px] uppercase tracking-widest font-black text-white/30">
-                      <span>Time</span>
+                    <div className="grid grid-cols-6 px-4 py-3 border-b border-white/[0.04] bg-white/[0.01] text-[9px] uppercase tracking-widest font-black text-white/30">
+                      <span>Timestamp</span>
                       <span>Username</span>
-                      <span>Action</span>
-                      <span className="text-right">Status / Speed</span>
+                      <span className="text-center">IP Address</span>
+                      <span className="text-center">Grade</span>
+                      <span className="text-center">Overall %</span>
+                      <span className="text-right">Level</span>
                     </div>
                     <div className="divide-y divide-white/[0.02] text-xs max-h-[400px] overflow-y-auto pr-1 font-semibold text-white/80">
                       {filteredActivities.length === 0 ? (
-                        <div className="text-center text-white/20 py-8">No player activity logs recorded.</div>
+                        <div className="text-center text-white/20 py-8">No player lookup logs recorded.</div>
                       ) : (
-                        filteredActivities.map((act) => (
-                          <div key={act.id} className="grid grid-cols-4 px-4 py-3 items-center">
-                            <span className="text-white/40 font-mono">{new Date(act.timestamp).toLocaleString()}</span>
-                            <span className="font-bold text-amber-400">{act.username}</span>
-                            <span>
-                              <span className="inline-block bg-[#8ab4c9]/10 border border-[#8ab4c9]/25 text-[#8ab4c9] px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">
-                                {act.action}
+                        filteredActivities.map((act) => {
+                          const overallPct = Math.round(
+                            (act.gearScore || 0) * 0.25 + 
+                            (act.powerScore || 0) * 0.60 + 
+                            (act.wealthScore || 0) * 0.05 + 
+                            (act.progressionScore || 0) * 0.10
+                          );
+                          const extractedIp = act.ipAddress || (act.details && act.details.includes("IP: ") ? act.details.split("IP: ")[1] : null) || "N/A";
+                          return (
+                            <div key={act.id} className="grid grid-cols-6 px-4 py-3 items-center">
+                              <span className="text-white/40 font-mono">{new Date(act.timestamp).toLocaleString()}</span>
+                              <span className="font-bold text-amber-400">{act.usernameSearched || act.username || "Unknown"}</span>
+                              <span className="text-center font-mono">
+                                <span className="inline-block px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-mono text-[9px] font-bold tracking-wide">
+                                  {extractedIp}
+                                </span>
                               </span>
-                            </span>
-                            <span className="text-right flex items-center justify-end gap-2">
-                              <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                                act.status === "Success" ? "bg-[#5ecb7a]/10 border border-[#5ecb7a]/20 text-[#5ecb7a]" :
-                                act.status === "Failed" ? "bg-red-500/10 border border-red-500/20 text-red-400" :
-                                "bg-white/5 border border-white/10 text-white/60"
-                              }`}>
-                                {act.status || "Info"}
+                              <span className="text-center">
+                                <span className="inline-block bg-amber-500/10 border border-amber-500/25 text-amber-400 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">
+                                  {act.grade || "N/A"}
+                                </span>
                               </span>
-                              {act.responseTimeMs !== undefined && (
-                                <span className="text-[9px] text-white/35 font-mono">{act.responseTimeMs}ms</span>
-                              )}
-                            </span>
-                          </div>
-                        ))
+                              <span className="text-center text-white/70 font-mono font-bold">
+                                {overallPct}%
+                              </span>
+                              <span className="text-right text-white/40 font-mono">
+                                Lvl {act.playerLevel?.toLocaleString() || 0}
+                              </span>
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                   </div>
@@ -445,41 +499,68 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
             )}
 
             {activeTab === "backup" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Export Backup */}
-                <div className="border border-white/[0.04] p-5 rounded-xl glass-panel space-y-4">
-                  <h3 className="text-sm font-black text-amber-400 uppercase tracking-wider">Export JSON Database</h3>
-                  <p className="text-xs text-white/40 leading-relaxed">Click below to generate a full state JSON dump of registered users, progress histories, and audit records.</p>
-                  
-                  <button onClick={handleBackup} className="px-5 py-3 rounded-lg button-gold text-xs font-black">Generate Export</button>
-                  
-                  {backupMessage && <p className="text-[#5ecb7a] text-xs font-bold">✓ {backupMessage}</p>}
-                  {backupJson && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Export Backup */}
+                  <div className="border border-white/[0.04] p-5 rounded-xl glass-panel space-y-4">
+                    <h3 className="text-sm font-black text-amber-400 uppercase tracking-wider">Export JSON Database</h3>
+                    <p className="text-xs text-white/40 leading-relaxed">Click below to generate a full state JSON dump of registered users, progress histories, and audit records.</p>
+                    
+                    <button onClick={handleBackup} className="px-5 py-3 rounded-lg button-gold text-xs font-black">Generate Export</button>
+                    
+                    {backupMessage && <p className="text-[#5ecb7a] text-xs font-bold">✓ {backupMessage}</p>}
+                    {backupJson && (
+                      <textarea
+                        readOnly
+                        className="w-full bg-[#03050b] border border-white/[0.04] text-white/70 text-[10px] font-mono p-3 rounded-lg outline-none min-h-[160px]"
+                        onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                        value={backupJson}
+                      />
+                    )}
+                  </div>
+
+                  {/* Import Restore */}
+                  <div className="border border-white/[0.04] p-5 rounded-xl glass-panel space-y-4">
+                    <h3 className="text-sm font-black text-red-400 uppercase tracking-wider">Import / Restore Backup</h3>
+                    <p className="text-xs text-white/40 leading-relaxed">Paste your saved database JSON string export. Warning: This overrides all existing user stats and profiles completely.</p>
+                    
                     <textarea
-                      readOnly
-                      className="w-full bg-[#03050b] border border-white/[0.04] text-white/70 text-[10px] font-mono p-3 rounded-lg outline-none min-h-[160px]"
-                      onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-                      value={backupJson}
+                      className="w-full bg-[#03050b] border border-white/[0.04] text-white/70 text-[10px] font-mono p-3 rounded-lg outline-none min-h-[120px] resize-none"
+                      placeholder="Paste database JSON here..."
+                      value={restoreJson}
+                      onChange={(e) => setRestoreJson(e.target.value)}
                     />
-                  )}
+
+                    {restoreError && <p className="text-red-400 text-xs font-semibold">⚠️ {restoreError}</p>}
+                    {restoreMessage && <p className="text-[#5ecb7a] text-xs font-semibold">✓ {restoreMessage}</p>}
+
+                    <button onClick={handleRestore} className="px-5 py-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-xs font-bold transition-all cursor-pointer">Restore Database</button>
+                  </div>
                 </div>
 
-                {/* Import Restore */}
-                <div className="border border-white/[0.04] p-5 rounded-xl glass-panel space-y-4">
-                  <h3 className="text-sm font-black text-red-400 uppercase tracking-wider">Import / Restore Backup</h3>
-                  <p className="text-xs text-white/40 leading-relaxed">Paste your saved database JSON string export. Warning: This overrides all existing user stats and profiles completely.</p>
-                  
-                  <textarea
-                    className="w-full bg-[#03050b] border border-white/[0.04] text-white/70 text-[10px] font-mono p-3 rounded-lg outline-none min-h-[120px] resize-none"
-                    placeholder="Paste database JSON here..."
-                    value={restoreJson}
-                    onChange={(e) => setRestoreJson(e.target.value)}
-                  />
-
-                  {restoreError && <p className="text-red-400 text-xs font-semibold">⚠️ {restoreError}</p>}
-                  {restoreMessage && <p className="text-[#5ecb7a] text-xs font-semibold">✓ {restoreMessage}</p>}
-
-                  <button onClick={handleRestore} className="px-5 py-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-xs font-bold transition-all cursor-pointer">Restore Database</button>
+                {/* Log Management Section */}
+                <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
+                  <div className="flex justify-between items-center border-b border-white/[0.04] pb-3">
+                    <h3 className="text-xs uppercase font-black tracking-widest text-red-400 font-display font-bold">System Log Management</h3>
+                    <span className="text-[9px] font-mono text-white/40 uppercase">Danger Zone</span>
+                  </div>
+                  <p className="text-[11px] text-white/40 leading-relaxed font-semibold">
+                    Perform administrative database cleanup operations. Each action requires confirmation.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <button onClick={() => handleDeleteLogs("activity")} className="px-4 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 text-[10px] uppercase font-black tracking-wider transition-all cursor-pointer font-bold">
+                      Delete Player Activity Logs
+                    </button>
+                    <button onClick={() => handleDeleteLogs("audit")} className="px-4 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 text-[10px] uppercase font-black tracking-wider transition-all cursor-pointer font-bold">
+                      Delete System Audit Logs
+                    </button>
+                    <button onClick={() => handleDeleteLogs("lookup")} className="px-4 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 text-[10px] uppercase font-black tracking-wider transition-all cursor-pointer font-bold">
+                      Delete Lookup Logs
+                    </button>
+                    <button onClick={() => handleDeleteLogs("all")} className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[10px] uppercase font-black tracking-wider transition-all cursor-pointer font-bold">
+                      Delete All Logs
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -527,9 +608,11 @@ export default function MasterVaultConsole({ token, onLock }: MasterVaultProps) 
                 </div>
               </div>
             )}
+
           </>
         )}
       </div>
     </div>
   );
 }
+

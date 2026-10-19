@@ -16,18 +16,18 @@ export interface GradingConstants {
 
 export const DEFAULT_CONSTANTS: GradingConstants = {
   goldExchangeRate: 100,
-  gearWeight: 0.25,
-  powerWeight: 0.60,
-  progressWeight: 0.10,
-  wealthWeight: 0.05,
-  gradeThresholdSPlus: 97,
-  gradeThresholdS: 90,
-  gradeThresholdAPlus: 83,
-  gradeThresholdA: 75,
-  gradeThresholdBPlus: 67,
+  gearWeight: 0.35,
+  powerWeight: 0.45,
+  progressWeight: 0.00,
+  wealthWeight: 0.20,
+  gradeThresholdSPlus: 96,
+  gradeThresholdS: 89,
+  gradeThresholdAPlus: 82,
+  gradeThresholdA: 74,
+  gradeThresholdBPlus: 66,
   gradeThresholdB: 58,
-  gradeThresholdCPlus: 48,
-  gradeThresholdC: 38,
+  gradeThresholdCPlus: 50,
+  gradeThresholdC: 42,
 };
 
 const STORAGE_KEY = "smg_grading_settings_v1";

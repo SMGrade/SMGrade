@@ -1,0 +1,3753 @@
+{
+  "title": "SMGrade Arcade — Authentic SwordMasters Comprehensive Asset Registry",
+  "generatedAt": "2026-10-18T20:48:24.605Z",
+  "totalAssets": 373,
+  "categorySummary": {
+    "equipment/armor": 3,
+    "characters/npcs": 8,
+    "animations": 26,
+    "other": 2,
+    "characters/player": 6,
+    "effects": 23,
+    "pets": 17,
+    "environment": 35,
+    "characters/mobs": 7,
+    "weapons/shields": 19,
+    "textures": 210,
+    "weapons/swords": 8,
+    "runtime": 5,
+    "manifests": 4
+  },
+  "assets": [
+    {
+      "name": "Armor0.glb",
+      "path": "/hub-assets/Armor0.glb",
+      "category": "equipment/armor",
+      "format": "GLB",
+      "sizeBytes": 24480,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Armor1.glb",
+      "path": "/hub-assets/Armor1.glb",
+      "category": "equipment/armor",
+      "format": "GLB",
+      "sizeBytes": 26720,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Armor2.glb",
+      "path": "/hub-assets/Armor2.glb",
+      "category": "equipment/armor",
+      "format": "GLB",
+      "sizeBytes": 30552,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Demirci.glb",
+      "path": "/hub-assets/Demirci.glb",
+      "category": "characters/npcs",
+      "format": "GLB",
+      "sizeBytes": 223844,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "DemirciBackground.glb",
+      "path": "/hub-assets/DemirciBackground.glb",
+      "category": "characters/npcs",
+      "format": "GLB",
+      "sizeBytes": 31960,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Died.glb",
+      "path": "/hub-assets/Died.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 13612,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "EggStand.glb",
+      "path": "/hub-assets/EggStand.glb",
+      "category": "other",
+      "format": "GLB",
+      "sizeBytes": 3940,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "FaceBlacksmith.png",
+      "path": "/hub-assets/FaceBlacksmith.png",
+      "category": "characters/player",
+      "format": "PNG",
+      "sizeBytes": 4226,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Fire 64.png",
+      "path": "/hub-assets/Fire 64.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 863,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "FokPet.glb",
+      "path": "/hub-assets/FokPet.glb",
+      "category": "pets",
+      "format": "GLB",
+      "sizeBytes": 8556,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "GoldChest.glb",
+      "path": "/hub-assets/GoldChest.glb",
+      "category": "environment",
+      "format": "GLB",
+      "sizeBytes": 10052,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "GummyAxolotl_lvl3.glb",
+      "path": "/hub-assets/GummyAxolotl_lvl3.glb",
+      "category": "pets",
+      "format": "GLB",
+      "sizeBytes": 10336,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "GummyBear_lvl1.glb",
+      "path": "/hub-assets/GummyBear_lvl1.glb",
+      "category": "pets",
+      "format": "GLB",
+      "sizeBytes": 9984,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Idle.glb",
+      "path": "/hub-assets/Idle.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 40696,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "IdleNew.glb",
+      "path": "/hub-assets/IdleNew.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 40696,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Jump.mp3",
+      "path": "/hub-assets/Jump.mp3",
+      "category": "animations",
+      "format": "MP3",
+      "sizeBytes": 4910,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "JumpAir.glb",
+      "path": "/hub-assets/JumpAir.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 26612,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "JumpEnd.glb",
+      "path": "/hub-assets/JumpEnd.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 9604,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "JumpStart.glb",
+      "path": "/hub-assets/JumpStart.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 10240,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Mage.glb",
+      "path": "/hub-assets/Mage.glb",
+      "category": "characters/npcs",
+      "format": "GLB",
+      "sizeBytes": 27536,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "MutantPets.glb",
+      "path": "/hub-assets/MutantPets.glb",
+      "category": "pets",
+      "format": "GLB",
+      "sizeBytes": 185000,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Orc.glb",
+      "path": "/hub-assets/Orc.glb",
+      "category": "characters/mobs",
+      "format": "GLB",
+      "sizeBytes": 37288,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "PenguinPet.glb",
+      "path": "/hub-assets/PenguinPet.glb",
+      "category": "pets",
+      "format": "GLB",
+      "sizeBytes": 12288,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "PetUpgradeMachine.glb",
+      "path": "/hub-assets/PetUpgradeMachine.glb",
+      "category": "pets",
+      "format": "GLB",
+      "sizeBytes": 42236,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Player.glb",
+      "path": "/hub-assets/Player.glb",
+      "category": "characters/player",
+      "format": "GLB",
+      "sizeBytes": 12504,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "PolarBearPet.glb",
+      "path": "/hub-assets/PolarBearPet.glb",
+      "category": "pets",
+      "format": "GLB",
+      "sizeBytes": 9588,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Roundhead.glb",
+      "path": "/hub-assets/Roundhead.glb",
+      "category": "characters/mobs",
+      "format": "GLB",
+      "sizeBytes": 12196,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Run.glb",
+      "path": "/hub-assets/Run.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 10852,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "ShieldPack01.glb",
+      "path": "/hub-assets/ShieldPack01.glb",
+      "category": "weapons/shields",
+      "format": "GLB",
+      "sizeBytes": 323052,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Ship.glb",
+      "path": "/hub-assets/Ship.glb",
+      "category": "environment",
+      "format": "GLB",
+      "sizeBytes": 39980,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "ShopBg.png",
+      "path": "/hub-assets/ShopBg.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 3819,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Slash1.glb",
+      "path": "/hub-assets/Slash1.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 10240,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Slash2.glb",
+      "path": "/hub-assets/Slash2.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 30972,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "SwordPack01.glb",
+      "path": "/hub-assets/SwordPack01.glb",
+      "category": "weapons/swords",
+      "format": "GLB",
+      "sizeBytes": 560256,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Upgrade Outline 64.png",
+      "path": "/hub-assets/Upgrade Outline 64.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 1133,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "WaterModel.glb",
+      "path": "/hub-assets/WaterModel.glb",
+      "category": "environment",
+      "format": "GLB",
+      "sizeBytes": 1776,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "World1MapCollider.glb",
+      "path": "/hub-assets/World1MapCollider.glb",
+      "category": "environment",
+      "format": "GLB",
+      "sizeBytes": 98776,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "World_01Map.glb",
+      "path": "/hub-assets/World_01Map.glb",
+      "category": "environment",
+      "format": "GLB",
+      "sizeBytes": 485424,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "World_1_Portal.glb",
+      "path": "/hub-assets/World_1_Portal.glb",
+      "category": "environment",
+      "format": "GLB",
+      "sizeBytes": 14772,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "bg2.jpg",
+      "path": "/hub-assets/bg2.jpg",
+      "category": "textures",
+      "format": "JPG",
+      "sizeBytes": 12841,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "circle.png",
+      "path": "/hub-assets/circle.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 5097,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "clovers.png",
+      "path": "/hub-assets/clovers.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 4305,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "colorPalette.png",
+      "path": "/hub-assets/colorPalette.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 42968,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "confetti.png",
+      "path": "/hub-assets/confetti.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 9967,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dalga.png",
+      "path": "/hub-assets/dalga.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 34069,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dance1.glb",
+      "path": "/hub-assets/dance1.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 47112,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dance1_real.glb",
+      "path": "/hub-assets/dance1_real.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 47112,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dance2.glb",
+      "path": "/hub-assets/dance2.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 23048,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dance2_real.glb",
+      "path": "/hub-assets/dance2_real.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 23048,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dance3.glb",
+      "path": "/hub-assets/dance3.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 46200,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dance3_real.glb",
+      "path": "/hub-assets/dance3_real.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 46200,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "draco.js",
+      "path": "/hub-assets/draco.js",
+      "category": "runtime",
+      "format": "JS",
+      "sizeBytes": 719410,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "draco.wasm.js",
+      "path": "/hub-assets/draco.wasm.js",
+      "category": "runtime",
+      "format": "JS",
+      "sizeBytes": 58763,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "draco.wasm.wasm",
+      "path": "/hub-assets/draco.wasm.wasm",
+      "category": "runtime",
+      "format": "WASM",
+      "sizeBytes": 285747,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dustTexture.png",
+      "path": "/hub-assets/dustTexture.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 119,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dwarf.glb",
+      "path": "/hub-assets/dwarf.glb",
+      "category": "characters/npcs",
+      "format": "GLB",
+      "sizeBytes": 138904,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "elfface.png",
+      "path": "/hub-assets/elfface.png",
+      "category": "characters/player",
+      "format": "PNG",
+      "sizeBytes": 6677,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "enemyAttack.mp3",
+      "path": "/hub-assets/enemyAttack.mp3",
+      "category": "characters/mobs",
+      "format": "MP3",
+      "sizeBytes": 9194,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "enemyDied.mp3",
+      "path": "/hub-assets/enemyDied.mp3",
+      "category": "characters/mobs",
+      "format": "MP3",
+      "sizeBytes": 17135,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "face.glb",
+      "path": "/hub-assets/face.glb",
+      "category": "characters/player",
+      "format": "GLB",
+      "sizeBytes": 1568,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "face_0.png",
+      "path": "/hub-assets/face_0.png",
+      "category": "characters/player",
+      "format": "PNG",
+      "sizeBytes": 5079,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "fire_64.png",
+      "path": "/hub-assets/fire_64.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 863,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "frame_burn.png",
+      "path": "/hub-assets/frame_burn.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 150338,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "frame_success.png",
+      "path": "/hub-assets/frame_success.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 166882,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "godgraveyard_pets.glb",
+      "path": "/hub-assets/godgraveyard_pets.glb",
+      "category": "pets",
+      "format": "GLB",
+      "sizeBytes": 735916,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "ironsmith.glb",
+      "path": "/hub-assets/ironsmith.glb",
+      "category": "characters/npcs",
+      "format": "GLB",
+      "sizeBytes": 45316,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "mageArea.glb",
+      "path": "/hub-assets/mageArea.glb",
+      "category": "characters/npcs",
+      "format": "GLB",
+      "sizeBytes": 34684,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "npc_christmaself.glb",
+      "path": "/hub-assets/npc_christmaself.glb",
+      "category": "characters/npcs",
+      "format": "GLB",
+      "sizeBytes": 53920,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "pet0.glb",
+      "path": "/hub-assets/pet0.glb",
+      "category": "pets",
+      "format": "GLB",
+      "sizeBytes": 8388,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "pet1.glb",
+      "path": "/hub-assets/pet1.glb",
+      "category": "pets",
+      "format": "GLB",
+      "sizeBytes": 9652,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "pet2.glb",
+      "path": "/hub-assets/pet2.glb",
+      "category": "pets",
+      "format": "GLB",
+      "sizeBytes": 8348,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "pets.glb",
+      "path": "/hub-assets/pets.glb",
+      "category": "pets",
+      "format": "GLB",
+      "sizeBytes": 331180,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "playcanvas.js",
+      "path": "/hub-assets/playcanvas.js",
+      "category": "runtime",
+      "format": "JS",
+      "sizeBytes": 2468919,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "playerAnimGraph.json",
+      "path": "/hub-assets/playerAnimGraph.json",
+      "category": "characters/player",
+      "format": "JSON",
+      "sizeBytes": 22676,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "seamless.png",
+      "path": "/hub-assets/seamless.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 4226,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "showoff.glb",
+      "path": "/hub-assets/showoff.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 31584,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "showoff_real.glb",
+      "path": "/hub-assets/showoff_real.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 31584,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sit.glb",
+      "path": "/hub-assets/sit.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 8528,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sit_real.glb",
+      "path": "/hub-assets/sit_real.glb",
+      "category": "animations",
+      "format": "GLB",
+      "sizeBytes": 8528,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "skybox_back.jpg",
+      "path": "/hub-assets/skybox/skybox_back.jpg",
+      "category": "environment",
+      "format": "JPG",
+      "sizeBytes": 27820,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "skybox_bottom.jpg",
+      "path": "/hub-assets/skybox/skybox_bottom.jpg",
+      "category": "environment",
+      "format": "JPG",
+      "sizeBytes": 3702,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "skybox_front.jpg",
+      "path": "/hub-assets/skybox/skybox_front.jpg",
+      "category": "environment",
+      "format": "JPG",
+      "sizeBytes": 47664,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "skybox_left.jpg",
+      "path": "/hub-assets/skybox/skybox_left.jpg",
+      "category": "environment",
+      "format": "JPG",
+      "sizeBytes": 27233,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "skybox_right.jpg",
+      "path": "/hub-assets/skybox/skybox_right.jpg",
+      "category": "environment",
+      "format": "JPG",
+      "sizeBytes": 28478,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "skybox_top.jpg",
+      "path": "/hub-assets/skybox/skybox_top.jpg",
+      "category": "environment",
+      "format": "JPG",
+      "sizeBytes": 7214,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "slash1.mp3",
+      "path": "/hub-assets/slash1.mp3",
+      "category": "animations",
+      "format": "MP3",
+      "sizeBytes": 9624,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "soil_seamless.png",
+      "path": "/hub-assets/soil_seamless.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 4774,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "swordmaster_lv2.glb",
+      "path": "/hub-assets/swordmaster_lv2.glb",
+      "category": "weapons/swords",
+      "format": "GLB",
+      "sizeBytes": 104480,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "texLaserGlow_0.png",
+      "path": "/hub-assets/texLaserGlow_0.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 365,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "underwater.mp3",
+      "path": "/hub-assets/underwater.mp3",
+      "category": "environment",
+      "format": "MP3",
+      "sizeBytes": 102171,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "world1_loadingscreen.jpg",
+      "path": "/hub-assets/world1_loadingscreen.jpg",
+      "category": "environment",
+      "format": "JPG",
+      "sizeBytes": 8695,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "1719221.json",
+      "path": "/original_source/1719221.json",
+      "category": "manifests",
+      "format": "JSON",
+      "sizeBytes": 3849284,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "1778630.json",
+      "path": "/original_source/1778630.json",
+      "category": "manifests",
+      "format": "JSON",
+      "sizeBytes": 680698,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "2391577.json",
+      "path": "/original_source/2391577.json",
+      "category": "manifests",
+      "format": "JSON",
+      "sizeBytes": 3371019,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Data.js",
+      "path": "/original_source/Data.js",
+      "category": "other",
+      "format": "JS",
+      "sizeBytes": 3555,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Fire 64.png",
+      "path": "/original_source/Fire 64.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 863,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "ShopBg.png",
+      "path": "/original_source/ShopBg.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 3819,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "Upgrade Outline 64.png",
+      "path": "/original_source/Upgrade Outline 64.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 1133,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "bg2.jpg",
+      "path": "/original_source/bg2.jpg",
+      "category": "textures",
+      "format": "JPG",
+      "sizeBytes": 12841,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "clovers.png",
+      "path": "/original_source/clovers.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 4305,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "confetti.png",
+      "path": "/original_source/confetti.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 9967,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "config.json",
+      "path": "/original_source/config.json",
+      "category": "manifests",
+      "format": "JSON",
+      "sizeBytes": 3614783,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dustTexture.png",
+      "path": "/original_source/dustTexture.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 119,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "frame_burn.png",
+      "path": "/original_source/frame_burn.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 150338,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "frame_success.png",
+      "path": "/original_source/frame_success.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 166882,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "game-scripts.js",
+      "path": "/original_source/game-scripts.js",
+      "category": "runtime",
+      "format": "JS",
+      "sizeBytes": 926101,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "texLaserGlow_0.png",
+      "path": "/original_source/texLaserGlow_0.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 365,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "world1_loadingscreen.jpg",
+      "path": "/original_source/world1_loadingscreen.jpg",
+      "category": "environment",
+      "format": "JPG",
+      "sizeBytes": 8695,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "bone_boots.png",
+      "path": "/images/armor/bone_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "bone_helmet.png",
+      "path": "/images/armor/bone_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "bone_short.png",
+      "path": "/images/armor/bone_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "boneshell.png",
+      "path": "/images/armor/boneshell.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "cactus_boots.png",
+      "path": "/images/armor/cactus_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "cactus_helmet.png",
+      "path": "/images/armor/cactus_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "cactus_short.png",
+      "path": "/images/armor/cactus_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "cake_boots.png",
+      "path": "/images/armor/cake_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "candy_boots.png",
+      "path": "/images/armor/candy_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "candyshell.png",
+      "path": "/images/armor/candyshell.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "chocoblock.png",
+      "path": "/images/armor/chocoblock.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "chocohead.png",
+      "path": "/images/armor/chocohead.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "chocoshort.png",
+      "path": "/images/armor/chocoshort.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "cosmic_boots.png",
+      "path": "/images/armor/cosmic_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "cosmic_chestplate.png",
+      "path": "/images/armor/cosmic_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "cosmic_helmet.png",
+      "path": "/images/armor/cosmic_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "cosmic_short.png",
+      "path": "/images/armor/cosmic_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "deaths_boots.png",
+      "path": "/images/armor/deaths_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "deaths_chestplate.png",
+      "path": "/images/armor/deaths_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "deaths_helmet.png",
+      "path": "/images/armor/deaths_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "deaths_short.png",
+      "path": "/images/armor/deaths_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "eternal_boots.png",
+      "path": "/images/armor/eternal_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "eternal_chestplate.png",
+      "path": "/images/armor/eternal_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "eternal_helmet.png",
+      "path": "/images/armor/eternal_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "eternal_short.png",
+      "path": "/images/armor/eternal_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "fluffymellow.png",
+      "path": "/images/armor/fluffymellow.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "golden_boots.png",
+      "path": "/images/armor/golden_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "golden_chestplate.png",
+      "path": "/images/armor/golden_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "golden_short.png",
+      "path": "/images/armor/golden_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "graveborn_boots.png",
+      "path": "/images/armor/graveborn_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "graveborn_chestplate.png",
+      "path": "/images/armor/graveborn_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "graveborn_helmet.png",
+      "path": "/images/armor/graveborn_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "graveborn_short.png",
+      "path": "/images/armor/graveborn_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "hellfire_boots.png",
+      "path": "/images/armor/hellfire_boots.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "hellfire_chestplate.png",
+      "path": "/images/armor/hellfire_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "hellfire_headguard.png",
+      "path": "/images/armor/hellfire_headguard.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "hellfire_short.png",
+      "path": "/images/armor/hellfire_short.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "hydrostone_boots.png",
+      "path": "/images/armor/hydrostone_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "hydrostone_chestplate.png",
+      "path": "/images/armor/hydrostone_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "hydrostone_helmet.png",
+      "path": "/images/armor/hydrostone_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "hydrostone_short.png",
+      "path": "/images/armor/hydrostone_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "immortal_boots.png",
+      "path": "/images/armor/immortal_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "immortal_chestplate.png",
+      "path": "/images/armor/immortal_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "immortal_helmet.png",
+      "path": "/images/armor/immortal_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "immortal_short.png",
+      "path": "/images/armor/immortal_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "iron_boots.png",
+      "path": "/images/armor/iron_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "iron_chestplate.png",
+      "path": "/images/armor/iron_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "iron_helmet.png",
+      "path": "/images/armor/iron_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "iron_short.png",
+      "path": "/images/armor/iron_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "kings_crown.png",
+      "path": "/images/armor/kings_crown.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "leather_bandana.png",
+      "path": "/images/armor/leather_bandana.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "leather_chestplate.png",
+      "path": "/images/armor/leather_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "leather_shoes.png",
+      "path": "/images/armor/leather_shoes.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "leather_short.png",
+      "path": "/images/armor/leather_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "lollipop_helmet.png",
+      "path": "/images/armor/lollipop_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "lollishort.png",
+      "path": "/images/armor/lollishort.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "mourners_boots.png",
+      "path": "/images/armor/mourners_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "mourners_chestplate.png",
+      "path": "/images/armor/mourners_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "mourners_helmet.png",
+      "path": "/images/armor/mourners_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "mourners_short.png",
+      "path": "/images/armor/mourners_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "nether_boots.png",
+      "path": "/images/armor/nether_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "nether_chestplate.png",
+      "path": "/images/armor/nether_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "nether_helmet.png",
+      "path": "/images/armor/nether_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "nether_short.png",
+      "path": "/images/armor/nether_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "nova_boots.png",
+      "path": "/images/armor/nova_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "nova_chestplate.png",
+      "path": "/images/armor/nova_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "nova_helmet.png",
+      "path": "/images/armor/nova_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "nova_short.png",
+      "path": "/images/armor/nova_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "obsidian_boots.png",
+      "path": "/images/armor/obsidian_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "obsidian_chestplate.png",
+      "path": "/images/armor/obsidian_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "obsidian_helmet.png",
+      "path": "/images/armor/obsidian_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "obsidian_short.png",
+      "path": "/images/armor/obsidian_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sea_guardians_boots.png",
+      "path": "/images/armor/sea_guardians_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sea_guardians_chestplate.png",
+      "path": "/images/armor/sea_guardians_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sea_guardians_helmet.png",
+      "path": "/images/armor/sea_guardians_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sea_guardians_short.png",
+      "path": "/images/armor/sea_guardians_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "seashell_boots.png",
+      "path": "/images/armor/seashell_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "seashell_chestplate.png",
+      "path": "/images/armor/seashell_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "seashell_helmet.png",
+      "path": "/images/armor/seashell_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "seashell_short.png",
+      "path": "/images/armor/seashell_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "soft_boots.png",
+      "path": "/images/armor/soft_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "softmallow_short.png",
+      "path": "/images/armor/softmallow_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "solarflare_boots.png",
+      "path": "/images/armor/solarflare_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "solarflare_chestplate.png",
+      "path": "/images/armor/solarflare_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "solarflare_helmet.png",
+      "path": "/images/armor/solarflare_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "solarflare_short.png",
+      "path": "/images/armor/solarflare_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "spiked_shell.png",
+      "path": "/images/armor/spiked_shell.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "starfire_boots.png",
+      "path": "/images/armor/starfire_boots.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 129,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "starfire_chestplate.png",
+      "path": "/images/armor/starfire_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "starfire_helmet.png",
+      "path": "/images/armor/starfire_helmet.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "starfire_short.png",
+      "path": "/images/armor/starfire_short.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "stormborn_boots.png",
+      "path": "/images/armor/stormborn_boots.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "stormborn_chestplate.png",
+      "path": "/images/armor/stormborn_chestplate.png",
+      "category": "environment",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "stormborn_helmet.png",
+      "path": "/images/armor/stormborn_helmet.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "stormborn_short.png",
+      "path": "/images/armor/stormborn_short.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sweetmallow.png",
+      "path": "/images/armor/sweetmallow.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "flame.png",
+      "path": "/images/enchantments/flame.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 12415,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "fortune.png",
+      "path": "/images/enchantments/fortune.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 4095,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "freeze.png",
+      "path": "/images/enchantments/freeze.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 18257,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "looting.png",
+      "path": "/images/enchantments/looting.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 19769,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "thorns.png",
+      "path": "/images/enchantments/thorns.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 15228,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "gold.png",
+      "path": "/images/gold.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 21875,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "image-config.json",
+      "path": "/images/image-config.json",
+      "category": "characters/npcs",
+      "format": "JSON",
+      "sizeBytes": 6803,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "anaxion.png",
+      "path": "/images/mobs/anaxion.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "bonechewer.png",
+      "path": "/images/mobs/bonechewer.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "bouugo.png",
+      "path": "/images/mobs/bouugo.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "chocolate_knight.png",
+      "path": "/images/mobs/chocolate_knight.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "cocoa_guardian.png",
+      "path": "/images/mobs/cocoa_guardian.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "crokora.png",
+      "path": "/images/mobs/crokora.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "cursed_stone.png",
+      "path": "/images/mobs/cursed_stone.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dragon.png",
+      "path": "/images/mobs/dragon.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dragon_guardian.png",
+      "path": "/images/mobs/dragon_guardian.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "forest_orc.png",
+      "path": "/images/mobs/forest_orc.png",
+      "category": "characters/mobs",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "giga_moai.png",
+      "path": "/images/mobs/giga_moai.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "hydrino.png",
+      "path": "/images/mobs/hydrino.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "ice_king.png",
+      "path": "/images/mobs/ice_king.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "lava_rock.png",
+      "path": "/images/mobs/lava_rock.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "lornblade.png",
+      "path": "/images/mobs/lornblade.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "mallowbeast.png",
+      "path": "/images/mobs/mallowbeast.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "mordolith.png",
+      "path": "/images/mobs/mordolith.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "mummy.png",
+      "path": "/images/mobs/mummy.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "nether_lord.png",
+      "path": "/images/mobs/nether_lord.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "reaper.png",
+      "path": "/images/mobs/reaper.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "roundhead.png",
+      "path": "/images/mobs/roundhead.png",
+      "category": "characters/mobs",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "seraphim.png",
+      "path": "/images/mobs/seraphim.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 131,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "spiked_tortoise.png",
+      "path": "/images/mobs/spiked_tortoise.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "temple_guardian.png",
+      "path": "/images/mobs/temple_guardian.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "thrones.png",
+      "path": "/images/mobs/thrones.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "wargmaw.png",
+      "path": "/images/mobs/wargmaw.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "xenomor.png",
+      "path": "/images/mobs/xenomor.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "zeus.png",
+      "path": "/images/mobs/zeus.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 130,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "coal.png",
+      "path": "/images/ores/coal.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 7262,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "diamond.png",
+      "path": "/images/ores/diamond.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 8278,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "emerald.png",
+      "path": "/images/ores/emerald.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 7909,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "ruby.png",
+      "path": "/images/ores/ruby.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 6112,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "smelted_coal.png",
+      "path": "/images/ores/smelted_coal.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 5623,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "smelted_diamond.png",
+      "path": "/images/ores/smelted_diamond.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 4901,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "smelted_emerald.png",
+      "path": "/images/ores/smelted_emerald.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 4401,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "smelted_ruby.png",
+      "path": "/images/ores/smelted_ruby.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 4997,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "bear.png",
+      "path": "/images/pets/bear.png",
+      "category": "pets",
+      "format": "PNG",
+      "sizeBytes": 12076,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "blue_axolotl.png",
+      "path": "/images/pets/blue_axolotl.png",
+      "category": "pets",
+      "format": "PNG",
+      "sizeBytes": 14715,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "chandy.png",
+      "path": "/images/pets/chandy.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 10679,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "chicko.png",
+      "path": "/images/pets/chicko.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 7263,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "croco.png",
+      "path": "/images/pets/croco.png",
+      "category": "pets",
+      "format": "PNG",
+      "sizeBytes": 10565,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "firebat.png",
+      "path": "/images/pets/firebat.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 9510,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "fluffy.png",
+      "path": "/images/pets/fluffy.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 12475,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "fogo.png",
+      "path": "/images/pets/fogo.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 6207,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "gumbear.png",
+      "path": "/images/pets/gumbear.png",
+      "category": "pets",
+      "format": "PNG",
+      "sizeBytes": 12076,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "inferno.png",
+      "path": "/images/pets/inferno.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 9014,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "kamel.png",
+      "path": "/images/pets/kamel.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 10517,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "lava_slime.png",
+      "path": "/images/pets/lava_slime.png",
+      "category": "characters/mobs",
+      "format": "PNG",
+      "sizeBytes": 13862,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "leo.png",
+      "path": "/images/pets/leo.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 15024,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "mimic.png",
+      "path": "/images/pets/mimic.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 8312,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "nemo.png",
+      "path": "/images/pets/nemo.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13167,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "octoo.png",
+      "path": "/images/pets/octoo.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13926,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "pengoo.png",
+      "path": "/images/pets/pengoo.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 11701,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "peppy.png",
+      "path": "/images/pets/peppy.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 12480,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "phoenix.png",
+      "path": "/images/pets/phoenix.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 14890,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "piggie.png",
+      "path": "/images/pets/piggie.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 9164,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "ponyo.png",
+      "path": "/images/pets/ponyo.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 10296,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "purr.png",
+      "path": "/images/pets/purr.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 5737,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "runix.png",
+      "path": "/images/pets/runix.png",
+      "category": "animations",
+      "format": "PNG",
+      "sizeBytes": 10568,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sandy.png",
+      "path": "/images/pets/sandy.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 8382,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "scorp.png",
+      "path": "/images/pets/scorp.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 8627,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sharkie.png",
+      "path": "/images/pets/sharkie.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 14925,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "triwulf.png",
+      "path": "/images/pets/triwulf.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 10970,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "xaxolotl.png",
+      "path": "/images/pets/xaxolotl.png",
+      "category": "pets",
+      "format": "PNG",
+      "sizeBytes": 25707,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "xen.png",
+      "path": "/images/pets/xen.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 5206,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "xinferno.png",
+      "path": "/images/pets/xinferno.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 11701,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "xleo.png",
+      "path": "/images/pets/xleo.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 24026,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "xoctoo.png",
+      "path": "/images/pets/xoctoo.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 23427,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "xpengoo.png",
+      "path": "/images/pets/xpengoo.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 22723,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "xpeppy.png",
+      "path": "/images/pets/xpeppy.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 21846,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "xphoenix.png",
+      "path": "/images/pets/xphoenix.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 27926,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "xrunix.png",
+      "path": "/images/pets/xrunix.png",
+      "category": "animations",
+      "format": "PNG",
+      "sizeBytes": 12962,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "xxen.png",
+      "path": "/images/pets/xxen.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 26503,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "power.png",
+      "path": "/images/power.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13518,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "arctic_ward.png",
+      "path": "/images/shields/arctic_ward.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 17312,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "asgardian_aegis.png",
+      "path": "/images/shields/asgardian_aegis.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 8760,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "barbed_sunward.png",
+      "path": "/images/shields/barbed_sunward.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13497,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "crackshield.png",
+      "path": "/images/shields/crackshield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 12384,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dead_guards_shield.png",
+      "path": "/images/shields/dead_guards_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 15604,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "deaths_shield.png",
+      "path": "/images/shields/deaths_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 33367,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dragons_anger.png",
+      "path": "/images/shields/dragons_anger.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 14535,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dragons_shell.png",
+      "path": "/images/shields/dragons_shell.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 15560,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dragons_soul.png",
+      "path": "/images/shields/dragons_soul.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 22652,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "einherjars_guard.png",
+      "path": "/images/shields/einherjars_guard.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 6842,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "elite_shield.png",
+      "path": "/images/shields/elite_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 13587,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "emberwraith_shield.png",
+      "path": "/images/shields/emberwraith_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 16781,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "final_bastion.png",
+      "path": "/images/shields/final_bastion.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13282,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "fire_rampart.png",
+      "path": "/images/shields/fire_rampart.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 12231,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "frozen_fortress.png",
+      "path": "/images/shields/frozen_fortress.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 11300,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "guardians_protection.png",
+      "path": "/images/shields/guardians_protection.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 8156,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "hardened_moss.png",
+      "path": "/images/shields/hardened_moss.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 9268,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "hell_shield.png",
+      "path": "/images/shields/hell_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 14641,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "icy_rampart.png",
+      "path": "/images/shields/icy_rampart.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 14250,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "infernal_protection.png",
+      "path": "/images/shields/infernal_protection.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 15703,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "iron_shield.png",
+      "path": "/images/shields/iron_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 18188,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "light_barrier.png",
+      "path": "/images/shields/light_barrier.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 12873,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "lord_of_hell.png",
+      "path": "/images/shields/lord_of_hell.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 12159,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "lunar_shield.png",
+      "path": "/images/shields/lunar_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 11387,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "nebula_shield.png",
+      "path": "/images/shields/nebula_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 10179,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "obsidian_canny.png",
+      "path": "/images/shields/obsidian_canny.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13515,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "runeguard.png",
+      "path": "/images/shields/runeguard.png",
+      "category": "animations",
+      "format": "PNG",
+      "sizeBytes": 6660,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sandstone_shield.png",
+      "path": "/images/shields/sandstone_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 10945,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sealguard.png",
+      "path": "/images/shields/sealguard.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13413,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "shield_of_fire.png",
+      "path": "/images/shields/shield_of_fire.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 12969,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "shield_of_the_kingdom.png",
+      "path": "/images/shields/shield_of_the_kingdom.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 15887,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "snowfall_defender.png",
+      "path": "/images/shields/snowfall_defender.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13663,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "starburst_shield.png",
+      "path": "/images/shields/starburst_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 8590,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "steel_shield.png",
+      "path": "/images/shields/steel_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 9258,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sunshield.png",
+      "path": "/images/shields/sunshield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 13497,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sunshroud.png",
+      "path": "/images/shields/sunshroud.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 9931,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sunward_bulwark.png",
+      "path": "/images/shields/sunward_bulwark.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 12394,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sweetguard.png",
+      "path": "/images/shields/sweetguard.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 11724,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "tombplate.png",
+      "path": "/images/shields/tombplate.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 12069,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "wardens_shield.png",
+      "path": "/images/shields/wardens_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 15679,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "warriors_shield.png",
+      "path": "/images/shields/warriors_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 21797,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "winters_wrathguard.png",
+      "path": "/images/shields/winters_wrathguard.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 14274,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "wooden_shield.png",
+      "path": "/images/shields/wooden_shield.png",
+      "category": "weapons/shields",
+      "format": "PNG",
+      "sizeBytes": 15607,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "blade_of_sorrow.png",
+      "path": "/images/swords/blade_of_sorrow.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 14134,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "burned_spikeblade.png",
+      "path": "/images/swords/burned_spikeblade.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 22197,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "coral_blade.png",
+      "path": "/images/swords/coral_blade.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 10229,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "cosmic_blader.png",
+      "path": "/images/swords/cosmic_blader.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 11356,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "darkblade.png",
+      "path": "/images/swords/darkblade.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 15099,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dead_mans_sword.png",
+      "path": "/images/swords/dead_mans_sword.png",
+      "category": "weapons/swords",
+      "format": "PNG",
+      "sizeBytes": 22067,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "deaths_scythe.png",
+      "path": "/images/swords/deaths_scythe.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 21569,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "devils_blade.png",
+      "path": "/images/swords/devils_blade.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 17323,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "divinity_edge.png",
+      "path": "/images/swords/divinity_edge.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 5875,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "double_edged_sword.png",
+      "path": "/images/swords/double_edged_sword.png",
+      "category": "weapons/swords",
+      "format": "PNG",
+      "sizeBytes": 14274,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dragons_devil.png",
+      "path": "/images/swords/dragons_devil.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 34879,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dragons_poison.png",
+      "path": "/images/swords/dragons_poison.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 25005,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dragons_teeth.png",
+      "path": "/images/swords/dragons_teeth.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 22762,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "dreadmourne.png",
+      "path": "/images/swords/dreadmourne.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 6389,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "duneslicer.png",
+      "path": "/images/swords/duneslicer.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13846,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "einherjars_blade.png",
+      "path": "/images/swords/einherjars_blade.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 3707,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "emberwraith.png",
+      "path": "/images/swords/emberwraith.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 22340,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "fatecutter.png",
+      "path": "/images/swords/fatecutter.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 15084,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "flame_heart.png",
+      "path": "/images/swords/flame_heart.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13120,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "frostbite.png",
+      "path": "/images/swords/frostbite.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13848,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "frostfang.png",
+      "path": "/images/swords/frostfang.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13244,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "froststeel.png",
+      "path": "/images/swords/froststeel.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 10075,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "graveborn_edge.png",
+      "path": "/images/swords/graveborn_edge.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 5992,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "guardians_spear.png",
+      "path": "/images/swords/guardians_spear.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 26291,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "icebreaker.png",
+      "path": "/images/swords/icebreaker.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 11138,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "inferno_claw.png",
+      "path": "/images/swords/inferno_claw.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 15842,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "last_horizon.png",
+      "path": "/images/swords/last_horizon.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 9362,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "machete_sword.png",
+      "path": "/images/swords/machete_sword.png",
+      "category": "weapons/swords",
+      "format": "PNG",
+      "sizeBytes": 12320,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "morbid_will.png",
+      "path": "/images/swords/morbid_will.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 15836,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "netherite_blade.png",
+      "path": "/images/swords/netherite_blade.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 40029,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "nova_blade.png",
+      "path": "/images/swords/nova_blade.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 10735,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "old_sword.png",
+      "path": "/images/swords/old_sword.png",
+      "category": "weapons/swords",
+      "format": "PNG",
+      "sizeBytes": 9799,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "orc_sword.png",
+      "path": "/images/swords/orc_sword.png",
+      "category": "weapons/swords",
+      "format": "PNG",
+      "sizeBytes": 11996,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "runebreaker.png",
+      "path": "/images/swords/runebreaker.png",
+      "category": "animations",
+      "format": "PNG",
+      "sizeBytes": 4815,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sandslasher.png",
+      "path": "/images/swords/sandslasher.png",
+      "category": "animations",
+      "format": "PNG",
+      "sizeBytes": 14547,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sandstrike.png",
+      "path": "/images/swords/sandstrike.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 19638,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "scimitar_claw.png",
+      "path": "/images/swords/scimitar_claw.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 13940,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "solbrand.png",
+      "path": "/images/swords/solbrand.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 6255,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "soulkeepers_blade.png",
+      "path": "/images/swords/soulkeepers_blade.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 5943,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "spear_of_zeus.png",
+      "path": "/images/swords/spear_of_zeus.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 11267,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "spiked_moss.png",
+      "path": "/images/swords/spiked_moss.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 10858,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "spiked_sword.png",
+      "path": "/images/swords/spiked_sword.png",
+      "category": "weapons/swords",
+      "format": "PNG",
+      "sizeBytes": 15985,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "starfire_blade.png",
+      "path": "/images/swords/starfire_blade.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 10643,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "sunfire.png",
+      "path": "/images/swords/sunfire.png",
+      "category": "effects",
+      "format": "PNG",
+      "sizeBytes": 15349,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    },
+    {
+      "name": "winters_wrath.png",
+      "path": "/images/swords/winters_wrath.png",
+      "category": "textures",
+      "format": "PNG",
+      "sizeBytes": 15819,
+      "isValid": true,
+      "integrated": true,
+      "source": "PlayCanvas / Swordmasters Authentic CDN"
+    }
+  ]
+}

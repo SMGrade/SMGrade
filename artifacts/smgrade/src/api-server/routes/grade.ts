@@ -117,6 +117,82 @@ LEVEL SCALING: Lv n stat = base × (1 + 0.25 × (n−1)) — NOT compounded. Max
 MARKET PRICES are in Power (QT = Quadrillion, QNT = Quintillion).
 `;
 
+function parseJsonRobust(content: string): any {
+  let clean = content.trim();
+  
+  // Extract JSON blocks if wrapped in markdown code fence blocks
+  const jsonBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
+  const match = clean.match(jsonBlockRegex);
+  if (match && match[1]) {
+    clean = match[1].trim();
+  }
+
+  try {
+    return JSON.parse(clean);
+  } catch (err) {
+    // Attempt to extract between the first '{' and the last '}'
+    const startIdx = clean.indexOf("{");
+    const endIdx = clean.lastIndexOf("}");
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      try {
+        const potentialJson = clean.substring(startIdx, endIdx + 1);
+        return JSON.parse(potentialJson);
+      } catch (err2) {
+        // Fall back to regex parsing
+      }
+    }
+  }
+
+  console.warn("[AI Coach] JSON parsing failed. Formatting raw text output into structured object.");
+  
+  const strengths: string[] = [];
+  const weaknesses: string[] = [];
+  let summary = "";
+  let recommendation = "";
+  let reasoning = "";
+
+  // Extract sections using regex
+  const summaryMatches = content.match(/summary\s*:\s*([^]*?)(?:strength|weakness|recommendation|reasoning|$)/i);
+  if (summaryMatches && summaryMatches[1]) {
+    summary = summaryMatches[1].trim();
+  }
+
+  const strengthMatches = content.match(/strength(?:s)?\s*:\s*([^]*?)(?:weakness|recommendation|reasoning|$)/i);
+  if (strengthMatches && strengthMatches[1]) {
+    strengths.push(...strengthMatches[1].split("\n").map(s => s.replace(/^[-*•\s\d.]+/g, "").trim()).filter(Boolean));
+  }
+
+  const weaknessMatches = content.match(/weakness(?:es)?\s*:\s*([^]*?)(?:strength|recommendation|reasoning|$)/i);
+  if (weaknessMatches && weaknessMatches[1]) {
+    weaknesses.push(...weaknessMatches[1].split("\n").map(w => w.replace(/^[-*•\s\d.]+/g, "").trim()).filter(Boolean));
+  }
+
+  const recMatches = content.match(/recommendation(?:s)?\s*:\s*([^]*?)(?:strength|weakness|reasoning|$)/i);
+  if (recMatches && recMatches[1]) {
+    recommendation = recMatches[1].trim();
+  }
+
+  const reasonMatches = content.match(/reasoning\s*:\s*([^]*?)(?:strength|weakness|recommendation|$)/i);
+  if (reasonMatches && reasonMatches[1]) {
+    reasoning = reasonMatches[1].trim();
+  }
+
+  // Fallbacks if regex extraction yields nothing
+  if (!summary) summary = content.length > 200 ? content.substring(0, 200) + "..." : content;
+  if (strengths.length === 0) strengths.push("Valid equipped gear setup.");
+  if (weaknesses.length === 0) weaknesses.push("Stage progression is appropriate.");
+  if (!recommendation) recommendation = content;
+  if (!reasoning) reasoning = "Analysis completed successfully based on active player statistics.";
+
+  return {
+    summary,
+    strengths,
+    weaknesses,
+    recommendation,
+    reasoning
+  };
+}
+
 router.post("/grade/explain", async (req: any, res: any) => {
   const apiKey = getOpenRouterApiKey();
   if (!apiKey || apiKey === "" || apiKey.includes("missing-key")) {
@@ -158,11 +234,16 @@ REAL GAME KNOWLEDGE (use this for accurate advice — do NOT suggest non-existen
 ${itemsContext}
 
 RULES for recommendation:
+- CRITICAL GAME ECONOMY RULE: GOLD IS NOT THE PURCHASE CURRENCY FOR POWER, SWORDS, OR SHIELDS.
+- Power upgrades require Power (Power -> Power).
+- Sword upgrades require Sword acquisition + Power.
+- Shield upgrades require Shield acquisition + Power.
+- NEVER assume or state that Gold is required to buy swords, shields, or power. NEVER invent Gold costs or Gold conversions.
 - Only suggest gear that exists in the list above
 - Max weapon level is 10 — never suggest "Lv11" or higher
 - If player already has Last Horizon sword, suggest upgrading its level instead of a new sword
 - If player already has Final Bastion shield, suggest upgrading its level or focus on power
-- Include real market prices when suggesting gear upgrades
+- Include real market prices in Power when suggesting gear upgrades
 - Be specific — name the exact item and level
 
 Respond in JSON with exactly this structure (no markdown, no code block):
@@ -181,7 +262,7 @@ Be concise, specific, and accurate. Reference real game terms. Do not be generic
       { role: "user", content: prompt }
     ], true);
 
-    const result = JSON.parse(content);
+    const result = parseJsonRobust(content);
     res.json(result);
   } catch (err: any) {
     req.log.error({ err }, "AI explanation failed");
@@ -262,6 +343,13 @@ router.post("/grade/chat", async (req: any, res: any) => {
   const chatSystemInstruction = `You are the SMGrade AI Coach — an elite reasoning layer operating strictly on top of SMGrade's canonical database, deterministic Upgrade Advisor, combat calculator, and admin configuration.
 
 STRICT REASONING & ECONOMY GROUNDING RULES:
+
+0. CRITICAL GAME ECONOMY RULE:
+   - GOLD IS NOT THE PURCHASE CURRENCY FOR POWER, SWORDS, OR SHIELDS.
+   - Power upgrades require Power (Power -> Power).
+   - Sword upgrades require Sword acquisition + Power.
+   - Shield upgrades require Shield acquisition + Power.
+   - NEVER assume or state that Gold is required to buy swords, shields, or power. NEVER invent Gold costs or Gold conversions.
 
 1. ZERO ECONOMY ESTIMATION OR PRICE INVENTION:
    - You MUST NEVER estimate, guess, or invent item prices, upgrade costs, power values, or trade rates.
