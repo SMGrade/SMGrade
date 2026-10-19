@@ -1072,8 +1072,19 @@
           this.dispatchMessage("Server:UpgraderController:forge", {
             success: true,
             itemId: item.itemId,
-            newLevel: item.level
+            newLevel: item.level,
+            resultItem: item,
+            item: item
           });
+          
+          // Authoritative sync guard: ensure UpgraderUI ItemName reflects authoritative result level
+          const upgraderUI = this.networkManager.app?.root?.findByName("UpgraderUI");
+          if (upgraderUI?.script?.upgraderController) {
+            const uCtrl = upgraderUI.script.upgraderController;
+            if (uCtrl.itemForgedPanelItemName?.element && uCtrl.itemData) {
+              uCtrl.itemForgedPanelItemName.element.text = `${uCtrl.itemData.name} Level ${item.level}`;
+            }
+          }
           console.log(`[SMGrade Standalone Room] Dwarfed ${itemName} strictly +1 to Level ${item.level}!`);
         } else {
           // Authentic Failure / Burn Rule
