@@ -222,7 +222,10 @@ pc.script.createLoadingScreen(function (app) {
             if (!asset.preload) continue;
             total++;
             if (asset.resource) onLoad();
-            else asset.once('load', onLoad);
+            else {
+                asset.once('load', onLoad);
+                asset.once('error', onLoad);
+            }
         }
 
         document.getElementById('progress-status').style.color = '#ffffff';
@@ -235,5 +238,13 @@ pc.script.createLoadingScreen(function (app) {
 
     app.on('preload:progress', setProgress);
     app.on('start', hideSplash);
+
+    // Fail-safe: Ensure splash screen never hangs indefinitely
+    setTimeout(function () {
+        if (document.getElementById('application-splash-wrapper')) {
+            console.log('[SMGrade Standalone Offline] Safety timeout reached, dismissing splash screen.');
+            hideSplash();
+        }
+    }, 6000);
 
 });

@@ -88,6 +88,35 @@
     });
   }
 
+  // --- 0B. BLACKSMITH / DWARF FORGE TRIGGER ---
+  function openDwarfForge() {
+    const app = window.pcApp || (window.pc && window.pc.Application && window.pc.Application.getApplication());
+    if (app) {
+      // Fire authentic PlayCanvas UpgraderController show event
+      app.fire("UpgraderController:show");
+
+      // Auto-mount equipped weapon or first sword if activeItem is not yet set
+      try {
+        const nm = app.networkManager;
+        const inv = nm?.localInv;
+        let weapon = null;
+        if (inv && inv.activeSword && inv.activeSword.type > 0) {
+          weapon = inv.activeSword;
+        } else if (nm && nm.items) {
+          const swords = Object.values(nm.items).filter(i => i && i.isSword && i.type > 0);
+          if (swords.length > 0) weapon = swords[swords.length - 1];
+        }
+        if (weapon) {
+          app.fire("UpgraderController:setForgeItem", weapon, true);
+        }
+      } catch (e) {
+        console.error("openDwarfForge setForgeItem error:", e);
+      }
+
+      showToast("Opened Blacksmith Dwarf Forge", "⚒️");
+    }
+  }
+
   // --- 1. COMPACT HUD '+' CONTROLS (Requirement 6 & 7) ---
   function createHudControls() {
     let hud = document.getElementById('smgrade-compact-hud-controls');
@@ -100,6 +129,7 @@
       <button class="smgrade-plus-btn power" id="sm-hud-power-plus" title="Add or edit Combat Power">+</button>
       <button class="smgrade-plus-btn level" id="sm-hud-level-plus" title="Set Player Level">+</button>
       <button class="smgrade-plus-btn ore" id="sm-hud-ore-plus" title="Add Mine World Ores">+</button>
+      <button class="smgrade-plus-btn dwarf" id="sm-hud-dwarf-btn" title="Open Blacksmith / Dwarf Forge">⚒️</button>
     `;
     document.body.appendChild(hud);
 
@@ -107,6 +137,7 @@
     document.getElementById('sm-hud-power-plus').addEventListener('click', (e) => { e.stopPropagation(); openResourceModal('power'); });
     document.getElementById('sm-hud-level-plus').addEventListener('click', (e) => { e.stopPropagation(); openResourceModal('level'); });
     document.getElementById('sm-hud-ore-plus').addEventListener('click', (e) => { e.stopPropagation(); openOreModal(); });
+    document.getElementById('sm-hud-dwarf-btn').addEventListener('click', (e) => { e.stopPropagation(); openDwarfForge(); });
   }
 
   // --- 2. IN-INVENTORY TRIGGER BUTTONS (Phase 6 & Dwarfing) ---
@@ -121,6 +152,19 @@
 
       addBtn.addEventListener('click', () => {
         openItemModal();
+      });
+    }
+
+    let dwarfBtn = document.getElementById('sm-inv-dwarf-trigger');
+    if (!dwarfBtn) {
+      dwarfBtn = document.createElement('button');
+      dwarfBtn.id = 'sm-inv-dwarf-trigger';
+      dwarfBtn.innerHTML = `<span>⚒️</span><span>Dwarf Item</span>`;
+      dwarfBtn.style.display = 'none';
+      document.body.appendChild(dwarfBtn);
+
+      dwarfBtn.addEventListener('click', () => {
+        openDwarfForge();
       });
     }
   }
@@ -791,9 +835,11 @@
         setInterval(() => {
           const invCtrl = app.networkManager?.inventoryController;
           const invTrigger = document.getElementById('sm-inv-add-trigger');
+          const dwarfTrigger = document.getElementById('sm-inv-dwarf-trigger');
           if (invCtrl) {
             const isInvOpen = !!invCtrl.inventoryEnabled;
             if (invTrigger) invTrigger.style.display = isInvOpen ? 'flex' : 'none';
+            if (dwarfTrigger) dwarfTrigger.style.display = isInvOpen ? 'flex' : 'none';
           }
 
           const petUI = app.root?.findByName('PetUI');
@@ -808,6 +854,7 @@
   }
 
   // Expose modal API on window
+  window.openDwarfForge = openDwarfForge;
   window.openItemModal = openItemModal;
   window.closeItemModal = closeItemModal;
   window.switchItemTab = switchItemTab;

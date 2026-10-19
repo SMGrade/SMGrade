@@ -1030,9 +1030,10 @@
         if (s > 1) s = 1;
 
         // Force flag support for deterministic automated test verification
-        const isSuccess = data?.forceSuccess !== undefined
+        let isSuccess = data?.forceSuccess !== undefined
           ? !!data.forceSuccess
-          : (Math.random() < s);
+          : (this._forceNextForgeSuccess !== undefined ? Boolean(this._forceNextForgeSuccess) : (Math.random() < s));
+        if (this._forceNextForgeSuccess !== undefined) delete this._forceNextForgeSuccess;
 
         if (isSuccess) {
           // Strictly +1 level (never jumps)

@@ -55,7 +55,7 @@
     if (window.pc && pc.Asset) {
       const _origGetFileUrl = pc.Asset.prototype.getFileUrl;
       pc.Asset.prototype.getFileUrl = function() {
-        if (this.type === 'script' && this.file && this.file.url === '__game-scripts.js') {
+        if (this.type === 'script') {
           return '/original-runtime/__game-scripts.js';
         }
         return _origGetFileUrl.call(this);
