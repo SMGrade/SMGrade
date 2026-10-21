@@ -185,6 +185,9 @@
 
     function initApp(device) {
         try {
+            // Cap maximum pixel ratio to prevent GPU thermal runaway & fan noise on Retina displays
+            device.maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.25);
+
             var createOptions = new pc.AppOptions();
             createOptions.graphicsDevice = device;
 

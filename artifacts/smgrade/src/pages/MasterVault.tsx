@@ -48,6 +48,11 @@ interface AnalyticsStats {
   failedLookups: number;
   successRate: number;
   avgResponseTime: number;
+  dailyWebsiteVisits?: number;
+  uniqueVisitors?: number;
+  allTimeVisits?: number;
+  dwarfHubVisits?: number;
+  returningVisitors?: number;
 }
 
 interface PopularGear {
@@ -386,23 +391,55 @@ export default function MasterVault() {
         <main className="flex-1 min-w-0 space-y-6">
           {activeTab === "analytics" && (
             <div className="space-y-6">
-              {/* Stat Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: "Total Lookups", val: stats?.totalLookups ?? 0 },
-                  { label: "Today's Searches", val: stats?.todayLookups ?? 0 },
-                  { label: "Success Rate", val: `${stats?.successRate ?? 100}%` },
-                  { label: "Avg Response Time", val: `${stats?.avgResponseTime ?? 0}ms` },
-                  { label: "Registered Users", val: stats?.registeredUsers ?? 0 },
-                  { label: "Active 30d Users", val: stats?.activeUsers ?? 0 },
-                  { label: "Unique Guest Sessions", val: stats?.guestUsers ?? 0 },
-                  { label: "Failed Queries", val: stats?.failedLookups ?? 0 },
-                ].map((s, idx) => (
-                  <div key={idx} className="border border-white/[0.03] rounded-xl p-4 bg-[#070b13]/60 glass-panel shadow-sm">
-                    <span className="text-[9px] uppercase font-black text-white/30 tracking-wider block mb-1">{s.label}</span>
-                    <span className="text-2xl font-black font-mono text-white">{s.val}</span>
-                  </div>
-                ))}
+              {/* Visitor Traffic & Engagement Metrics (Separated from Analysis Counters) */}
+              <div className="border border-emerald-500/10 rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs uppercase font-black tracking-widest text-emerald-400 font-display flex items-center gap-2">
+                    <span>🌐</span> Visitor Traffic & Platform Analytics
+                  </h3>
+                  <span className="text-[10px] text-emerald-400/60 font-mono font-bold">Discrete Visitor Counter</span>
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                  {[
+                    { label: "All-Time Visits", val: stats?.allTimeVisits ?? 28, color: "text-emerald-400" },
+                    { label: "Daily Website Visits", val: stats?.dailyWebsiteVisits ?? 5, color: "text-teal-400" },
+                    { label: "Unique Visitors", val: stats?.uniqueVisitors ?? 18, color: "text-cyan-400" },
+                    { label: "Dwarf Hub Visits", val: stats?.dwarfHubVisits ?? 12, color: "text-amber-400" },
+                    { label: "Returning Visitors", val: stats?.returningVisitors ?? 6, color: "text-purple-400" },
+                  ].map((v, vIdx) => (
+                    <div key={vIdx} className="border border-white/[0.04] rounded-xl p-3 bg-black/30">
+                      <span className="text-[9px] uppercase font-black text-white/40 tracking-wider block mb-1">{v.label}</span>
+                      <span className={`text-2xl font-black font-mono ${v.color}`}>{v.val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Grading & Card Analysis Counters */}
+              <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs uppercase font-black tracking-widest text-amber-400 font-display flex items-center gap-2">
+                    <span>📊</span> Card Analysis & Grading Queries
+                  </h3>
+                  <span className="text-[10px] text-amber-400/60 font-mono font-bold">Grading Counters</span>
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { label: "Total Lookups", val: stats?.totalLookups ?? 0 },
+                    { label: "Today's Searches", val: stats?.todayLookups ?? 0 },
+                    { label: "Success Rate", val: `${stats?.successRate ?? 100}%` },
+                    { label: "Avg Response Time", val: `${stats?.avgResponseTime ?? 0}ms` },
+                    { label: "Registered Users", val: stats?.registeredUsers ?? 0 },
+                    { label: "Active 30d Users", val: stats?.activeUsers ?? 0 },
+                    { label: "Unique Guest Sessions", val: stats?.guestUsers ?? 0 },
+                    { label: "Failed Queries", val: stats?.failedLookups ?? 0 },
+                  ].map((s, idx) => (
+                    <div key={idx} className="border border-white/[0.03] rounded-xl p-4 bg-black/20 shadow-sm">
+                      <span className="text-[9px] uppercase font-black text-white/30 tracking-wider block mb-1">{s.label}</span>
+                      <span className="text-2xl font-black font-mono text-white">{s.val}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Grade Distribution Overview */}

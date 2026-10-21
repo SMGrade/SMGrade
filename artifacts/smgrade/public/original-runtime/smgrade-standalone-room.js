@@ -130,6 +130,22 @@
       this.addListeners = [];
       this.removeListeners = [];
       this.changeListeners = [];
+
+      return new Proxy(this, {
+        get(target, prop, receiver) {
+          if (typeof prop === 'string' && !isNaN(Number(prop)) && prop !== '') {
+            return target.items[Number(prop)];
+          }
+          return Reflect.get(target, prop, receiver);
+        },
+        set(target, prop, value, receiver) {
+          if (typeof prop === 'string' && !isNaN(Number(prop)) && prop !== '') {
+            target.items[Number(prop)] = value;
+            return true;
+          }
+          return Reflect.set(target, prop, value, receiver);
+        }
+      });
     }
 
     onAdd(cb) {
@@ -178,6 +194,10 @@
 
     find(cb) {
       return this.items.find(cb);
+    }
+
+    findIndex(cb) {
+      return this.items.findIndex(cb);
     }
 
     filter(cb) {
@@ -282,6 +302,8 @@
       pets: [],
       activePets: [],
       ores: [],
+      storage: [],
+      storageLimit: 20,
       // Authentic Default Starter Cosmetics (characteristic clothing & hair)
       activeSkinColor: 0,
       activeFace: 0,
@@ -322,7 +344,12 @@
 
   function saveLocalArcadeProfile(profile) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+      // Safety guard against localStorage 5MB quota: cap stored pets array to max 500 items in localStorage
+      const safeProfile = {
+        ...profile,
+        pets: (profile.pets || []).slice(0, 500)
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(safeProfile));
       if (profile.username) localStorage.setItem('arcade_username', profile.username);
     } catch (e) {
       console.warn('[SMGrade State Save Error]:', e);
@@ -391,6 +418,10 @@
       this.messageHandlers[type] = cb;
     }
 
+    get mobs() {
+      return Object.values(this.state?.enemies?.items || {});
+    }
+
     dispatchMessage(type, data) {
       const handler = this.messageHandlers[type];
       if (typeof handler === 'function') {
@@ -443,11 +474,45 @@
       const activeSwordItem = swordsArray.find(s => s.type === this.profile.activeSwordType) || swordsArray[0];
       const activeShieldItem = shieldsArray.find(s => s.type === this.profile.activeShieldType) || shieldsArray[0];
 
+      // Decouple active weapon schemas from inventory items so equipping/unequipping doesn't mutate inventory
+      const activeSwordSchema = new LocalEntitySchema({
+        type: activeSwordItem.type,
+        level: activeSwordItem.level,
+        itemId: activeSwordItem.itemId,
+        enchantments: new LocalArraySchema((activeSwordItem.enchantments?.items || activeSwordItem.enchantments || []).map(e => new LocalEntitySchema({
+          type: e.type,
+          level: e.level,
+          name: e.name || ''
+        })))
+      });
+
+      const activeShieldSchema = new LocalEntitySchema({
+        type: activeShieldItem.type,
+        level: activeShieldItem.level,
+        itemId: activeShieldItem.itemId,
+        enchantments: new LocalArraySchema((activeShieldItem.enchantments?.items || activeShieldItem.enchantments || []).map(e => new LocalEntitySchema({
+          type: e.type,
+          level: e.level,
+          name: e.name || ''
+        })))
+      });
+
       const swordsSchema = new LocalArraySchema(swordsArray);
       const shieldsSchema = new LocalArraySchema(shieldsArray);
       const petsSchema = new LocalArraySchema(petsArray);
       const activePetsSchema = new LocalArraySchema(activePetsArray);
       const oresSchema = new LocalArraySchema(oresArray);
+
+      // Persistent Storage Schema (World 1 Storage NPC)
+      const storageArray = (this.profile.storage || []).map(st => new LocalEntitySchema({
+        itemId: st.itemId,
+        itemType: st.itemType || 1,
+        type: st.type,
+        level: st.level || 1,
+        enchantments: new LocalArraySchema((st.enchantments || []).map(e => new LocalEntitySchema(e))),
+        isLocked: !!st.isLocked
+      }));
+      const storageSchema = new LocalArraySchema(storageArray);
 
       // Cosmetic Ownership Schemas
       const skinColorsSchema = new LocalArraySchema(this.profile.ownedCosmetics.skinColors || [0]);
@@ -467,14 +532,15 @@
         gold: this.profile.gold || 50000000,
         power: this.profile.power || 2500,
         powerMultiplier: this.profile.powerMultiplier || 1.0,
-        activeSword: activeSwordItem,
-        activeShield: activeShieldItem,
+        activeSword: activeSwordSchema,
+        activeShield: activeShieldSchema,
         swords: swordsSchema,
         shields: shieldsSchema,
         pets: petsSchema,
         activePets: activePetsSchema,
         books: new LocalArraySchema(),
-        storage: new LocalArraySchema(),
+        storage: storageSchema,
+        storageLimit: this.profile.storageLimit || 20,
         ores: oresSchema,
         activeBooks: new LocalArraySchema(),
         canClaimChestTypes: new LocalArraySchema(),
@@ -533,7 +599,7 @@
         name: e.name || ''
       }));
       return new LocalEntitySchema({
-        itemId: data.itemId || ((isSword ? 'sword_' : 'shield_') + Date.now() + '_' + Math.floor(Math.random() * 1000)),
+        itemId: data.itemId || ((isSword ? 'sword_' : 'shield_') + Date.now() + '_' + Math.random().toString(36).substring(2, 9)),
         type: data.type || 1,
         level: data.level || 1,
         enchantments: new LocalArraySchema(enchants),
@@ -543,7 +609,7 @@
     }
 
     createPetSchema(data) {
-      const pid = data.petId || ('pet_' + Date.now() + '_' + Math.floor(Math.random() * 1000));
+      const pid = data.petId || ('pet_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
       return new LocalEntitySchema({
         petId: pid,
         itemId: data.itemId || pid,
@@ -555,7 +621,7 @@
 
     createOreSchema(data) {
       return new LocalEntitySchema({
-        oreId: data.oreId || ('ore_' + Date.now() + '_' + Math.floor(Math.random() * 1000)),
+        oreId: data.oreId || ('ore_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9)),
         type: data.type !== undefined ? data.type : 0,
         isMelted: !!data.isMelted,
         amount: data.amount || 1,
@@ -875,7 +941,7 @@
         }
       }
 
-      // 2. WEAPON EQUIPMENT SWITCHING & UNEQUIPPING
+      // 2. WEAPON EQUIPMENT SWITCHING & UNEQUIPPING (P0 Fix: Decoupled schemas & Fortune support)
       else if (type === 'Client:SlotController:equipOrUnequipWeapon') {
         if (!inv) return;
 
@@ -886,15 +952,21 @@
               inv.activeSword.set('type', swordItem.type);
               inv.activeSword.set('level', swordItem.level);
               inv.activeSword.set('itemId', swordItem.itemId);
-              inv.activeSword.set('enchantments', swordItem.enchantments);
+              const enchants = (swordItem.enchantments?.items || swordItem.enchantments || []).map(e => new LocalEntitySchema({
+                type: e.type,
+                level: e.level,
+                name: e.name || ''
+              }));
+              inv.activeSword.enchantments.items = enchants;
+              inv.activeSword.enchantments.triggerChange();
               inv.set('activeSword', inv.activeSword);
               this.profile.activeSwordType = swordItem.type;
               this.profile.activeSwordLevel = swordItem.level;
-              this.profile.activeSwordEnchants = swordItem.enchantments?.items || [];
+              this.profile.activeSwordEnchants = enchants.map(e => ({ type: e.type, level: e.level, name: e.name }));
               saveLocalArcadeProfile(this.profile);
               const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
               if (pCtrl) {
-                pCtrl.setActiveSword(swordItem.type, swordItem.enchantments?.items || []);
+                pCtrl.setActiveSword(swordItem.type, enchants);
               }
               if (this.networkManager.inventoryController) {
                 this.networkManager.inventoryController.setActiveSlot();
@@ -905,7 +977,8 @@
             inv.activeSword.set('type', 1);
             inv.activeSword.set('level', 1);
             inv.activeSword.set('itemId', 'default_sword');
-            inv.activeSword.set('enchantments', new LocalArraySchema([]));
+            inv.activeSword.enchantments.items = [];
+            inv.activeSword.enchantments.triggerChange();
             inv.set('activeSword', inv.activeSword);
             this.profile.activeSwordType = 1;
             this.profile.activeSwordLevel = 1;
@@ -926,16 +999,22 @@
               inv.activeShield.set('type', shieldItem.type);
               inv.activeShield.set('level', shieldItem.level);
               inv.activeShield.set('itemId', shieldItem.itemId);
-              inv.activeShield.set('enchantments', shieldItem.enchantments);
+              const enchants = (shieldItem.enchantments?.items || shieldItem.enchantments || []).map(e => new LocalEntitySchema({
+                type: e.type,
+                level: e.level,
+                name: e.name || ''
+              }));
+              inv.activeShield.enchantments.items = enchants;
+              inv.activeShield.enchantments.triggerChange();
               inv.set('activeShield', inv.activeShield);
               this.profile.activeShieldType = shieldItem.type;
               this.profile.activeShieldLevel = shieldItem.level;
-              this.profile.activeShieldEnchants = shieldItem.enchantments?.items || [];
+              this.profile.activeShieldEnchants = enchants.map(e => ({ type: e.type, level: e.level, name: e.name }));
               this.recalculatePlayerStats(inv);
               saveLocalArcadeProfile(this.profile);
               const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
               if (pCtrl) {
-                pCtrl.setActiveShield(shieldItem.type);
+                pCtrl.setActiveShield(shieldItem.type, enchants);
               }
               if (this.networkManager.inventoryController) {
                 this.networkManager.inventoryController.setActiveSlot();
@@ -946,7 +1025,8 @@
             inv.activeShield.set('type', 1);
             inv.activeShield.set('level', 1);
             inv.activeShield.set('itemId', 'default_shield');
-            inv.activeShield.set('enchantments', new LocalArraySchema([]));
+            inv.activeShield.enchantments.items = [];
+            inv.activeShield.enchantments.triggerChange();
             inv.set('activeShield', inv.activeShield);
             this.profile.activeShieldType = 1;
             this.profile.activeShieldLevel = 1;
@@ -955,7 +1035,7 @@
             saveLocalArcadeProfile(this.profile);
             const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
             if (pCtrl) {
-              pCtrl.setActiveShield(1);
+              pCtrl.setActiveShield(1, []);
             }
             if (this.networkManager.inventoryController) {
               this.networkManager.inventoryController.setActiveSlot();
@@ -1155,7 +1235,7 @@
         }
       }
 
-      // 2C. PET EQUIPPING & SUMMONING (Criteria 3)
+      // 2C. PET EQUIPPING & SUMMONING (Criteria 3: Hard limit of 10 simultaneously spawned pets)
       else if (type === 'Client:PetUIController:equipDequipPet') {
         if (!inv) return;
         const petId = typeof data === 'string' ? data : (data?.petId || data?.itemId);
@@ -1170,9 +1250,9 @@
           inv.activePets.remove(removed);
           console.log(`[SMGrade Standalone] Unequipped pet ${pet.itemId}`);
         } else {
-          // Equip: authentic limit is max 3 pets
-          if (inv.activePets.length >= 3) {
-            this.networkManager.app.fire("WarningTextController:setWarning", "You can only equip up to 3 pets!", 5, new pc.Color(1, 0, 0, 1));
+          // Equip: strictly maximum 10 simultaneously spawned pets
+          if (inv.activePets.length >= 10) {
+            this.networkManager.app.fire("WarningTextController:setWarning", "You can only equip up to 10 pets!", 5, new pc.Color(1, 0, 0, 1));
             return;
           }
           const activePet = new LocalEntitySchema({
@@ -1211,31 +1291,471 @@
         console.log('[SMGrade Standalone] Unequipped all pets.');
       }
 
+      // PET SELLING (Authentic Gold Grant & 3D Model Destruction)
       else if (type === 'Client:PetUIController:sellPet') {
         if (!inv) return;
         const petId = typeof data === 'string' ? data : (data?.petId || data?.itemId);
         const idx = inv.pets.items.findIndex(p => (p.itemId === petId || p.petId === petId));
         if (idx !== -1) {
           const pet = inv.pets.items[idx];
-          const petsCatalog = window.SWORDMASTERS_PETS || (window.StaticData && StaticData.pets) || [];
+          const petsCatalog = window.SWORDMASTERS_PETS || (window.StaticData && StaticData.pets) || window.pets || [];
           const meta = petsCatalog[pet.type] || { priceGold: 100 };
-          const sellPrice = Math.round((meta.priceGold || 100) * 0.5);
+          const sellPrice = meta.priceGold || 100;
 
-          // Remove from activePets if equipped
+          // Remove from activePets if equipped (destroys 3D model)
           const activeIdx = inv.activePets.items.findIndex(p => (p.itemId === petId || p.petId === petId));
           if (activeIdx !== -1) {
             inv.activePets.remove(inv.activePets.items[activeIdx]);
           }
 
-          inv.pets.items.splice(idx, 1);
-          inv.pets.triggerChange();
+          inv.pets.remove(pet);
+          delete this.networkManager.petItems[pet.itemId || petId];
+
           inv.set('gold', (inv.gold || 0) + sellPrice);
           this.networkManager.goldAmount = inv.gold;
           if (this.networkManager.goldStatText?.element) {
             this.networkManager.goldStatText.element.text = numRound(inv.gold);
           }
+          this.profile.gold = inv.gold;
           this.persistInventory();
           this.dispatchMessage("Server:PetUIController:soldPet", sellPrice);
+
+          if (this.networkManager?.petUIController) {
+            this.networkManager.petUIController.sortInventory();
+          }
+        }
+      }
+
+      else if (type === 'Client:PetUIController:sellUnusedPets') {
+        if (!inv) return;
+        const petsCatalog = window.SWORDMASTERS_PETS || (window.StaticData && StaticData.pets) || window.pets || [];
+        let totalGold = 0;
+        const activeIds = new Set(inv.activePets.items.map(p => p.itemId || p.petId));
+
+        const remaining = [];
+        for (const pet of inv.pets.items) {
+          const isEquipped = activeIds.has(pet.itemId) || activeIds.has(pet.petId);
+          if (!isEquipped && !pet.isLocked) {
+            const meta = petsCatalog[pet.type] || { priceGold: 100 };
+            totalGold += (meta.priceGold || 100);
+            delete this.networkManager.petItems[pet.itemId || pet.petId];
+          } else {
+            remaining.push(pet);
+          }
+        }
+
+        inv.pets.items = remaining;
+        inv.pets.triggerChange();
+        inv.set('gold', (inv.gold || 0) + totalGold);
+        this.networkManager.goldAmount = inv.gold;
+        if (this.networkManager.goldStatText?.element) {
+          this.networkManager.goldStatText.element.text = numRound(inv.gold);
+        }
+        this.profile.gold = inv.gold;
+        this.persistInventory();
+
+        this.dispatchMessage("Server:PetUIController:soldUnusedPets", totalGold);
+
+        if (this.networkManager?.petUIController) {
+          this.networkManager.petUIController.sortInventory();
+        }
+      }
+
+      // PET ENHANCER (Authentic 10 Epic Pets -> 1 X-Pet Combination Machine)
+      else if (type === 'Client:PetEnhancerController:enhance') {
+        if (!inv) return;
+        const activeItemId = data?.activeItemId;
+        const luckBoost = !!data?.luckBoost;
+        console.log('[Enhance Debug] activeItemId:', activeItemId, 'luckBoost:', luckBoost);
+
+        const targetPet = inv.pets.items.find(p => p.itemId === activeItemId || p.petId === activeItemId);
+        if (!targetPet) {
+          console.log('[Enhance Debug] targetPet not found!');
+          this.dispatchMessage("Server:PetEnhancerController:enhanceFailed");
+          return;
+        }
+
+        const petsCatalog = window.SWORDMASTERS_PETS || (window.StaticData && StaticData.pets) || window.pets || [];
+        const petData = petsCatalog[targetPet.type];
+        console.log('[Enhance Debug] targetPet.type:', targetPet.type, 'petData:', petData);
+        if (!petData || petData.enhancedPet === undefined) {
+          console.log('[Enhance Debug] petData or enhancedPet undefined');
+          this.networkManager.app?.fire("WarningTextController:setWarning", "Machine only accepts 10x epic pets!", 5, new pc.Color(1, 0, 0, 1));
+          this.dispatchMessage("Server:PetEnhancerController:enhanceFailed");
+          return;
+        }
+
+        // Count unlocked pets of same type
+        const matching = inv.pets.items.filter(p => p.type === targetPet.type && !p.isLocked);
+        console.log('[Enhance Debug] matching count:', matching.length);
+        if (matching.length < 10) {
+          this.networkManager.app?.fire("WarningTextController:setWarning", `You need ${10 - matching.length} more ${petData.name}!`, 5, new pc.Color(1, 0, 0, 1));
+          this.dispatchMessage("Server:PetEnhancerController:enhanceFailed");
+          return;
+        }
+
+        // Handle luck boost price
+        let boostPrice = targetPet.type === 34 ? 5e15 : 1e15;
+        if (luckBoost) {
+          if ((inv.gold || 0) < boostPrice) {
+            this.networkManager.app?.fire("WarningTextController:setWarning", "Insufficient gold for luck boost!", 5, new pc.Color(1, 0, 0, 1));
+            this.dispatchMessage("Server:PetEnhancerController:enhanceFailed");
+            return;
+          }
+          inv.set('gold', (inv.gold || 0) - boostPrice);
+          this.networkManager.goldAmount = inv.gold;
+          if (this.networkManager.goldStatText?.element) {
+            this.networkManager.goldStatText.element.text = numRound(inv.gold);
+          }
+        }
+
+        // Calculate authentic probability
+        const pLevel = inv.level || 1;
+        let baseLuck = pLevel > 1e4 ? 0.33 : pLevel > 9e3 ? 0.3 : pLevel > 8e3 ? 0.25 : pLevel > 7e3 ? 0.2 : pLevel > 6e3 ? 0.15 : pLevel > 5e3 ? 0.1 : pLevel > 4e3 ? 0.07 : pLevel > 3e3 ? 0.05 : pLevel > 2e3 ? 0.03 : 0.01;
+        const enhancedType = petData.enhancedPet;
+        if (enhancedType === 35) baseLuck *= 1/19;
+        else if (enhancedType === 31) baseLuck *= 1/8;
+        else if (enhancedType === 27) baseLuck *= 1/7;
+        else if (enhancedType === 26) baseLuck *= 1/6;
+        else if (enhancedType === 25) baseLuck *= 0.2;
+        else if (enhancedType === 24) baseLuck *= 0.25;
+        else if (enhancedType === 23) baseLuck *= 1/3;
+        else if (enhancedType === 22) baseLuck *= 0.5;
+        else if (enhancedType === 21) baseLuck *= 1.0;
+
+        let fortLevel = 0;
+        if (typeof getFortuneLevel === 'function') fortLevel = getFortuneLevel();
+        baseLuck *= (1 + 0.05 * fortLevel);
+        if (luckBoost) baseLuck = Math.min(1.0, baseLuck * 3);
+        baseLuck = Math.min(1.0, baseLuck);
+
+        const isSuccess = Math.random() < baseLuck;
+
+        // Consume 10 matching pets
+        const toRemove = matching.slice(0, 10);
+        toRemove.forEach(rp => {
+          const aIdx = inv.activePets.items.findIndex(ap => ap.itemId === rp.itemId || ap.petId === rp.petId);
+          if (aIdx !== -1) {
+            inv.activePets.remove(inv.activePets.items[aIdx]);
+          }
+          inv.pets.remove(rp);
+          delete this.networkManager.petItems[rp.itemId || rp.petId];
+        });
+
+        if (isSuccess) {
+          const newPet = this.createPetSchema({
+            type: enhancedType,
+            level: 1,
+            isLocked: false
+          });
+          inv.pets.push(newPet);
+          this.networkManager.petItems[newPet.itemId] = newPet;
+          this.persistInventory();
+
+          if (window.logMasterAction) {
+            window.logMasterAction(this.profile.username, "Pet Enhanced", `Successfully enhanced 10x ${petData.name} into ${petsCatalog[enhancedType]?.name}!`, "Success");
+          }
+
+          this.dispatchMessage("Server:PetEnhancerController:enhance");
+        } else {
+          this.persistInventory();
+          if (window.logMasterAction) {
+            window.logMasterAction(this.profile.username, "Pet Enhance Failed", `Failed to enhance ${petData.name} (Odds: ${Math.round(baseLuck * 100)}%)`, "Failed");
+          }
+          this.dispatchMessage("Server:PetEnhancerController:enhanceFailed");
+        }
+
+        if (this.networkManager?.petUIController) {
+          this.networkManager.petUIController.sortInventory();
+        }
+      }
+
+      // DOWNGRADER NPC (Authentic Downgrade L -> L-1, Yields x1-xL copies)
+      else if (type === 'Client:DowngraderController:forge') {
+        if (!inv) return;
+        const activeItemId = data?.activeItemId;
+        let item = inv.swords.find(s => s.itemId === activeItemId);
+        let isSword = true;
+        if (!item) {
+          item = inv.shields.find(s => s.itemId === activeItemId);
+          isSword = false;
+        }
+
+        if (!item || (item.level || 1) < 2) {
+          this.networkManager.app?.fire("WarningTextController:setWarning", "Item must be at least Level 2 to downgrade!", 5, new pc.Color(1, 0, 0, 1));
+          this.dispatchMessage("Server:DowngraderController:forgeFailed");
+          return;
+        }
+
+        let fortLevel = 0;
+        if (typeof getFortuneLevel === 'function') fortLevel = getFortuneLevel();
+        const luckAverage = Math.round(100 * Math.min(0.9, (0.5 + item.level / 20) * (1 + 0.05 * fortLevel)));
+        const isSuccess = (Math.random() * 100) < luckAverage;
+
+        if (isSuccess) {
+          const copies = Math.floor(Math.random() * item.level) + 1;
+          const targetLevel = item.level - 1;
+
+          // Downgrade original item and clear enchantments
+          item.level = targetLevel;
+          item.enchantments = new LocalArraySchema([]);
+
+          // If currently equipped, update active weapon
+          if (isSword && inv.activeSword.itemId === item.itemId) {
+            inv.activeSword.set('level', targetLevel);
+            inv.activeSword.enchantments.items = [];
+            inv.activeSword.enchantments.triggerChange();
+            const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
+            if (pCtrl) pCtrl.setActiveSword(item.type, []);
+          } else if (!isSword && inv.activeShield.itemId === item.itemId) {
+            inv.activeShield.set('level', targetLevel);
+            inv.activeShield.enchantments.items = [];
+            inv.activeShield.enchantments.triggerChange();
+            const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
+            if (pCtrl) pCtrl.setActiveShield(item.type, []);
+          }
+
+          // Add extra copies if copies > 1
+          for (let c = 1; c < copies; c++) {
+            const copySchema = this.createItemSchema({
+              type: item.type,
+              level: targetLevel,
+              enchantments: [],
+              isLocked: false
+            }, isSword);
+            if (isSword) {
+              inv.swords.push(copySchema);
+              this.networkManager.items[copySchema.itemId] = copySchema;
+            } else {
+              inv.shields.push(copySchema);
+              this.networkManager.items[copySchema.itemId] = copySchema;
+            }
+          }
+
+          this.persistInventory();
+          if (window.logMasterAction) {
+            window.logMasterAction(this.profile.username, "Item Downgraded", `Downgraded to Level ${targetLevel} (Yielded x${copies})`, "Success");
+          }
+
+          this.dispatchMessage("Server:DowngraderController:forge", copies);
+
+          if (this.networkManager.inventoryController) {
+            this.networkManager.inventoryController.sortInventory();
+            this.networkManager.inventoryController.setActiveSlot();
+          }
+        } else {
+          if (window.logMasterAction) {
+            window.logMasterAction(this.profile.username, "Downgrade Failed", `Downgrade attempt failed`, "Failed");
+          }
+          this.dispatchMessage("Server:DowngraderController:forgeFailed");
+        }
+      }
+
+      // WORLD 1 STORAGE NPC (Store, Withdraw, Buy Slot)
+      else if (type === 'Client:StoragePanelController:storeItem') {
+        if (!inv) return;
+        const itemId = data?.itemId;
+        const itemType = data?.itemType; // Authentic SwordMasters: 0: sword, 1: shield, 2: pet, 3: ore
+        const storageLimit = inv.storageLimit || 20;
+
+        // If already in storage (e.g. from updateStorage / reload loops), do not duplicate
+        if (inv.storage.items.some(s => s.itemId === itemId)) {
+          return;
+        }
+
+        if (inv.storage.length >= storageLimit) {
+          if (this.networkManager.app) {
+            this.networkManager.app.fire("WarningTextController:setWarning", "Storage is full!", 5, new pc.Color(1, 0, 0, 1));
+          }
+          return;
+        }
+
+        let foundItem = null;
+        let resolvedType = 0;
+
+        if (itemType === 0) {
+          const idx = inv.swords.items.findIndex(s => s.itemId === itemId);
+          if (idx !== -1) {
+            foundItem = inv.swords.items[idx];
+            resolvedType = 0;
+            if (inv.activeSword.itemId === foundItem.itemId) {
+              this.networkManager.app?.fire("WarningTextController:setWarning", "Unequip your sword first!", 5, new pc.Color(1, 0, 0, 1));
+              return;
+            }
+            inv.swords.remove(foundItem);
+            delete this.networkManager.items[foundItem.itemId];
+          }
+        } else if (itemType === 1) {
+          // Check shields first (authentic itemType 1), then swords (1-based)
+          let idx = inv.shields.items.findIndex(s => s.itemId === itemId);
+          if (idx !== -1) {
+            foundItem = inv.shields.items[idx];
+            resolvedType = 1;
+            if (inv.activeShield.itemId === foundItem.itemId) {
+              this.networkManager.app?.fire("WarningTextController:setWarning", "Unequip your shield first!", 5, new pc.Color(1, 0, 0, 1));
+              return;
+            }
+            inv.shields.remove(foundItem);
+            delete this.networkManager.items[foundItem.itemId];
+          } else if ((idx = inv.swords.items.findIndex(s => s.itemId === itemId)) !== -1) {
+            foundItem = inv.swords.items[idx];
+            resolvedType = 0;
+            if (inv.activeSword.itemId === foundItem.itemId) {
+              this.networkManager.app?.fire("WarningTextController:setWarning", "Unequip your sword first!", 5, new pc.Color(1, 0, 0, 1));
+              return;
+            }
+            inv.swords.remove(foundItem);
+            delete this.networkManager.items[foundItem.itemId];
+          }
+        } else if (itemType === 2) {
+          // Check pets first (authentic itemType 2), then shields
+          let idx = inv.pets.items.findIndex(p => p.itemId === itemId || p.petId === itemId);
+          if (idx !== -1) {
+            foundItem = inv.pets.items[idx];
+            resolvedType = 2;
+            const aIdx = inv.activePets.items.findIndex(p => p.itemId === foundItem.itemId || p.petId === foundItem.petId);
+            if (aIdx !== -1) {
+              inv.activePets.remove(inv.activePets.items[aIdx]);
+            }
+            inv.pets.remove(foundItem);
+            delete this.networkManager.petItems[foundItem.itemId];
+          } else if ((idx = inv.shields.items.findIndex(s => s.itemId === itemId)) !== -1) {
+            foundItem = inv.shields.items[idx];
+            resolvedType = 1;
+            if (inv.activeShield.itemId === foundItem.itemId) {
+              this.networkManager.app?.fire("WarningTextController:setWarning", "Unequip your shield first!", 5, new pc.Color(1, 0, 0, 1));
+              return;
+            }
+            inv.shields.remove(foundItem);
+            delete this.networkManager.items[foundItem.itemId];
+          }
+        } else if (itemType === 3) {
+          const idx = inv.ores.items.findIndex(o => o.oreId === itemId || o.itemId === itemId);
+          if (idx !== -1) {
+            foundItem = inv.ores.items[idx];
+            resolvedType = 3;
+            inv.ores.remove(foundItem);
+          }
+        }
+
+        // Generic fallback by itemId if type wasn't specified or didn't match
+        if (!foundItem) {
+          let idx = inv.swords.items.findIndex(s => s.itemId === itemId);
+          if (idx !== -1) {
+            foundItem = inv.swords.items[idx];
+            resolvedType = 0;
+            if (inv.activeSword.itemId === foundItem.itemId) {
+              this.networkManager.app?.fire("WarningTextController:setWarning", "Unequip your sword first!", 5, new pc.Color(1, 0, 0, 1));
+              return;
+            }
+            inv.swords.remove(foundItem);
+            delete this.networkManager.items[foundItem.itemId];
+          } else if ((idx = inv.shields.items.findIndex(s => s.itemId === itemId)) !== -1) {
+            foundItem = inv.shields.items[idx];
+            resolvedType = 1;
+            if (inv.activeShield.itemId === foundItem.itemId) {
+              this.networkManager.app?.fire("WarningTextController:setWarning", "Unequip your shield first!", 5, new pc.Color(1, 0, 0, 1));
+              return;
+            }
+            inv.shields.remove(foundItem);
+            delete this.networkManager.items[foundItem.itemId];
+          } else if ((idx = inv.pets.items.findIndex(p => p.itemId === itemId || p.petId === itemId)) !== -1) {
+            foundItem = inv.pets.items[idx];
+            resolvedType = 2;
+            const aIdx = inv.activePets.items.findIndex(p => p.itemId === foundItem.itemId || p.petId === foundItem.petId);
+            if (aIdx !== -1) {
+              inv.activePets.remove(inv.activePets.items[aIdx]);
+            }
+            inv.pets.remove(foundItem);
+            delete this.networkManager.petItems[foundItem.itemId];
+          } else if ((idx = inv.ores.items.findIndex(o => o.oreId === itemId || o.itemId === itemId)) !== -1) {
+            foundItem = inv.ores.items[idx];
+            resolvedType = 3;
+            inv.ores.remove(foundItem);
+          }
+        }
+
+        if (foundItem) {
+          const storedItem = new LocalEntitySchema({
+            itemId: foundItem.itemId || foundItem.oreId || foundItem.petId,
+            itemType: resolvedType,
+            type: foundItem.type,
+            level: foundItem.level || 1,
+            enchantments: foundItem.enchantments || new LocalArraySchema([]),
+            isLocked: !!foundItem.isLocked
+          });
+          inv.storage.push(storedItem);
+          this.persistInventory();
+          console.log(`[SMGrade Standalone Room] Stored item ${storedItem.itemId} (type ${resolvedType}) in storage.`);
+          if (this.networkManager.inventoryController) {
+            this.networkManager.inventoryController.sortInventory();
+          }
+          if (this.networkManager.petUIController) {
+            this.networkManager.petUIController.sortInventory();
+          }
+        }
+      }
+
+      else if (type === 'Client:StorageSlotController:getSlotItem') {
+        if (!inv) return;
+        const activeItem = data;
+        const itemId = activeItem?.itemId;
+        if (!itemId) return;
+
+        const idx = inv.storage.items.findIndex(st => st.itemId === itemId);
+        if (idx !== -1) {
+          const storedItem = inv.storage.items[idx];
+          inv.storage.remove(storedItem);
+
+          const itemType = storedItem.itemType; // 0: sword, 1: shield, 2: pet, 3: ore
+          if (itemType === 0) {
+            const restored = this.createItemSchema(storedItem, true);
+            inv.swords.push(restored);
+            this.networkManager.items[restored.itemId] = restored;
+          } else if (itemType === 1) {
+            const restored = this.createItemSchema(storedItem, false);
+            inv.shields.push(restored);
+            this.networkManager.items[restored.itemId] = restored;
+          } else if (itemType === 2) {
+            const restored = this.createPetSchema(storedItem);
+            inv.pets.push(restored);
+            this.networkManager.petItems[restored.itemId] = restored;
+          } else if (itemType === 3) {
+            const restored = this.createOreSchema(storedItem);
+            inv.ores.push(restored);
+          }
+
+          this.persistInventory();
+          console.log(`[SMGrade Standalone Room] Withdrew item ${itemId} from storage.`);
+          // inv.storage.remove triggers onRemove which fires "StoragePanelController:reload"
+          if (this.networkManager.inventoryController) {
+            this.networkManager.inventoryController.sortInventory();
+          }
+          if (this.networkManager.petUIController) {
+            this.networkManager.petUIController.sortInventory();
+          }
+        }
+      }
+
+      else if (type === 'Client:StorageSlotController:buySlot') {
+        if (!inv) return;
+        const slotPrice = 1000000;
+        if ((inv.gold || 0) < slotPrice) {
+          this.networkManager.app?.fire("WarningTextController:setWarning", "Insufficient gold to buy storage slot!", 5, new pc.Color(1, 0, 0, 1));
+          return;
+        }
+        inv.set('gold', (inv.gold || 0) - slotPrice);
+        this.networkManager.goldAmount = inv.gold;
+        if (this.networkManager.goldStatText?.element) {
+          this.networkManager.goldStatText.element.text = numRound(inv.gold);
+        }
+        const currentLimit = inv.storageLimit || 20;
+        inv.set('storageLimit', Math.min(30, currentLimit + 1));
+        this.profile.storageLimit = inv.storageLimit;
+        this.profile.gold = inv.gold;
+        this.persistInventory();
+        if (this.networkManager.app) {
+          this.networkManager.app.fire("StoragePanelController:reload");
         }
       }
 
@@ -1361,7 +1881,7 @@
         isLocked: s.isLocked
       }));
 
-      this.profile.pets = inv.pets.items.map(p => ({
+      this.profile.pets = (inv.pets.items || []).slice(0, 500).map(p => ({
         itemId: p.itemId || p.petId,
         petId: p.petId || p.itemId,
         type: p.type,
@@ -1376,6 +1896,18 @@
         amount: o.amount,
         isLocked: o.isLocked
       }));
+
+      if (inv.storage) {
+        this.profile.storage = inv.storage.items.map(st => ({
+          itemId: st.itemId,
+          itemType: st.itemType,
+          type: st.type,
+          level: st.level,
+          enchantments: (st.enchantments?.items || st.enchantments || []).map(e => ({ type: e.type, level: e.level, name: e.name })),
+          isLocked: !!st.isLocked
+        }));
+      }
+      this.profile.storageLimit = inv.storageLimit || 20;
 
       this.profile.gold = inv.gold;
       this.profile.power = inv.power;
@@ -1496,7 +2028,7 @@
     return itemSchema;
   };
 
-  // Add Pet to Inventory (Requirement 4 & 5: NEVER auto-equip or auto-summon)
+  // Add Pet to Inventory (Requirement 4 & 5: NEVER auto-equip or auto-summon; batched for high performance)
   window.addStandalonePet = function (opts) {
     const room = window.standaloneRoom;
     if (!room) return;
@@ -1514,12 +2046,13 @@
         isLocked: false
       });
 
-      inv.pets.push(petSchema);
+      inv.pets.items.push(petSchema);
       if (room.networkManager) {
         room.networkManager.petItems[petSchema.itemId] = petSchema;
       }
       lastPetSchema = petSchema;
     }
+    inv.pets.triggerChange();
 
     room.persistInventory();
     if (room.networkManager?.petUIController) {

@@ -22,7 +22,7 @@
   let currentRarityFilter = 'all';
 
   // Enchantment selections for Item Forge
-  const selectedEnchants = {
+  let selectedEnchants = {
     flame: 0,
     looting: 0,
     freeze: 0,
@@ -247,6 +247,14 @@
                 <button class="smgrade-level-btn" id="sm-lvl-plus">+</button>
               </div>
             </div>
+            <div class="smgrade-level-select-wrap" id="sm-qty-wrap" style="display: none; align-items: center; gap: 6px;">
+              <span style="font-size: 12px; font-weight: 700; color: #cbd5e1;">Qty:</span>
+              <div class="smgrade-level-selector">
+                <button class="smgrade-level-btn" id="sm-qty-minus">-</button>
+                <input type="number" id="sm-item-quantity" min="1" max="100" value="1" style="width: 36px; background: transparent; border: none; color: #fff; text-align: center; font-weight: 800; font-size: 12px; outline: none;" />
+                <button class="smgrade-level-btn" id="sm-qty-plus">+</button>
+              </div>
+            </div>
             <button class="smgrade-btn-primary" id="sm-forge-item-btn" disabled>Add to Inventory</button>
           </div>
         </div>
@@ -273,6 +281,21 @@
       }
     });
 
+    document.getElementById('sm-qty-minus').addEventListener('click', () => {
+      const qInput = document.getElementById('sm-item-quantity');
+      if (qInput) {
+        let val = parseInt(qInput.value, 10) || 1;
+        if (val > 1) qInput.value = val - 1;
+      }
+    });
+    document.getElementById('sm-qty-plus').addEventListener('click', () => {
+      const qInput = document.getElementById('sm-item-quantity');
+      if (qInput) {
+        let val = parseInt(qInput.value, 10) || 1;
+        if (val < 100) qInput.value = val + 1;
+      }
+    });
+
     document.getElementById('sm-forge-item-btn').addEventListener('click', handleForgeItem);
   }
 
@@ -289,8 +312,10 @@
     document.getElementById('tab-swords').classList.toggle('active', tab === 'swords');
     document.getElementById('tab-shields').classList.toggle('active', tab === 'shields');
     selectedItem = null;
+    selectedEnchants = { flame: 0, thorns: 0, looting: 0, freeze: 0, fortune: 0 };
     document.getElementById('sm-forge-item-btn').disabled = true;
     document.getElementById('sm-level-wrap').style.display = 'none';
+    if (document.getElementById('sm-qty-wrap')) document.getElementById('sm-qty-wrap').style.display = 'none';
     document.getElementById('sm-enchants-box').style.display = 'none';
     document.getElementById('sm-item-selected-info').innerHTML = `<span style="font-size: 12px; color: rgba(255,255,255,0.5);">Select an item to forge</span>`;
     renderItemGrid();
@@ -334,6 +359,7 @@
         selectedItem = item;
         document.getElementById('sm-forge-item-btn').disabled = false;
         document.getElementById('sm-level-wrap').style.display = 'flex';
+        if (document.getElementById('sm-qty-wrap')) document.getElementById('sm-qty-wrap').style.display = 'flex';
         document.getElementById('sm-item-selected-info').innerHTML = `
           <div style="font-size: 13px; font-weight: 700; color: #fff;">
             ${item.name} <span style="color: var(--sm-gold); font-size: 11px;">(${item.rarity})</span>
@@ -355,6 +381,8 @@
     if (!box || !content) return;
     box.style.display = 'flex';
     content.innerHTML = '';
+    // Always initialize/reset enchants to 0 (None)
+    selectedEnchants = { flame: 0, thorns: 0, looting: 0, freeze: 0, fortune: 0 };
 
     const options = isSword
       ? [
@@ -374,7 +402,7 @@
       row.innerHTML = `
         <span class="smgrade-enchant-label">${opt.name}</span>
         <select class="smgrade-select" id="enc-${opt.key}">
-          <option value="0">None</option>
+          <option value="0" selected>None</option>
           <option value="1">Level I</option>
           <option value="2">Level II</option>
           <option value="3">Level III</option>
@@ -403,14 +431,27 @@
       if (selectedEnchants.fortune > 0) enchantsToApply.push({ type: 4, level: selectedEnchants.fortune, name: 'Fortune' });
     }
 
+    const qtyInput = document.getElementById('sm-item-quantity');
+    const quantity = Math.max(1, Math.min(100, parseInt(qtyInput?.value, 10) || 1));
+
     if (window.addStandaloneItem) {
-      window.addStandaloneItem({
-        isSword,
-        type: selectedItem.type,
-        level: selectedLevel,
-        enchantments: enchantsToApply
-      });
-      showToast(`Forged and added ${selectedItem.name} (Lvl ${selectedLevel}) to inventory!`, '⚔️');
+      for (let q = 0; q < quantity; q++) {
+        window.addStandaloneItem({
+          isSword,
+          type: selectedItem.type,
+          level: selectedLevel,
+          enchantments: enchantsToApply
+        });
+      }
+      showToast(`Forged and added ${quantity > 1 ? quantity + 'x ' : ''}${selectedItem.name} (Lvl ${selectedLevel}) to inventory!`, '⚔️');
+      
+      // Reset enchantments to None after each successful addition
+      selectedEnchants = { flame: 0, thorns: 0, looting: 0, freeze: 0, fortune: 0 };
+      renderEnchantsUI(isSword);
+
+      // Reset quantity input to 1
+      if (qtyInput) qtyInput.value = '1';
+
       closeItemModal();
     }
   }
@@ -831,24 +872,31 @@
           };
         }
 
-        // Continually synchronize In-Inventory and In-Pet triggers
+        // Continually synchronize In-Inventory and In-Pet triggers (throttled to 250ms to prevent CPU saturation)
+        let cachedPetUI = null;
         setInterval(() => {
           const invCtrl = app.networkManager?.inventoryController;
           const invTrigger = document.getElementById('sm-inv-add-trigger');
           const dwarfTrigger = document.getElementById('sm-inv-dwarf-trigger');
           if (invCtrl) {
             const isInvOpen = !!invCtrl.inventoryEnabled;
-            if (invTrigger) invTrigger.style.display = isInvOpen ? 'flex' : 'none';
-            if (dwarfTrigger) dwarfTrigger.style.display = isInvOpen ? 'flex' : 'none';
+            if (invTrigger && invTrigger.style.display !== (isInvOpen ? 'flex' : 'none')) {
+              invTrigger.style.display = isInvOpen ? 'flex' : 'none';
+            }
+            if (dwarfTrigger && dwarfTrigger.style.display !== (isInvOpen ? 'flex' : 'none')) {
+              dwarfTrigger.style.display = isInvOpen ? 'flex' : 'none';
+            }
           }
 
-          const petUI = app.root?.findByName('PetUI');
+          if (!cachedPetUI) cachedPetUI = app.root?.findByName('PetUI');
           const petTrigger = document.getElementById('sm-pet-add-trigger');
-          if (petTrigger && petUI) {
-            const isPetOpen = !!(petUI.enabled && petUI.children[0] && petUI.children[0].enabled);
-            petTrigger.style.display = isPetOpen ? 'flex' : 'none';
+          if (petTrigger && cachedPetUI) {
+            const isPetOpen = !!(cachedPetUI.enabled && cachedPetUI.children[0] && cachedPetUI.children[0].enabled);
+            if (petTrigger.style.display !== (isPetOpen ? 'flex' : 'none')) {
+              petTrigger.style.display = isPetOpen ? 'flex' : 'none';
+            }
           }
-        }, 100);
+        }, 250);
       }
     }, 400);
   }
