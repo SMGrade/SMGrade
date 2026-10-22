@@ -279,7 +279,7 @@
 
   function getLocalArcadeProfile() {
     const defaultProfile = {
-      username: localStorage.getItem('arcade_username') || ('ArcadeHero_' + Math.floor(Math.random() * 899 + 100)),
+      username: localStorage.getItem('smg_registered_username') || localStorage.getItem('arcade_username') || ('ArcadeHero_' + Math.floor(Math.random() * 899 + 100)),
       level: 5000,
       experience: 0,
       gold: 50000000,
@@ -327,6 +327,38 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
+        // Requirement 3: Sanitize loaded inventory items from localStorage
+        // Clamping any exploit item levels (> 10) down to max allowed level 10
+        if (Array.isArray(parsed.swords)) {
+          parsed.swords = parsed.swords.map(s => ({
+            ...s,
+            level: Math.max(1, Math.min(10, parseInt(s.level, 10) || 1))
+          }));
+        }
+        if (Array.isArray(parsed.shields)) {
+          parsed.shields = parsed.shields.map(sh => ({
+            ...sh,
+            level: Math.max(1, Math.min(10, parseInt(sh.level, 10) || 1))
+          }));
+        }
+        if (parsed.activeSwordLevel) {
+          parsed.activeSwordLevel = Math.max(1, Math.min(10, parseInt(parsed.activeSwordLevel, 10) || 1));
+        }
+        if (parsed.activeShieldLevel) {
+          parsed.activeShieldLevel = Math.max(1, Math.min(10, parseInt(parsed.activeShieldLevel, 10) || 1));
+        }
+        if (Array.isArray(parsed.storage)) {
+          parsed.storage = parsed.storage.map(st => ({
+            ...st,
+            level: Math.max(1, Math.min(10, parseInt(st.level, 10) || 1))
+          }));
+        }
+
+        const registeredName = localStorage.getItem('smg_registered_username');
+        if (registeredName) {
+          parsed.username = registeredName;
+        }
+
         return {
           ...defaultProfile,
           ...parsed,
@@ -569,16 +601,14 @@
 
       this.state.playerInventories.add(this.sessionId, invSchema);
 
-      // C. Spawn Authentic World 1 Mobs at Canonical Scene EnemyPositions
-      this.spawnWorld1Mobs();
-
-      // D. Start Mob AI & Leashed Wander Loop
-      this.startMobAITick();
+      // C. Requirement 6: World 1 Mobs removed. Enemies collection remains 0 entities.
+      // Scene, terrain, player, NPCs (Blacksmith, Enhancer, Downgrader, Storage), pets, inventory, HUD, leaderboards preserved.
+      console.log('[SMGrade Standalone Room] World 1 active with 0 mobs (Requirement 6).');
 
       // E. Clean up Online-Only Elements and Keyboard-Help Controls
       this.cleanupOnlineOnlyElements();
 
-      // F. Initial HUD Stats Display
+      // F. Initial HUD Stats Display & Leaderboard Sync
       setTimeout(() => {
         if (this.networkManager.experienceBarLevelText?.element) {
           this.networkManager.experienceBarLevelText.element.text = "Level " + (this.profile.level || 1);
@@ -589,19 +619,28 @@
         if (this.networkManager.powerStatText?.element) {
           this.networkManager.powerStatText.element.text = numRound(this.profile.power || 2500);
         }
+        this.updateLiveLeaderboards();
       }, 500);
     }
 
     createItemSchema(data, isSword) {
+      // Requirement 3: Enforce strict level boundary (1 to 10 max for swords and shields)
+      let validLevel = parseInt(data.level, 10);
+      if (isNaN(validLevel) || validLevel < 1) validLevel = 1;
+      if (validLevel > 10) {
+        console.warn(`[SMGrade Exploit Guard] Item level ${data.level} exceeds max 10. Clamping to 10.`);
+        validLevel = 10;
+      }
+
       const enchants = (data.enchantments || []).map(e => new LocalEntitySchema({
         type: e.type,
-        level: e.level,
+        level: Math.max(1, Math.min(3, parseInt(e.level, 10) || 1)),
         name: e.name || ''
       }));
       return new LocalEntitySchema({
         itemId: data.itemId || ((isSword ? 'sword_' : 'shield_') + Date.now() + '_' + Math.random().toString(36).substring(2, 9)),
         type: data.type || 1,
-        level: data.level || 1,
+        level: validLevel,
         enchantments: new LocalArraySchema(enchants),
         isLocked: !!data.isLocked,
         isSword: !!isSword
@@ -1133,6 +1172,9 @@
           this.persistInventory();
           saveLocalArcadeProfile(this.profile);
 
+          // Requirement 11: Sync live achievements to persistent leaderboards
+          this.recordPlayerStat({ dwarfSuccessDelta: 1, highestDwarfedLevel: item.level });
+
           // Authentic Dwarf Blacksmith NPC animation in 3D world
           const ironsmith = this.networkManager.app?.root?.findByName("ironsmith");
           if (ironsmith && ironsmith.anim) {
@@ -1452,6 +1494,9 @@
           this.networkManager.petItems[newPet.itemId] = newPet;
           this.persistInventory();
 
+          // Requirement 11: Sync pet enhancement achievement to live leaderboards
+          this.recordPlayerStat({ petEnhanceDelta: 1 });
+
           if (window.logMasterAction) {
             window.logMasterAction(this.profile.username, "Pet Enhanced", `Successfully enhanced 10x ${petData.name} into ${petsCatalog[enhancedType]?.name}!`, "Success");
           }
@@ -1759,41 +1804,105 @@
         }
       }
 
-      // 3. ITEM SELLING
+      // 3. ITEM SELLING (Requirement 1: Reliable Sell Flow, Authentic Formula, Sync State, Unequip Handling)
       else if (type === 'Client:InventoryController:sellItem') {
-        if (!inv) return;
-        const swordsCatalog = window.SWORDMASTERS_SWORDS || (window.StaticData && StaticData.swords) || [];
-        const shieldsCatalog = window.SWORDMASTERS_SHIELDS || (window.StaticData && StaticData.shields) || [];
+        if (!inv || !data || !data.itemId) return;
+        const swordsCatalog = window.SWORDMASTERS_SWORDS || (window.StaticData && StaticData.swords) || window.swords || [];
+        const shieldsCatalog = window.SWORDMASTERS_SHIELDS || (window.StaticData && StaticData.shields) || window.shields || [];
+
+        // Concurrency / rapid-click double-sell guard
+        this._sellingInFlight = this._sellingInFlight || new Set();
+        if (this._sellingInFlight.has(data.itemId)) {
+          console.warn(`[SMGrade Standalone] Blocked duplicate rapid sell request for ${data.itemId}`);
+          return;
+        }
+        this._sellingInFlight.add(data.itemId);
+        setTimeout(() => this._sellingInFlight && this._sellingInFlight.delete(data.itemId), 400);
 
         if (data.isSword) {
           const idx = inv.swords.items.findIndex(s => s.itemId === data.itemId);
           if (idx !== -1) {
             const item = inv.swords.items[idx];
-            const meta = swordsCatalog[item.type] || { priceGold: 100 };
-            const sellPrice = Math.round((meta.priceGold || 100) * 0.5);
-            inv.swords.items.splice(idx, 1);
-            inv.swords.triggerChange();
-            inv.set('gold', (inv.gold || 0) + sellPrice);
+            const meta = swordsCatalog[item.type] || { priceGold: 100, name: "Sword" };
+            // Authentic original formula: priceGold * 2^(level - 1)
+            const sellPrice = Math.round(Number(meta.priceGold || 100) * Math.pow(2, (item.level || 1) - 1));
+
+            // If equipped, unequip and sync 3D player visuals immediately
+            if (inv.activeSword && inv.activeSword.itemId === item.itemId) {
+              inv.activeSword.set('type', 1);
+              inv.activeSword.set('level', 1);
+              inv.activeSword.set('itemId', 'default_sword');
+              inv.activeSword.enchantments.items = [];
+              inv.activeSword.enchantments.triggerChange();
+              inv.set('activeSword', inv.activeSword);
+              this.profile.activeSwordType = 1;
+              this.profile.activeSwordLevel = 1;
+              this.profile.activeSwordEnchants = [];
+              const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
+              if (pCtrl) {
+                pCtrl.setActiveSword(1, []);
+              }
+              if (this.networkManager.inventoryController) {
+                this.networkManager.inventoryController.setActiveSlot();
+              }
+            }
+
+            // Remove using LocalArraySchema.remove so onRemove listeners fire, resetting slot UI and re-sorting inventory
+            inv.swords.remove(item);
+            inv.set('gold', Number(inv.gold || 0) + sellPrice);
             this.networkManager.goldAmount = inv.gold;
+            this.profile.gold = Number(inv.gold);
             if (this.networkManager.goldStatText?.element) {
               this.networkManager.goldStatText.element.text = numRound(inv.gold);
             }
             this.persistInventory();
+            saveLocalArcadeProfile(this.profile);
+            if (window.logMasterAction) {
+              window.logMasterAction(this.profile?.username, "Item Sold", `Sold ${meta.name} (Lvl ${item.level}) for ${sellPrice} gold`, "Success");
+            }
+            console.log(`[SMGrade Standalone] Sold sword ${item.itemId} (${meta.name} Lvl ${item.level}) for ${sellPrice} gold. Gold balance: ${inv.gold}`);
           }
         } else {
           const idx = inv.shields.items.findIndex(s => s.itemId === data.itemId);
           if (idx !== -1) {
             const item = inv.shields.items[idx];
-            const meta = shieldsCatalog[item.type] || { priceGold: 100 };
-            const sellPrice = Math.round((meta.priceGold || 100) * 0.5);
-            inv.shields.items.splice(idx, 1);
-            inv.shields.triggerChange();
-            inv.set('gold', (inv.gold || 0) + sellPrice);
+            const meta = shieldsCatalog[item.type] || { priceGold: 100, name: "Shield" };
+            const sellPrice = Math.round(Number(meta.priceGold || 100) * Math.pow(2, (item.level || 1) - 1));
+
+            // If equipped, unequip and sync 3D player visuals immediately
+            if (inv.activeShield && inv.activeShield.itemId === item.itemId) {
+              inv.activeShield.set('type', 1);
+              inv.activeShield.set('level', 1);
+              inv.activeShield.set('itemId', 'default_shield');
+              inv.activeShield.enchantments.items = [];
+              inv.activeShield.enchantments.triggerChange();
+              inv.set('activeShield', inv.activeShield);
+              this.profile.activeShieldType = 1;
+              this.profile.activeShieldLevel = 1;
+              this.profile.activeShieldEnchants = [];
+              this.recalculatePlayerStats(inv);
+              const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
+              if (pCtrl) {
+                pCtrl.setActiveShield(1, []);
+              }
+              if (this.networkManager.inventoryController) {
+                this.networkManager.inventoryController.setActiveSlot();
+              }
+            }
+
+            inv.shields.remove(item);
+            inv.set('gold', Number(inv.gold || 0) + sellPrice);
             this.networkManager.goldAmount = inv.gold;
+            this.profile.gold = Number(inv.gold);
             if (this.networkManager.goldStatText?.element) {
               this.networkManager.goldStatText.element.text = numRound(inv.gold);
             }
             this.persistInventory();
+            saveLocalArcadeProfile(this.profile);
+            if (window.logMasterAction) {
+              window.logMasterAction(this.profile?.username, "Item Sold", `Sold ${meta.name} (Lvl ${item.level}) for ${sellPrice} gold`, "Success");
+            }
+            console.log(`[SMGrade Standalone] Sold shield ${item.itemId} (${meta.name} Lvl ${item.level}) for ${sellPrice} gold. Gold balance: ${inv.gold}`);
           }
         }
       }
@@ -1940,12 +2049,11 @@
         window.MenuController.prototype.enableDisableMenu = function () { /* suppressed */ };
       }
 
-      // 2. Disable Trade World, Clan World, VIP promotions, and online leaderboards
+      // 2. Disable Trade World, Clan World, VIP promotions (LeaderArea retained for live 3-board leaderboards - Requirement 11)
       const onlineEntities = [
         'TradePortal',
         'ClanButton', 'ClanNPC', 'WaitingForPlayersText',
         'GiftVIP', 'BuyVIP', 'BuyVIPButton', 'VipMaker', 'VIPController', 'Board',
-        'LeaderArea', 'LeaderArea2', 'LeaderboardEnabler',
         'KillScoreboard', 'KillScoreboard2'
       ];
 
@@ -1987,21 +2095,86 @@
         console.log('[SMGrade Standalone Room] Keyboard-help section configured: only I, P, T retained.');
       }
     }
+
+    // Requirement 11: Real-time Leaderboard Synchronization
+    async updateLiveLeaderboards() {
+      try {
+        const res = await fetch('/api/master/arcade/game-leaderboards');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        // Pad to exactly 10 slots
+        const pad10 = (list) => {
+          const arr = (list || []).slice(0, 10).map(x => ({ username: x.username, score: x.score }));
+          while (arr.length < 10) {
+            arr.push({ username: "—", score: 0 });
+          }
+          return arr;
+        };
+
+        const dwarfBoard = pad10(data.dwarfing);
+        const enhanceBoard = pad10(data.enhancing);
+        const levelBoard = pad10(data.level);
+        this.lastLeaderboardData = { dwarfing: dwarfBoard, enhancing: enhanceBoard, level: levelBoard };
+
+        if (this.networkManager?.app) {
+          // Board 1: Dwarfing achievements
+          this.networkManager.app.fire("goldLeaderboard", JSON.stringify(dwarfBoard));
+          // Board 2: Pet enhancing achievements
+          this.networkManager.app.fire("powerLeaderboard", JSON.stringify(enhanceBoard));
+          // Board 3: Authentic original 3rd category: Level
+          this.networkManager.app.fire("levelLeaderboard", JSON.stringify(levelBoard));
+        }
+      } catch (err) {
+        console.warn('[SMGrade Leaderboards Sync Failed]:', err);
+      }
+    }
+
+    async recordPlayerStat(stats) {
+      try {
+        const playerId = localStorage.getItem('smg_player_id');
+        const secretToken = localStorage.getItem('smg_player_token');
+        if (!playerId || !secretToken) return;
+
+        await fetch('/api/master/arcade/player/record-stat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            playerId,
+            secretToken,
+            ...stats
+          })
+        });
+
+        // Trigger immediate leaderboard refresh
+        this.updateLiveLeaderboards();
+      } catch (e) {
+        console.warn('[SMGrade Stat Sync Error]:', e);
+      }
+    }
   }
 
   // --- 4. STANDALONE GLOBAL HELPER API ---
 
-  // Add Item to Inventory (Requirement 3 & 5: NEVER auto-equip)
+  // Add Item to Inventory (Requirements 2 & 3: Max quantity 10, max level 10, NEVER auto-equip)
   window.addStandaloneItem = function (opts) {
     const room = window.standaloneRoom;
     if (!room) return;
     const inv = room.state.playerInventories.items[room.sessionId];
     if (!inv) return;
 
+    // Requirement 3: Enforce strict Level 1-10 boundary (close 10,000 exploit)
+    let validLevel = parseInt(opts.level, 10);
+    if (isNaN(validLevel) || validLevel < 1) validLevel = 1;
+    if (validLevel > 10) {
+      console.warn(`[SMGrade Exploit Guard] Rejected level ${opts.level}. Clamped to 10.`);
+      validLevel = 10;
+    }
+
     const isSword = opts.isSword !== false;
     const itemSchema = room.createItemSchema({
       type: opts.type !== undefined ? opts.type : 1,
-      level: opts.level || 1,
+      level: validLevel,
       enchantments: opts.enchantments || [],
       isLocked: false
     }, isSword);
@@ -2022,9 +2195,9 @@
     const itemMeta = isSword ? swordsCatalog[opts.type] : shieldsCatalog[opts.type];
     const itemTitle = itemMeta?.name || `${isSword ? 'Sword' : 'Shield'} #${opts.type}`;
     if (window.logMasterAction) {
-      window.logMasterAction(room.profile?.username, "Item Added", `Added ${itemTitle} (Level ${opts.level || 1}) to inventory`);
+      window.logMasterAction(room.profile?.username, "Item Added", `Added ${itemTitle} (Level ${validLevel}) to inventory`);
     }
-    console.log(`[SMGrade Standalone API] Stored ${isSword ? 'sword' : 'shield'} type ${opts.type} level ${opts.level} in inventory. Equipped item unchanged.`);
+    console.log(`[SMGrade Standalone API] Stored ${isSword ? 'sword' : 'shield'} type ${opts.type} level ${validLevel} in inventory. Equipped item unchanged.`);
     return itemSchema;
   };
 

@@ -119,6 +119,28 @@ export interface KillEvent {
   delta: number;
 }
 
+export interface SiteVisit {
+  id: string;
+  timestamp: string;
+  date: string; // YYYY-MM-DD
+  path: string;
+  ip?: string;
+  userAgent?: string;
+}
+
+export interface ArcadePlayer {
+  id: string; // unique player ID
+  username: string; // 1-10 alphanumeric
+  usernameLower: string;
+  secretToken: string; // secret key so only this device/player can claim this username
+  createdAt: string;
+  lastSeen: string;
+  dwarfSuccessCount: number;
+  highestDwarfedLevel: number;
+  petEnhanceCount: number;
+  level: number;
+}
+
 export interface ArcadeScore {
   id: string;
   username: string;
@@ -149,6 +171,8 @@ export interface DbSchema {
   lookupLogs: LookupLog[];
   activityLogs: ActivityLog[];
   arcadeScores?: ArcadeScore[];
+  arcadePlayers?: ArcadePlayer[];
+  siteVisits?: SiteVisit[];
   customItems?: any[];
   customPrices?: any[];
   customBenchmarks?: any[];
@@ -171,6 +195,8 @@ const DEFAULT_DB: DbSchema = {
   lookupLogs: [],
   activityLogs: [],
   arcadeScores: [],
+  arcadePlayers: [],
+  siteVisits: [],
   customItems: [],
   customPrices: [],
   customBenchmarks: [],
@@ -753,6 +779,187 @@ export class JsonDatabase {
     }
 
     return entry;
+  }
+
+  // --- SITE VISITS (Persistent Website Entry Tracking - Requirement 10) ---
+  public async recordSiteVisit(pathStr: string, ip?: string, userAgent?: string): Promise<SiteVisit> {
+    const id = crypto.randomUUID();
+    const now = new Date();
+    const timestamp = now.toISOString();
+    const date = timestamp.slice(0, 10); // YYYY-MM-DD
+
+    const visit: SiteVisit = {
+      id,
+      timestamp,
+      date,
+      path: pathStr || "/",
+      ip,
+      userAgent
+    };
+
+    await this.executeAtomic(async () => {
+      if (!this.data.siteVisits) this.data.siteVisits = [];
+      this.data.siteVisits.push(visit);
+      await this.save(this.data);
+    });
+
+    return visit;
+  }
+
+  public getSiteVisits(): SiteVisit[] {
+    return this.data.siteVisits || [];
+  }
+
+  // --- ARCADE PLAYER IDENTITY & LEADERBOARDS (Requirements 7, 8, 9, 11) ---
+  public async registerArcadePlayer(username: string, playerId: string, secretToken: string): Promise<{ success: boolean; player?: ArcadePlayer; error?: string; status: number }> {
+    const cleanUsername = String(username || "").trim();
+    const cleanPlayerId = String(playerId || "").trim();
+    const cleanToken = String(secretToken || "").trim();
+
+    // Strict validation: 1-10 alphanumeric characters only (A-Z, a-z, 0-9)
+    if (!/^[a-zA-Z0-9]{1,10}$/.test(cleanUsername)) {
+      return { success: false, error: "Username must be 1-10 alphanumeric characters (A-Z, a-z, 0-9) with no spaces or symbols.", status: 400 };
+    }
+
+    if (!cleanPlayerId || !cleanToken) {
+      return { success: false, error: "Player ID and secret token are required.", status: 400 };
+    }
+
+    const usernameLower = cleanUsername.toLowerCase();
+
+    return await this.executeAtomic(async () => {
+      if (!this.data.arcadePlayers) this.data.arcadePlayers = [];
+
+      const existingByName = this.data.arcadePlayers.find(p => p.usernameLower === usernameLower);
+      const now = new Date().toISOString();
+
+      if (existingByName) {
+        // If claimed by the exact same player ID and token, allow resuming session
+        if (existingByName.id === cleanPlayerId && existingByName.secretToken === cleanToken) {
+          existingByName.lastSeen = now;
+          await this.save(this.data);
+          return { success: true, player: existingByName, status: 200 };
+        } else {
+          // Claimed by someone else! Reject impersonation
+          return { success: false, error: "This username has already been claimed by another player.", status: 409 };
+        }
+      }
+
+      // Check if this player already registered under another name
+      let existingPlayer = this.data.arcadePlayers.find(p => p.id === cleanPlayerId);
+      if (existingPlayer) {
+        if (existingPlayer.secretToken !== cleanToken) {
+          return { success: false, error: "Unauthorized player token mismatch.", status: 403 };
+        }
+        existingPlayer.username = cleanUsername;
+        existingPlayer.usernameLower = usernameLower;
+        existingPlayer.lastSeen = now;
+        await this.save(this.data);
+        return { success: true, player: existingPlayer, status: 200 };
+      }
+
+      // Brand new player registration
+      const newPlayer: ArcadePlayer = {
+        id: cleanPlayerId,
+        username: cleanUsername,
+        usernameLower,
+        secretToken: cleanToken,
+        createdAt: now,
+        lastSeen: now,
+        dwarfSuccessCount: 0,
+        highestDwarfedLevel: 1,
+        petEnhanceCount: 0,
+        level: 1
+      };
+
+      this.data.arcadePlayers.push(newPlayer);
+      await this.save(this.data);
+
+      // Log new username creation to Master Vault Activity Logs (Requirement 9)
+      if (!this.data.activityLogs) this.data.activityLogs = [];
+      this.data.activityLogs.push({
+        id: crypto.randomUUID(),
+        timestamp: now,
+        username: cleanUsername,
+        action: "Arcade Player Registered",
+        details: `New player registered username: ${cleanUsername}`,
+        status: "Success"
+      });
+      await this.save(this.data);
+
+      return { success: true, player: newPlayer, status: 201 };
+    });
+  }
+
+  public async checkArcadePlayerUsername(username: string, playerId?: string): Promise<{ available: boolean; ownedByCurrentPlayer: boolean }> {
+    const cleanUsername = String(username || "").trim();
+    if (!/^[a-zA-Z0-9]{1,10}$/.test(cleanUsername)) {
+      return { available: false, ownedByCurrentPlayer: false };
+    }
+    const usernameLower = cleanUsername.toLowerCase();
+    const players = this.data.arcadePlayers || [];
+    const found = players.find(p => p.usernameLower === usernameLower);
+    if (!found) {
+      return { available: true, ownedByCurrentPlayer: false };
+    }
+    if (playerId && found.id === playerId) {
+      return { available: true, ownedByCurrentPlayer: true };
+    }
+    return { available: false, ownedByCurrentPlayer: false };
+  }
+
+  public async updateArcadePlayerStats(playerId: string, secretToken: string, stats: { dwarfSuccessDelta?: number; highestDwarfedLevel?: number; petEnhanceDelta?: number; level?: number }): Promise<ArcadePlayer | null> {
+    return await this.executeAtomic(async () => {
+      if (!this.data.arcadePlayers) this.data.arcadePlayers = [];
+      const player = this.data.arcadePlayers.find(p => p.id === playerId);
+      if (!player) return null;
+      if (player.secretToken !== secretToken) return null;
+
+      if (stats.dwarfSuccessDelta) {
+        player.dwarfSuccessCount = (player.dwarfSuccessCount || 0) + Math.max(0, Number(stats.dwarfSuccessDelta) || 0);
+      }
+      if (stats.highestDwarfedLevel) {
+        player.highestDwarfedLevel = Math.min(10, Math.max(player.highestDwarfedLevel || 1, Number(stats.highestDwarfedLevel) || 1));
+      }
+      if (stats.petEnhanceDelta) {
+        player.petEnhanceCount = (player.petEnhanceCount || 0) + Math.max(0, Number(stats.petEnhanceDelta) || 0);
+      }
+      if (stats.level) {
+        player.level = Math.max(player.level || 1, Number(stats.level) || 1);
+      }
+      player.lastSeen = new Date().toISOString();
+
+      await this.save(this.data);
+      return player;
+    });
+  }
+
+  public getArcadeGameLeaderboards(): {
+    dwarfing: { username: string; score: number }[];
+    enhancing: { username: string; score: number }[];
+    level: { username: string; score: number }[];
+  } {
+    const players = (this.data.arcadePlayers || []).filter(p => p.username);
+
+    // Board 1: Highest dwarfing count / achievement
+    const dwarfing = [...players]
+      .sort((a, b) => (b.dwarfSuccessCount || 0) - (a.dwarfSuccessCount || 0) || (b.highestDwarfedLevel || 1) - (a.highestDwarfedLevel || 1))
+      .slice(0, 10)
+      .map(p => ({ username: p.username, score: p.dwarfSuccessCount || 0 }));
+
+    // Board 2: Pet-enhancing count / achievement
+    const enhancing = [...players]
+      .sort((a, b) => (b.petEnhanceCount || 0) - (a.petEnhanceCount || 0))
+      .slice(0, 10)
+      .map(p => ({ username: p.username, score: p.petEnhanceCount || 0 }));
+
+    // Board 3: Authentic 3rd original category: Level (Player Level)
+    const level = [...players]
+      .sort((a, b) => (b.level || 1) - (a.level || 1) || (b.highestDwarfedLevel || 1) - (a.highestDwarfedLevel || 1))
+      .slice(0, 10)
+      .map(p => ({ username: p.username, score: p.level || 1 }));
+
+    return { dwarfing, enhancing, level };
   }
 
   // Custom configurations (Admin Syncing)

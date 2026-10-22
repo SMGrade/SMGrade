@@ -780,14 +780,15 @@ function ElfSVG({
 }
 
 export default function Arcade() {
-  // Mode: 'original' | 'puncher'
-  const [arcadeMode, setArcadeMode] = useState<"original" | "puncher">(() => {
+  // Mode: 'selector' | 'dwarf' | 'revenge' (Requirements 13 & 14)
+  const [arcadeMode, setArcadeMode] = useState<"selector" | "dwarf" | "revenge">(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const m = params.get("mode") || params.get("game");
-      if (m === "puncher" || m === "2d") return "puncher";
+      if (m === "dwarf" || m === "hub" || m === "original") return "dwarf";
+      if (m === "puncher" || m === "revenge" || m === "2d") return "revenge";
     }
-    return "original";
+    return "selector";
   });
 
   // Game states: 'select' | 'play'
@@ -1475,6 +1476,180 @@ export default function Arcade() {
     </div>
   );
 
+  // 1. FULL VIEWPORT DWARF HUB (Requirements 13 & 14)
+  if (arcadeMode === "dwarf") {
+    return (
+      <div id="dwarf-hub-viewport-container" className="fixed inset-0 w-screen h-screen z-50 bg-black overflow-hidden flex flex-col">
+        {/* Sleek Floating Top Return Bar */}
+        <div className="absolute top-3 left-4 z-50 flex items-center gap-3 pointer-events-auto">
+          <button
+            id="btn-return-selector"
+            onClick={() => {
+              setArcadeMode("selector");
+              playSound("click");
+            }}
+            className="px-4 py-2 rounded-full bg-[#0a0f1d]/90 hover:bg-[#0f172a] text-white/90 hover:text-white border border-white/20 text-xs font-black uppercase tracking-wider shadow-2xl flex items-center gap-2 backdrop-blur-md transition-all cursor-pointer hover:border-amber-500/50"
+          >
+            <span>←</span>
+            <span>Arcade Selector</span>
+          </button>
+          <div className="px-3 py-1.5 rounded-full bg-black/60 border border-emerald-500/30 text-[11px] text-emerald-400 font-mono font-bold hidden sm:flex items-center gap-1.5 backdrop-blur-md">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>DWARF HUB (Full Viewport)</span>
+          </div>
+        </div>
+
+        {/* Full-Tab SwordMasters PlayCanvas Runtime */}
+        <iframe
+          id="dwarf-hub-frame"
+          src="/original-runtime/index.html"
+          title="DWARF HUB"
+          className="w-full h-full border-0 block flex-1"
+          allow="autoplay; fullscreen; clipboard-read; clipboard-write"
+        />
+      </div>
+    );
+  }
+
+  // 2. DEDICATED SM ARCADE GAME SELECTION PAGE (Requirement 13)
+  if (arcadeMode === "selector") {
+    return (
+      <div className="min-h-screen bg-[#030712] text-white flex flex-col relative overflow-x-hidden font-sans">
+        <ParticleBackground />
+        <ParallaxBackground />
+
+        {/* Header */}
+        <header className="border-b border-white/[0.08] bg-[#050a14]/80 backdrop-blur-md sticky top-0 z-40 px-4 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider transition">
+              <span>←</span>
+              <span>Back to Home</span>
+            </Link>
+          </div>
+          <div className="text-center">
+            <span className="text-[10px] uppercase font-mono tracking-widest text-amber-400 font-bold">SM Arcade Hub</span>
+            <h1 className="text-sm font-black text-white tracking-wide">SELECT YOUR GAME</h1>
+          </div>
+          <Link href="/vault" className="text-[11px] text-white/40 hover:text-emerald-400 font-mono font-bold transition">
+            Master Vault →
+          </Link>
+        </header>
+
+        {/* Main Selection Area */}
+        <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-12 flex flex-col justify-center items-center gap-8 z-10 relative">
+          <div className="text-center space-y-2 max-w-md">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-widest">
+              <span>🎮</span>
+              <span>SwordMasters Official Arcade</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight font-display">CHOOSE AN ARENA</h2>
+            <p className="text-xs text-white/40 leading-relaxed">
+              Experience the full 3D SwordMasters MMO world or challenge your reaction times in the 2D reflex brawler.
+            </p>
+          </div>
+
+          {/* Two Game Cards (Mobile App Style) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
+            {/* Card 1: Dwarf Hub */}
+            <div 
+              id="arcade-card-dwarf-hub"
+              onClick={() => {
+                setArcadeMode("dwarf");
+                playSound("click");
+              }}
+              className="group relative rounded-3xl border border-emerald-500/30 bg-[#09121a]/80 hover:bg-[#0c1a24] hover:border-emerald-400/70 p-6 flex flex-col justify-between transition-all duration-300 shadow-2xl hover:shadow-[0_0_40px_rgba(16,185,129,0.25)] hover:-translate-y-1 cursor-pointer overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/20 transition-all" />
+              
+              <div className="space-y-4 relative z-10">
+                <div className="w-full h-44 rounded-2xl overflow-hidden border border-white/10 relative bg-black">
+                  <img 
+                    src="/swordmasters_world1.png" 
+                    alt="Dwarf Hub" 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
+                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/70 border border-emerald-500/40 backdrop-blur-md text-[9px] font-black uppercase tracking-wider text-emerald-400">
+                    3D MMO & Blacksmith
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-black text-white group-hover:text-emerald-300 transition-colors font-display">
+                      DWARF HUB
+                    </h3>
+                    <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                      World 1
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/50 mt-2 leading-relaxed">
+                    Step inside the authentic SwordMasters runtime. Forge swords & shields, dwarf equipment up to Level 10, hatch pets, fuse at the Pet Enhancer, and compete on live leaderboards.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center justify-between relative z-10">
+                <span className="text-[11px] font-mono text-emerald-400/80 font-bold">PlayCanvas Engine • Full Tab</span>
+                <span className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg group-hover:brightness-110 transition-all flex items-center gap-1.5">
+                  <span>PLAY NOW</span>
+                  <span>→</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Card 2: SM Revenge (Dwarf Puncher) */}
+            <div 
+              id="arcade-card-sm-revenge"
+              onClick={() => {
+                setArcadeMode("revenge");
+                playSound("click");
+              }}
+              className="group relative rounded-3xl border border-red-500/30 bg-[#160a10]/80 hover:bg-[#200d17] hover:border-red-400/70 p-6 flex flex-col justify-between transition-all duration-300 shadow-2xl hover:shadow-[0_0_40px_rgba(239,68,68,0.25)] hover:-translate-y-1 cursor-pointer overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-red-500/20 transition-all" />
+
+              <div className="space-y-4 relative z-10">
+                <div className="w-full h-44 rounded-2xl overflow-hidden border border-white/10 relative bg-black">
+                  <img 
+                    src="/sm_revenge_characters.png" 
+                    alt="SM Revenge" 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
+                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/70 border border-red-500/40 backdrop-blur-md text-[9px] font-black uppercase tracking-wider text-red-400">
+                    2D Reflex Mini-Game
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-black text-white group-hover:text-red-300 transition-colors font-display">
+                      SM REVENGE
+                    </h3>
+                    <span className="text-xs font-mono font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-md border border-red-500/20">
+                      Dwarf Puncher
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/50 mt-2 leading-relaxed">
+                    Test your reflexes and rapid-clicking power. Rack up devastating combos, trigger rage mode, collect score multipliers, and top the global arcade kill leaderboards.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center justify-between relative z-10">
+                <span className="text-[11px] font-mono text-rose-400/80 font-bold">Retro Web Audio • Kills Tracker</span>
+                <span className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-black text-xs uppercase tracking-wider shadow-lg group-hover:brightness-110 transition-all flex items-center gap-1.5">
+                  <span>PLAY NOW</span>
+                  <span>→</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // 3. SM REVENGE (2D Brawler)
   return (
     <div className={`min-h-screen text-white flex flex-col relative overflow-hidden font-sans bg-[#03050b] select-none ${screenShake ? "animate-shake" : ""}`}>
       {/* Immersive Colorful Parallax Background */}
@@ -1488,11 +1663,23 @@ export default function Arcade() {
 
       {/* Header */}
       <header className="border-b border-white/[0.04] px-6 py-4 flex items-center justify-between sticky top-0 z-20 bg-[#070b13]/80 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <span className="font-black text-xs tracking-wider px-2 py-0.5 rounded bg-amber-500/25 border border-amber-500/35 text-amber-400">
-            SM
-          </span>
-          <span className="text-white font-extrabold text-sm tracking-tight font-display">Arcade</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              setArcadeMode("selector");
+              playSound("click");
+            }}
+            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white border border-white/10 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <span>←</span>
+            <span>Arcade Selector</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="font-black text-xs tracking-wider px-2 py-0.5 rounded bg-red-500/25 border border-red-500/35 text-red-400">
+              2D
+            </span>
+            <span className="text-white font-extrabold text-sm tracking-tight font-display">SM Revenge</span>
+          </div>
         </div>
         <div className="flex items-center gap-4">
           {arcadeUsername && (
@@ -1536,53 +1723,8 @@ export default function Arcade() {
           }
         `}</style>
         
-        {/* Arcade Mode Switcher: SwordMasters 3D vs 2D Dwarf Puncher */}
-        <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
-          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[#090d19]/80 border border-white/[0.08] shadow-lg">
-            <button
-              onClick={() => setArcadeMode("original")}
-              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition cursor-pointer ${
-                arcadeMode === "original"
-                  ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 shadow-md shadow-emerald-500/20"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <span>🎮</span>
-              <span>DWARF HUB</span>
-            </button>
-            <button
-              onClick={() => setArcadeMode("puncher")}
-              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition cursor-pointer ${
-                arcadeMode === "puncher"
-                  ? "bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-md shadow-red-500/20"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <span>🥊</span>
-              <span>Dwarf Puncher (2D Arcade)</span>
-            </button>
-          </div>
-
-          <div className="text-[11px] text-white/40 hidden sm:flex items-center gap-2 font-mono">
-            {arcadeMode === "original" ? (
-              <span className="text-emerald-400 font-bold">Authentic PlayCanvas Engine & Dwarf Hub MMO</span>
-            ) : (
-              <span className="text-rose-400/90 font-bold">Classic 2D Reflex Mini-Game</span>
-            )}
-          </div>
-        </div>
-
-        {arcadeMode === "original" ? (
-          <div className="relative w-full max-w-6xl mx-auto rounded-3xl overflow-hidden shadow-2xl border border-white/10 aspect-[16/9] min-h-[620px] bg-black">
-            <iframe
-              src="/original-runtime/index.html"
-              title="DWARF HUB"
-              className="w-full h-full border-0 select-none"
-              allow="autoplay; fullscreen; clipboard-read; clipboard-write"
-            />
-          </div>
-        ) : (
-          <>
+        {/* 2D Brawler Reflex Mini-Game */}
+        <>
             {/* Slow Mo Overlay */}
         <AnimatePresence>
           {isSlowMo && (
@@ -2153,7 +2295,6 @@ export default function Arcade() {
           </div>
         )}
       </>
-    )}
 
       </main>
 

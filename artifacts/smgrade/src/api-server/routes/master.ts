@@ -547,6 +547,19 @@ router.post("/log-action", async (req: any, res: any) => {
   }
 });
 
+// Record background website visits (Requirement 10)
+router.post("/record-visit", async (req: any, res: any) => {
+  try {
+    const { path } = req.body || {};
+    const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress;
+    const userAgent = req.headers["user-agent"];
+    const visit = await jsonDb.recordSiteVisit(path || "/", String(ip || ""), String(userAgent || ""));
+    res.json({ success: true, visitId: visit.id });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to record visit" });
+  }
+});
+
 // 17. Protected: Get dashboard stats analytics
 router.get("/analytics", checkMasterSession, (req: any, res: any) => {
   const logs = jsonDb.getLookupLogs();
@@ -591,6 +604,21 @@ router.get("/analytics", checkMasterSession, (req: any, res: any) => {
   const lastAnalysisTime = logs.length > 0 ? logs[0].timestamp : null;
 
   // Track SMGrade visitor analytics cleanly separated from lookup/analysis counters
+  const siteVisits = jsonDb.getSiteVisits();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todaySiteVisits = siteVisits.filter(v => v.date === todayStr).length;
+  const totalSiteVisits = siteVisits.length;
+
+  // Historical Daily Visits
+  const dailyVisitsMap: Record<string, number> = {};
+  siteVisits.forEach(v => {
+    dailyVisitsMap[v.date] = (dailyVisitsMap[v.date] || 0) + 1;
+  });
+  const dailyVisitsHistory = Object.entries(dailyVisitsMap)
+    .map(([date, count]) => ({ date, count }))
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 14);
+
   const activityLogs = (jsonDb as any).getActivityLogs ? (jsonDb as any).getActivityLogs() : [];
   const allSessions = new Set<string>();
   const dailySessions = new Set<string>();
@@ -620,8 +648,8 @@ router.get("/analytics", checkMasterSession, (req: any, res: any) => {
   });
 
   const uniqueVisitors = allSessions.size || (guestUsersCount + registeredUsersCount) || 1;
-  const allTimeVisits = Math.max(activityLogs.length + logs.length, uniqueVisitors, 28);
-  const dailyWebsiteVisits = Math.max(dailySessions.size, todayLookups, 5);
+  const allTimeVisits = Math.max(totalSiteVisits, activityLogs.length + logs.length, 28);
+  const dailyWebsiteVisits = Math.max(todaySiteVisits, dailySessions.size, todayLookups, 5);
   const returningVisitors = Object.values(sessionCounts).filter(c => c > 1).length;
 
   res.json({
@@ -645,7 +673,8 @@ router.get("/analytics", checkMasterSession, (req: any, res: any) => {
     uniqueVisitors,
     allTimeVisits,
     dwarfHubVisits: Math.max(dwarfHubVisits, 12),
-    returningVisitors
+    returningVisitors,
+    dailyVisitsHistory
   });
 });
 
@@ -909,6 +938,56 @@ router.get("/arcade/player-history", (req: any, res: any) => {
     }))
     .reverse();
   res.json(playerLogs);
+});
+
+// --- Registered Arcade Player Identity & Uniqueness (Requirements 7, 8, 9) ---
+router.post("/arcade/player/register", async (req: any, res: any) => {
+  const { username, playerId, secretToken } = req.body || {};
+  try {
+    const result = await jsonDb.registerArcadePlayer(username, playerId, secretToken);
+    res.status(result.status).json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: "Internal registration error" });
+  }
+});
+
+router.get("/arcade/player/check-username", async (req: any, res: any) => {
+  const username = String(req.query.username || "").trim();
+  const playerId = String(req.query.playerId || "").trim();
+  try {
+    const result = await jsonDb.checkArcadePlayerUsername(username, playerId);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: "Check failed" });
+  }
+});
+
+router.post("/arcade/player/record-stat", async (req: any, res: any) => {
+  const { playerId, secretToken, dwarfSuccessDelta, highestDwarfedLevel, petEnhanceDelta, level } = req.body || {};
+  try {
+    const updated = await jsonDb.updateArcadePlayerStats(playerId, secretToken, {
+      dwarfSuccessDelta,
+      highestDwarfedLevel,
+      petEnhanceDelta,
+      level
+    });
+    if (!updated) {
+      res.status(403).json({ error: "Unauthorized or player not found" });
+      return;
+    }
+    res.json({ success: true, player: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to record stat" });
+  }
+});
+
+router.get("/arcade/game-leaderboards", (req: any, res: any) => {
+  try {
+    const boards = jsonDb.getArcadeGameLeaderboards();
+    res.json(boards);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to fetch game leaderboards" });
+  }
 });
 
 router.get("/arcade/check-username", async (req: any, res: any) => {

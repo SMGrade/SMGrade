@@ -48,3 +48,15 @@ Thumbs.db
 .cache/
 .local/
 .vercel
+.env*
+
+# Ignore compiled JS files next to TS files in src folders
+artifacts/smgrade/src/lib/**/*.js
+artifacts/smgrade/src/lib/**/*.js.map
+artifacts/smgrade/src/api-server/**/*.js
+artifacts/smgrade/src/api-server/**/*.js.map
+
+artifacts/smgrade/data/arcade_scores.json
+artifacts/smgrade/scratch/
+.vercel
+artifacts/smgrade/data/

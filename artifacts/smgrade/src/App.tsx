@@ -87,6 +87,19 @@ function Router() {
   const [location] = useLocation();
 
   useEffect(() => {
+    // Background website visit recording (Requirement 10)
+    try {
+      const visitKey = `smg_visit_${location}_${Math.floor(Date.now() / 60000)}`;
+      if (!sessionStorage.getItem(visitKey)) {
+        sessionStorage.setItem(visitKey, "1");
+        fetch("/api/master/record-visit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: location })
+        }).catch(() => {});
+      }
+    } catch (_) {}
+
     // Background sync on route changes to ensure fresh local cache
     fetch(`/api/master/admin/config?t=${Date.now()}`)
       .then((res) => {

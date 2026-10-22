@@ -251,7 +251,7 @@
               <span style="font-size: 12px; font-weight: 700; color: #cbd5e1;">Qty:</span>
               <div class="smgrade-level-selector">
                 <button class="smgrade-level-btn" id="sm-qty-minus">-</button>
-                <input type="number" id="sm-item-quantity" min="1" max="100" value="1" style="width: 36px; background: transparent; border: none; color: #fff; text-align: center; font-weight: 800; font-size: 12px; outline: none;" />
+                <input type="number" id="sm-item-quantity" min="1" max="10" value="1" style="width: 36px; background: transparent; border: none; color: #fff; text-align: center; font-weight: 800; font-size: 12px; outline: none;" />
                 <button class="smgrade-level-btn" id="sm-qty-plus">+</button>
               </div>
             </div>
@@ -275,7 +275,7 @@
       }
     });
     document.getElementById('sm-lvl-plus').addEventListener('click', () => {
-      if (selectedLevel < 5) {
+      if (selectedLevel < 10) {
         selectedLevel++;
         updateLevelDisplay();
       }
@@ -292,7 +292,7 @@
       const qInput = document.getElementById('sm-item-quantity');
       if (qInput) {
         let val = parseInt(qInput.value, 10) || 1;
-        if (val < 100) qInput.value = val + 1;
+        if (val < 10) qInput.value = val + 1;
       }
     });
 
@@ -302,8 +302,9 @@
   function updateLevelDisplay() {
     const disp = document.getElementById('sm-lvl-display');
     if (!disp) return;
-    if (selectedLevel === 3) disp.innerHTML = `Lvl 3 🔥`;
+    if (selectedLevel === 10) disp.innerHTML = `Lvl 10 👑`;
     else if (selectedLevel === 5) disp.innerHTML = `Lvl 5 💥`;
+    else if (selectedLevel === 3) disp.innerHTML = `Lvl 3 🔥`;
     else disp.textContent = `Lvl ${selectedLevel}`;
   }
 
@@ -432,18 +433,27 @@
     }
 
     const qtyInput = document.getElementById('sm-item-quantity');
-    const quantity = Math.max(1, Math.min(100, parseInt(qtyInput?.value, 10) || 1));
+    const rawQty = qtyInput?.value;
+    const numQty = Number(rawQty);
+    if (!Number.isInteger(numQty) || numQty < 1 || numQty > 10) {
+      showToast("Quantity must be an integer between 1 and 10!", "⚠️");
+      return;
+    }
+    const quantity = numQty;
+
+    // Requirement 3: Enforce level limit between 1 and 10
+    const clampedLevel = Math.max(1, Math.min(10, selectedLevel || 1));
 
     if (window.addStandaloneItem) {
       for (let q = 0; q < quantity; q++) {
         window.addStandaloneItem({
           isSword,
           type: selectedItem.type,
-          level: selectedLevel,
+          level: clampedLevel,
           enchantments: enchantsToApply
         });
       }
-      showToast(`Forged and added ${quantity > 1 ? quantity + 'x ' : ''}${selectedItem.name} (Lvl ${selectedLevel}) to inventory!`, '⚔️');
+      showToast(`Forged and added ${quantity > 1 ? quantity + 'x ' : ''}${selectedItem.name} (Lvl ${clampedLevel}) to inventory!`, '⚔️');
       
       // Reset enchantments to None after each successful addition
       selectedEnchants = { flame: 0, thorns: 0, looting: 0, freeze: 0, fortune: 0 };
@@ -901,6 +911,232 @@
     }, 400);
   }
 
+  // --- MANDATORY USERNAME REGISTRATION FLOW (Requirements 7, 8, 9) ---
+  function initUsernameFlow() {
+    let regUser = localStorage.getItem('smg_registered_username');
+    let playerId = localStorage.getItem('smg_player_id');
+    let playerToken = localStorage.getItem('smg_player_token');
+
+    if (!playerId) {
+      playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+      localStorage.setItem('smg_player_id', playerId);
+    }
+    if (!playerToken) {
+      playerToken = 'token_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('smg_player_token', playerToken);
+    }
+
+    if (regUser && /^[a-zA-Z0-9]{1,10}$/.test(regUser)) {
+      if (window.standaloneRoom && window.standaloneRoom.profile) {
+        window.standaloneRoom.profile.username = regUser;
+      }
+      return;
+    }
+
+    createUsernameModal();
+    openUsernameModal();
+  }
+
+  function createUsernameModal() {
+    let modal = document.getElementById('smgrade-username-modal');
+    if (modal) return;
+
+    modal = document.createElement('div');
+    modal.id = 'smgrade-username-modal';
+    modal.className = 'smgrade-modal-overlay active';
+    modal.style.zIndex = '99999';
+    modal.innerHTML = `
+      <div class="smgrade-modal-dialog" style="max-width: 440px; text-align: center; border: 2px solid #f59e0b; box-shadow: 0 0 50px rgba(245,158,11,0.3); background: #0c1020;">
+        <div style="padding: 28px 24px 20px;">
+          <div style="font-size: 38px; margin-bottom: 8px;">👑</div>
+          <div style="font-size: 18px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; font-family: monospace;">
+            CLAIM YOUR WARRIOR NAME
+          </div>
+          <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 8px; line-height: 1.5;">
+            Register a unique username to enter World 1 and compete on live leaderboards.
+          </p>
+
+          <div style="margin-top: 20px; text-align: left;">
+            <label style="font-size: 10px; font-weight: 800; color: #fbbf24; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">
+              Username (1 - 10 alphanumeric characters)
+            </label>
+            <input 
+              type="text" 
+              id="sm-user-input" 
+              maxlength="10" 
+              placeholder="e.g. Hero99" 
+              style="width: 100%; box-sizing: border-box; padding: 12px 14px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; color: #fff; font-size: 16px; font-weight: 800; outline: none; font-family: monospace;"
+            />
+            <div id="sm-user-validation" style="font-size: 11px; margin-top: 6px; min-height: 16px; font-weight: 700; color: rgba(255,255,255,0.4);">
+              Only letters (A-Z, a-z) and digits (0-9). No spaces or symbols.
+            </div>
+          </div>
+
+          <button 
+            id="sm-user-claim-btn" 
+            class="smgrade-btn-primary" 
+            style="width: 100%; margin-top: 20px; padding: 14px; font-size: 13px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 15px rgba(245,158,11,0.4);"
+          >
+            CLAIM & ENTER WORLD 1
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const input = document.getElementById('sm-user-input');
+    const valText = document.getElementById('sm-user-validation');
+    const claimBtn = document.getElementById('sm-user-claim-btn');
+
+    let checkTimer = null;
+    input.addEventListener('input', () => {
+      input.value = input.value.replace(/[^a-zA-Z0-9]/g, '');
+      const val = input.value.trim();
+
+      if (val.length === 0) {
+        valText.style.color = 'rgba(255,255,255,0.4)';
+        valText.textContent = 'Only letters (A-Z, a-z) and digits (0-9). No spaces or symbols.';
+        return;
+      }
+
+      if (val.length > 10) {
+        valText.style.color = '#ef4444';
+        valText.textContent = 'Maximum 10 characters allowed!';
+        return;
+      }
+
+      valText.style.color = '#60a5fa';
+      valText.textContent = 'Checking availability...';
+
+      if (checkTimer) clearTimeout(checkTimer);
+      checkTimer = setTimeout(async () => {
+        try {
+          const playerId = localStorage.getItem('smg_player_id') || '';
+          const res = await fetch(`/api/master/arcade/player/check-username?username=${encodeURIComponent(val)}&playerId=${encodeURIComponent(playerId)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.available) {
+              valText.style.color = '#10b981';
+              valText.textContent = data.ownedByCurrentPlayer ? '✓ This username is registered to your device!' : '✓ Username is available!';
+            } else {
+              valText.style.color = '#ef4444';
+              valText.textContent = '✗ Already claimed by another player. Choose another.';
+            }
+          }
+        } catch (_) {}
+      }, 300);
+    });
+
+    claimBtn.addEventListener('click', handleClaimUsername);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleClaimUsername();
+    });
+  }
+
+  async function handleClaimUsername() {
+    const input = document.getElementById('sm-user-input');
+    const valText = document.getElementById('sm-user-validation');
+    const claimBtn = document.getElementById('sm-user-claim-btn');
+    const username = input?.value.trim() || '';
+    console.log('[SMGrade Overlay] handleClaimUsername called with:', username);
+
+    if (!/^[a-zA-Z0-9]{1,10}$/.test(username)) {
+      valText.style.color = '#ef4444';
+      valText.textContent = 'Username must be 1 to 10 alphanumeric characters (A-Z, 0-9)!';
+      return;
+    }
+
+    claimBtn.disabled = true;
+    claimBtn.textContent = 'REGISTERING...';
+
+    try {
+      let playerId = localStorage.getItem('smg_player_id');
+      let secretToken = localStorage.getItem('smg_player_token');
+      if (!playerId) {
+        playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+        localStorage.setItem('smg_player_id', playerId);
+      }
+      if (!secretToken) {
+        secretToken = 'token_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem('smg_player_token', secretToken);
+      }
+
+      const res = await fetch('/api/master/arcade/player/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, playerId, secretToken })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        valText.style.color = '#ef4444';
+        valText.textContent = data.error || 'Failed to register username.';
+        claimBtn.disabled = false;
+        claimBtn.textContent = 'CLAIM & ENTER WORLD 1';
+        return;
+      }
+
+      // Success! Persist registered username
+      localStorage.setItem('smg_registered_username', username);
+      localStorage.setItem('arcade_username', username);
+
+      try {
+        if (window.standaloneRoom) {
+          window.standaloneRoom.profile.username = username;
+          window.standaloneRoom.persistInventory();
+          window.standaloneRoom.updateLiveLeaderboards();
+        }
+      } catch (e) {
+        console.warn('[SMGrade Overlay] Room username sync warning:', e);
+      }
+
+      // Update 3D player overhead text
+      try {
+        const app = window.pc?.app || pc.app;
+        if (app) {
+          const netMgr = app.root?.findByName('NetworkManager')?.script?.networkManager;
+          if (netMgr?.currentPlayerEntity) {
+            const nameTxt = netMgr.currentPlayerEntity.findByName('NameText');
+            if (nameTxt?.element) nameTxt.element.text = username;
+          }
+        }
+      } catch (e) {
+        console.warn('[SMGrade Overlay] NameText update warning:', e);
+      }
+
+      closeUsernameModal();
+      try {
+        showToast(`Welcome to World 1, ${username}!`, '👑');
+      } catch (_) {}
+    } catch (err) {
+      console.error('[SMGrade Claim Error]:', err);
+      valText.style.color = '#ef4444';
+      valText.textContent = 'Connection error. Please try again.';
+      claimBtn.disabled = false;
+      claimBtn.textContent = 'CLAIM & ENTER WORLD 1';
+    }
+  }
+
+  function openUsernameModal() {
+    createUsernameModal();
+    const modal = document.getElementById('smgrade-username-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      modal.classList.add('active');
+      lockMouseForModal(true);
+    }
+  }
+
+  function closeUsernameModal() {
+    const modal = document.getElementById('smgrade-username-modal');
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+      lockMouseForModal(false);
+    }
+  }
+
   // Expose modal API on window
   window.openDwarfForge = openDwarfForge;
   window.openItemModal = openItemModal;
@@ -911,16 +1147,23 @@
   window.openOreModal = openOreModal;
   window.closeOreModal = closeOreModal;
   window.openResourceModal = openResourceModal;
+  window.openUsernameModal = openUsernameModal;
+  window.closeUsernameModal = closeUsernameModal;
+  window.handleClaimUsername = handleClaimUsername;
   window.closeResourceModal = closeResourceModal;
+  window.openUsernameModal = openUsernameModal;
+  window.closeUsernameModal = closeUsernameModal;
 
   // Init on DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       createStartPanel();
       monitorPlayCanvasEvents();
+      setTimeout(initUsernameFlow, 600);
     });
   } else {
     createStartPanel();
     monitorPlayCanvasEvents();
+    setTimeout(initUsernameFlow, 600);
   }
 })();

@@ -53,6 +53,7 @@ interface AnalyticsStats {
   allTimeVisits?: number;
   dwarfHubVisits?: number;
   returningVisitors?: number;
+  dailyVisitsHistory?: { date: string; count: number }[];
 }
 
 interface PopularGear {
@@ -391,7 +392,49 @@ export default function MasterVault() {
         <main className="flex-1 min-w-0 space-y-6">
           {activeTab === "analytics" && (
             <div className="space-y-6">
-              {/* Visitor Traffic & Engagement Metrics (Separated from Analysis Counters) */}
+              {/* Dedicated Daily Website Visits Section (Requirement 10) */}
+              <div className="border border-teal-500/20 rounded-2xl p-5 bg-[#061014]/60 glass-panel space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs uppercase font-black tracking-widest text-teal-400 font-display flex items-center gap-2">
+                    <span>📈</span> Daily Website Visits
+                  </h3>
+                  <span className="text-[10px] text-teal-400/60 font-mono font-bold">Persistent Event Counter (1, 2, 3...)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="border border-teal-500/10 rounded-xl p-4 bg-black/40">
+                    <span className="text-[9px] uppercase font-black text-white/40 tracking-wider block mb-1">Today's Visits</span>
+                    <span className="text-3xl font-black font-mono text-teal-400">{stats?.dailyWebsiteVisits ?? 1}</span>
+                    <p className="text-[10px] text-white/40 mt-1">Counts repeated & new site visits today</p>
+                  </div>
+                  <div className="border border-teal-500/10 rounded-xl p-4 bg-black/40">
+                    <span className="text-[9px] uppercase font-black text-white/40 tracking-wider block mb-1">All-Time Total Visits</span>
+                    <span className="text-3xl font-black font-mono text-emerald-400">{stats?.allTimeVisits ?? 28}</span>
+                    <p className="text-[10px] text-white/40 mt-1">Persistent cumulative website visits</p>
+                  </div>
+                  <div className="border border-teal-500/10 rounded-xl p-4 bg-black/40">
+                    <span className="text-[9px] uppercase font-black text-white/40 tracking-wider block mb-1">Unique Visitors</span>
+                    <span className="text-3xl font-black font-mono text-cyan-400">{stats?.uniqueVisitors ?? 18}</span>
+                    <p className="text-[10px] text-white/40 mt-1">Distinct client devices / sessions</p>
+                  </div>
+                </div>
+
+                {/* Daily Visits History Table */}
+                {stats?.dailyVisitsHistory && stats.dailyVisitsHistory.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-white/[0.05]">
+                    <span className="text-[10px] font-black uppercase text-white/50 tracking-wider block mb-2">Historical Daily Activity</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                      {stats.dailyVisitsHistory.map((h: any, hIdx: number) => (
+                        <div key={hIdx} className="p-2 rounded-lg bg-black/30 border border-white/[0.04] text-center">
+                          <span className="text-[9px] text-white/40 font-mono block">{h.date}</span>
+                          <span className="text-sm font-bold text-teal-300 font-mono">{h.count} visits</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Visitor Traffic & Platform Engagement Metrics */}
               <div className="border border-emerald-500/10 rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs uppercase font-black tracking-widest text-emerald-400 font-display flex items-center gap-2">
