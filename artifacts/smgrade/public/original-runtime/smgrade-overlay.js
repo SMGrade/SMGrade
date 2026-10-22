@@ -275,7 +275,7 @@
       }
     });
     document.getElementById('sm-lvl-plus').addEventListener('click', () => {
-      if (selectedLevel < 10) {
+      if (selectedLevel < 5) {
         selectedLevel++;
         updateLevelDisplay();
       }
@@ -302,8 +302,7 @@
   function updateLevelDisplay() {
     const disp = document.getElementById('sm-lvl-display');
     if (!disp) return;
-    if (selectedLevel === 10) disp.innerHTML = `Lvl 10 👑`;
-    else if (selectedLevel === 5) disp.innerHTML = `Lvl 5 💥`;
+    if (selectedLevel === 5) disp.innerHTML = `Lvl 5 💥`;
     else if (selectedLevel === 3) disp.innerHTML = `Lvl 3 🔥`;
     else disp.textContent = `Lvl ${selectedLevel}`;
   }
@@ -441,8 +440,8 @@
     }
     const quantity = numQty;
 
-    // Requirement 3: Enforce level limit between 1 and 10
-    const clampedLevel = Math.max(1, Math.min(10, selectedLevel || 1));
+    // Requirement 3: Enforce level limit between 1 and 5 for Add Item
+    const clampedLevel = Math.max(1, Math.min(5, selectedLevel || 1));
 
     if (window.addStandaloneItem) {
       for (let q = 0; q < quantity; q++) {

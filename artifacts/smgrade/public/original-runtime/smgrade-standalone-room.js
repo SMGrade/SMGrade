@@ -2163,12 +2163,12 @@
     const inv = room.state.playerInventories.items[room.sessionId];
     if (!inv) return;
 
-    // Requirement 3: Enforce strict Level 1-10 boundary (close 10,000 exploit)
+    // Requirement 3: Enforce strict Level 1-5 boundary for Add Item (dwarfing can still reach level 10)
     let validLevel = parseInt(opts.level, 10);
     if (isNaN(validLevel) || validLevel < 1) validLevel = 1;
-    if (validLevel > 10) {
-      console.warn(`[SMGrade Exploit Guard] Rejected level ${opts.level}. Clamped to 10.`);
-      validLevel = 10;
+    if (validLevel > 5) {
+      console.warn(`[SMGrade Exploit Guard] Rejected level ${opts.level}. Add Item is capped at level 5.`);
+      validLevel = 5;
     }
 
     const isSword = opts.isSword !== false;
