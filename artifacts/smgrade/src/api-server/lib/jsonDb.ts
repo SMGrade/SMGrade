@@ -135,9 +135,12 @@ export interface ArcadePlayer {
   secretToken: string; // secret key so only this device/player can claim this username
   createdAt: string;
   lastSeen: string;
-  dwarfSuccessCount: number;
+  dwarfSuccessCount: number; // Category 4: Dwarfing operations
   highestDwarfedLevel: number;
-  petEnhanceCount: number;
+  petEnhanceCount: number; // Category 2: Pet-enhancing operations
+  downgraderCount?: number; // Category 3: Downgrader operations
+  mobKillsCount?: number; // Category 1: Mob interactions/kills
+  elfOpsCount?: number; // Category 5: Elf operations
   level: number;
 }
 
@@ -869,6 +872,9 @@ export class JsonDatabase {
         dwarfSuccessCount: 0,
         highestDwarfedLevel: 1,
         petEnhanceCount: 0,
+        downgraderCount: 0,
+        mobKillsCount: 0,
+        elfOpsCount: 0,
         level: 1
       };
 
@@ -908,7 +914,29 @@ export class JsonDatabase {
     return { available: false, ownedByCurrentPlayer: false };
   }
 
-  public async updateArcadePlayerStats(playerId: string, secretToken: string, stats: { dwarfSuccessDelta?: number; highestDwarfedLevel?: number; petEnhanceDelta?: number; level?: number }): Promise<ArcadePlayer | null> {
+  public getArcadePlayerByUsername(username: string): ArcadePlayer | undefined {
+    if (!username || !this.data.arcadePlayers) return undefined;
+    const lower = username.trim().toLowerCase();
+    return this.data.arcadePlayers.find(p => p.usernameLower === lower);
+  }
+
+  public async saveRawData(): Promise<void> {
+    await this.save(this.data);
+  }
+
+  public async updateArcadePlayerStats(
+    playerId: string,
+    secretToken: string,
+    stats: {
+      dwarfSuccessDelta?: number;
+      highestDwarfedLevel?: number;
+      petEnhanceDelta?: number;
+      downgraderDelta?: number;
+      mobKillDelta?: number;
+      elfDelta?: number;
+      level?: number;
+    }
+  ): Promise<ArcadePlayer | null> {
     return await this.executeAtomic(async () => {
       if (!this.data.arcadePlayers) this.data.arcadePlayers = [];
       const player = this.data.arcadePlayers.find(p => p.id === playerId);
@@ -924,6 +952,15 @@ export class JsonDatabase {
       if (stats.petEnhanceDelta) {
         player.petEnhanceCount = (player.petEnhanceCount || 0) + Math.max(0, Number(stats.petEnhanceDelta) || 0);
       }
+      if (stats.downgraderDelta) {
+        player.downgraderCount = (player.downgraderCount || 0) + Math.max(0, Number(stats.downgraderDelta) || 0);
+      }
+      if (stats.mobKillDelta) {
+        player.mobKillsCount = (player.mobKillsCount || 0) + Math.max(0, Number(stats.mobKillDelta) || 0);
+      }
+      if (stats.elfDelta) {
+        player.elfOpsCount = (player.elfOpsCount || 0) + Math.max(0, Number(stats.elfDelta) || 0);
+      }
       if (stats.level) {
         player.level = Math.max(player.level || 1, Number(stats.level) || 1);
       }
@@ -937,29 +974,38 @@ export class JsonDatabase {
   public getArcadeGameLeaderboards(): {
     dwarfing: { username: string; score: number }[];
     enhancing: { username: string; score: number }[];
+    activity: { username: string; score: number }[];
     level: { username: string; score: number }[];
   } {
     const players = (this.data.arcadePlayers || []).filter(p => p.username);
 
-    // Board 1: Highest dwarfing count / achievement
+    // Board 1: Most Dwarfs (Total successful dwarfing operations, not item levels/power/gold)
     const dwarfing = [...players]
-      .sort((a, b) => (b.dwarfSuccessCount || 0) - (a.dwarfSuccessCount || 0) || (b.highestDwarfedLevel || 1) - (a.highestDwarfedLevel || 1))
+      .sort((a, b) => (b.dwarfSuccessCount || 0) - (a.dwarfSuccessCount || 0) || a.username.localeCompare(b.username))
       .slice(0, 10)
       .map(p => ({ username: p.username, score: p.dwarfSuccessCount || 0 }));
 
-    // Board 2: Pet-enhancing count / achievement
+    // Board 2: Most Pets Enhanced (Total successful pet-enhancing operations, not count owned/levels)
     const enhancing = [...players]
-      .sort((a, b) => (b.petEnhanceCount || 0) - (a.petEnhanceCount || 0))
+      .sort((a, b) => (b.petEnhanceCount || 0) - (a.petEnhanceCount || 0) || a.username.localeCompare(b.username))
       .slice(0, 10)
       .map(p => ({ username: p.username, score: p.petEnhanceCount || 0 }));
 
-    // Board 3: Authentic 3rd original category: Level (Player Level)
-    const level = [...players]
-      .sort((a, b) => (b.level || 1) - (a.level || 1) || (b.highestDwarfedLevel || 1) - (a.highestDwarfedLevel || 1))
-      .slice(0, 10)
-      .map(p => ({ username: p.username, score: p.level || 1 }));
+    // Board 3: Total Game Activity (Sum of 5 categories: mob kills + pet enhances + downgrades + dwarfs + elf ops)
+    const activity = [...players]
+      .map(p => {
+        const mobKills = Number(p.mobKillsCount) || 0;
+        const petEnhances = Number(p.petEnhanceCount) || 0;
+        const downgrades = Number(p.downgraderCount) || 0;
+        const dwarfs = Number(p.dwarfSuccessCount) || 0;
+        const elfOps = Number(p.elfOpsCount) || 0;
+        const total = mobKills + petEnhances + downgrades + dwarfs + elfOps;
+        return { username: p.username, score: total };
+      })
+      .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username))
+      .slice(0, 10);
 
-    return { dwarfing, enhancing, level };
+    return { dwarfing, enhancing, activity, level: activity };
   }
 
   // Custom configurations (Admin Syncing)

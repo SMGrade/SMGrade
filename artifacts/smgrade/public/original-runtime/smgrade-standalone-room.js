@@ -890,6 +890,9 @@
           this.profile.gold = this.networkManager.goldAmount;
           saveLocalArcadeProfile(this.profile);
 
+          // Category 1: Mob interactions/kills (Live Leaderboard Sync)
+          this.recordPlayerStat({ mobKillDelta: 1 });
+
           // Respawn after 5 seconds at home position
           setTimeout(() => {
             mob.health = mob.maxHealth;
@@ -1582,6 +1585,9 @@
             window.logMasterAction(this.profile.username, "Item Downgraded", `Downgraded to Level ${targetLevel} (Yielded x${copies})`, "Success");
           }
 
+          // Category 3: Downgrader operations (Live Leaderboard Sync)
+          this.recordPlayerStat({ downgraderDelta: 1 });
+
           this.dispatchMessage("Server:DowngraderController:forge", copies);
 
           if (this.networkManager.inventoryController) {
@@ -1593,6 +1599,66 @@
             window.logMasterAction(this.profile.username, "Downgrade Failed", `Downgrade attempt failed`, "Failed");
           }
           this.dispatchMessage("Server:DowngraderController:forgeFailed");
+        }
+      }
+
+      // WORLD 1 ELF NPC (CombinerController - Category 5: Elf operations)
+      else if (type === 'Client:CombinerController:forge') {
+        if (!inv) return;
+        const activeItemId = data?.activeItemId;
+        const isSword = data?.isSword !== false;
+        const list = isSword ? inv.swords : inv.shields;
+        let item = list.find(s => s.itemId === activeItemId);
+
+        if (!item) {
+          this.networkManager.app?.fire("WarningTextController:setWarning", "Item not found!", 5, new pc.Color(1, 0, 0, 1));
+          this.dispatchMessage("Server:CombinerController:forgeFailed");
+          return;
+        }
+
+        const matching = list.filter(i => i.type === item.type && !i.isLocked);
+        if (matching.length < 10) {
+          this.networkManager.app?.fire("WarningTextController:setWarning", `You need ${10 - matching.length} more matching items!`, 5, new pc.Color(1, 0, 0, 1));
+          this.dispatchMessage("Server:CombinerController:forgeFailed");
+          return;
+        }
+
+        let removed = 0;
+        for (let i = list.length - 1; i >= 0 && removed < 10; i--) {
+          if (list[i].type === item.type && !list[i].isLocked) {
+            delete this.networkManager.items[list[i].itemId];
+            list.splice(i, 1);
+            removed++;
+          }
+        }
+
+        const newLevel = Math.min(10, (item.level || 1) + 1);
+        const newItem = this.createItemSchema({
+          type: item.type,
+          level: newLevel,
+          enchantments: [],
+          isLocked: false
+        }, isSword);
+
+        if (isSword) {
+          inv.swords.push(newItem);
+        } else {
+          inv.shields.push(newItem);
+        }
+        this.networkManager.items[newItem.itemId] = newItem;
+
+        this.persistInventory();
+        if (window.logMasterAction) {
+          window.logMasterAction(this.profile.username, "Elf Combiner Forge", `Combined 10x into Level ${newLevel}!`, "Success");
+        }
+
+        // Category 5: Elf operations (Live Leaderboard Sync)
+        this.recordPlayerStat({ elfDelta: 1 });
+
+        this.dispatchMessage("Server:CombinerController:forge", newItem);
+        if (this.networkManager.inventoryController) {
+          this.networkManager.inventoryController.sortInventory();
+          this.networkManager.inventoryController.setActiveSlot();
         }
       }
 
@@ -2094,9 +2160,92 @@
         });
         console.log('[SMGrade Standalone Room] Keyboard-help section configured: only I, P, T retained.');
       }
+
+      // Configure World 1 Leaderboard Controllers & Titles
+      this.setupWorld1Leaderboards();
     }
 
-    // Requirement 11: Real-time Leaderboard Synchronization
+    setupWorld1Leaderboards() {
+      const app = this.networkManager?.app;
+      if (!app || !app.root) return;
+
+      // Override LeaderboardController.prototype.setLeaderboard for clean score rendering (no "lvl " prefix, correct 10 slots)
+      if (window.LeaderboardController) {
+        window.LeaderboardController.prototype.setLeaderboard = function (rawJson) {
+          let list;
+          try {
+            list = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
+          } catch (e) {
+            return;
+          }
+          this.data = list;
+          if (!list || !this.leaderboardEntities) return;
+
+          for (let i = 0; i < this.leaderboardEntities.length; i++) {
+            const ent = this.leaderboardEntities[i];
+            if (!ent || !ent.element) continue;
+            const entry = list[i];
+            if (entry) {
+              const uname = entry.username || "—";
+              ent.element.text = `${i + 1}) ${uname}`;
+              if (ent.children && ent.children[0] && ent.children[0].element) {
+                const scoreVal = Number(entry.score) || 0;
+                ent.children[0].element.text = typeof numRound === 'function' ? numRound(scoreVal) : String(scoreVal);
+              }
+            } else {
+              ent.element.text = `${i + 1}) —`;
+              if (ent.children && ent.children[0] && ent.children[0].element) {
+                ent.children[0].element.text = "0";
+              }
+            }
+          }
+        };
+      }
+
+      const boardsConfig = [
+        { name: 'GoldScoreboard', title: 'MOST DWARFS' },
+        { name: 'PowerScoreboard', title: 'MOST PETS ENHANCED' },
+        { name: 'LevelScoreboard', title: 'TOTAL GAME ACTIVITY' }
+      ];
+
+      boardsConfig.forEach(cfg => {
+        const board = app.root.findByName(cfg.name);
+        if (!board) return;
+
+        // Board Title
+        const titleTextEnt = board.findByName('TitleText');
+        if (titleTextEnt && titleTextEnt.element) {
+          titleTextEnt.element.key = null;
+          titleTextEnt.element.text = cfg.title;
+        }
+
+        // Ensure 10 slots
+        const ctrl = board.script?.leaderboardController;
+        if (ctrl && ctrl.leaderboardEntities) {
+          const entitiesParent = board.findByName('Entities');
+          if (entitiesParent) {
+            while (ctrl.leaderboardEntities.length < 10) {
+              const lastEnt = ctrl.leaderboardEntities[ctrl.leaderboardEntities.length - 1];
+              if (!lastEnt) break;
+              const clone = lastEnt.clone();
+              clone.name = `LeaderboardEntity_${ctrl.leaderboardEntities.length + 1}`;
+              entitiesParent.addChild(clone);
+              ctrl.leaderboardEntities.push(clone);
+            }
+
+            // Distribute all 10 slots evenly within the original 0 to -1042 height
+            const step = -1042 / 9; // ~ -115.78
+            for (let i = 0; i < ctrl.leaderboardEntities.length; i++) {
+              const ent = ctrl.leaderboardEntities[i];
+              const pos = ent.getLocalPosition();
+              ent.setLocalPosition(pos.x, i * step, pos.z);
+            }
+          }
+        }
+      });
+    }
+
+    // Real-time Leaderboard Synchronization (All 3 World 1 Leaderboards)
     async updateLiveLeaderboards() {
       try {
         const res = await fetch('/api/master/arcade/game-leaderboards');
@@ -2114,16 +2263,18 @@
 
         const dwarfBoard = pad10(data.dwarfing);
         const enhanceBoard = pad10(data.enhancing);
-        const levelBoard = pad10(data.level);
-        this.lastLeaderboardData = { dwarfing: dwarfBoard, enhancing: enhanceBoard, level: levelBoard };
+        const activityBoard = pad10(data.activity || data.level);
+        this.lastLeaderboardData = { dwarfing: dwarfBoard, enhancing: enhanceBoard, activity: activityBoard };
+
+        this.setupWorld1Leaderboards();
 
         if (this.networkManager?.app) {
-          // Board 1: Dwarfing achievements
+          // Board 1: Most Dwarfs
           this.networkManager.app.fire("goldLeaderboard", JSON.stringify(dwarfBoard));
-          // Board 2: Pet enhancing achievements
+          // Board 2: Most Pets Enhanced
           this.networkManager.app.fire("powerLeaderboard", JSON.stringify(enhanceBoard));
-          // Board 3: Authentic original 3rd category: Level
-          this.networkManager.app.fire("levelLeaderboard", JSON.stringify(levelBoard));
+          // Board 3: Total Game Activity
+          this.networkManager.app.fire("levelLeaderboard", JSON.stringify(activityBoard));
         }
       } catch (err) {
         console.warn('[SMGrade Leaderboards Sync Failed]:', err);

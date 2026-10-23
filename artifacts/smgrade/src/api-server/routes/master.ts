@@ -909,6 +909,16 @@ router.post("/arcade/score", async (req: any, res: any) => {
       highestCombo: Number(highestCombo) || 0,
       highestDps: Number(highestDps) || 0
     });
+
+    // Attribute Category 5 (Elf operations) to registered player if playing as Elf in Arcade
+    if (entry && Number(elfKills) > 0) {
+      const p = jsonDb.getArcadePlayerByUsername(username);
+      if (p) {
+        p.elfOpsCount = (p.elfOpsCount || 0) + Number(elfKills);
+        await jsonDb.saveRawData();
+      }
+    }
+
     res.json({ success: true, entry });
   } catch (err: any) {
     res.status(500).json({ error: "Failed to save score." });
@@ -963,12 +973,25 @@ router.get("/arcade/player/check-username", async (req: any, res: any) => {
 });
 
 router.post("/arcade/player/record-stat", async (req: any, res: any) => {
-  const { playerId, secretToken, dwarfSuccessDelta, highestDwarfedLevel, petEnhanceDelta, level } = req.body || {};
+  const {
+    playerId,
+    secretToken,
+    dwarfSuccessDelta,
+    highestDwarfedLevel,
+    petEnhanceDelta,
+    downgraderDelta,
+    mobKillDelta,
+    elfDelta,
+    level
+  } = req.body || {};
   try {
     const updated = await jsonDb.updateArcadePlayerStats(playerId, secretToken, {
       dwarfSuccessDelta,
       highestDwarfedLevel,
       petEnhanceDelta,
+      downgraderDelta,
+      mobKillDelta,
+      elfDelta,
       level
     });
     if (!updated) {
