@@ -56,7 +56,5 @@ artifacts/smgrade/src/lib/**/*.js.map
 artifacts/smgrade/src/api-server/**/*.js
 artifacts/smgrade/src/api-server/**/*.js.map
 
-artifacts/smgrade/data/arcade_scores.json
 artifacts/smgrade/scratch/
 .vercel
-artifacts/smgrade/data/
