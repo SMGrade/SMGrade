@@ -58,7 +58,7 @@ assert(standaloneJs.includes("const STORAGE_POS = { x: 19.7567, z: -8.3748 };") 
 assert(standaloneJs.includes("'World_1_Portal', 'World_2_Portal'") && standaloneJs.includes("'world11_door'") && standaloneJs.includes("disableHierarchy"), "Task 11: Inactive world gates, portals, and requirement text removed from spawn");
 
 // Cloudflare SPA Configuration
-const redirects = fs.readFileSync(path.join(basePath, 'public/_redirects'), 'utf8');
-assert(redirects.trim() === '/*    /index.html   200', "Cloudflare Migration: public/_redirects created with SPA rewrite rule");
+const wranglerConfig = fs.readFileSync(path.resolve('wrangler.jsonc'), 'utf8');
+assert(wranglerConfig.includes('"not_found_handling": "single-page-application"') && !fs.existsSync(path.join(basePath, 'public/_redirects')), "Cloudflare Migration: SPA routing configured natively via wrangler.jsonc without conflicting _redirects");
 
 console.log(`\nALL ${passedCount} / ${totalCount} CHECKS PASSED SUCCESSFULLY!`);
