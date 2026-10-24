@@ -8,7 +8,7 @@ import jsonDb, {
 } from "./api-server/lib/jsonDb.js";
 import { scorePlayer } from "./lib/scorer.js";
 import { normalizeLivePlayer } from "./lib/liveLookupEngine.js";
-import { queryLivePlayer } from "./api-server/routes/liveLookup.js";
+import { queryLivePlayer } from "./lib/gameProtocol.js";
 import { setOverrideItems } from "./lib/gearDatabase.js";
 import { setOverrideMarketData } from "./lib/marketDatabase.js";
 import { setOverrideBenchmarks } from "./lib/benchmark.js";
