@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import pg from "pg";
+import initialDbSeed from "../../../data/db.json";
 const { Pool } = pg;
 
 const isVercel = process.env.VERCEL === "1" || !!process.env.VERCEL;
@@ -185,26 +186,26 @@ export interface DbSchema {
 }
 
 const DEFAULT_DB: DbSchema = {
-  users: [],
-  history: [],
-  achievements: [],
-  auditLogs: [],
-  loginHistory: [],
-  settings: {
+  users: (initialDbSeed as any).users || [],
+  history: (initialDbSeed as any).history || [],
+  achievements: (initialDbSeed as any).achievements || [],
+  auditLogs: (initialDbSeed as any).auditLogs || [],
+  loginHistory: (initialDbSeed as any).loginHistory || [],
+  settings: (initialDbSeed as any).settings || {
     maintenanceMode: false,
     registrationOpen: true,
     goldExchangeRate: 1.0,
   },
-  lookupLogs: [],
-  activityLogs: [],
-  arcadeScores: [],
-  arcadePlayers: [],
-  siteVisits: [],
-  customItems: [],
-  customPrices: [],
-  customBenchmarks: [],
-  customConstants: null,
-  masterSessions: [],
+  lookupLogs: (initialDbSeed as any).lookupLogs || [],
+  activityLogs: (initialDbSeed as any).activityLogs || [],
+  arcadeScores: (initialDbSeed as any).arcadeScores || [],
+  arcadePlayers: (initialDbSeed as any).arcadePlayers || [],
+  siteVisits: (initialDbSeed as any).siteVisits || [],
+  customItems: (initialDbSeed as any).customItems || [],
+  customPrices: (initialDbSeed as any).customPrices || [],
+  customBenchmarks: (initialDbSeed as any).customBenchmarks || [],
+  customConstants: (initialDbSeed as any).customConstants || null,
+  masterSessions: (initialDbSeed as any).masterSessions || [],
 };
 
 export class JsonDatabase {
@@ -257,13 +258,34 @@ export class JsonDatabase {
 
   private saveToFile(data: DbSchema) {
     try {
-      fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf8");
+      if (typeof fs !== "undefined" && typeof fs.writeFileSync === "function") {
+        fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf8");
+      }
     } catch (err) {
-      console.error("Error writing database file:", err);
+      // In Worker environments, disk write is not available; in-memory and PostgreSQL storage are active.
     }
   }
 
-  public async init(): Promise<void> {
+  public async init(databaseUrl?: string): Promise<void> {
+    const connStr = databaseUrl || process.env.DATABASE_URL;
+    if (connStr && connStr.startsWith("postgres") && !this.pool) {
+      try {
+        this.pool = new Pool({
+          connectionString: connStr,
+          ssl: {
+            rejectUnauthorized: false,
+          },
+          max: 3,
+          idleTimeoutMillis: 15000,
+          connectionTimeoutMillis: 15000,
+          statement_timeout: 15000,
+          query_timeout: 15000,
+          allowExitOnIdle: true,
+        });
+      } catch (poolErr) {
+        console.warn("[SMGrade DB] Pool creation failed:", poolErr);
+      }
+    }
     if (!this.pool || this.dbDisabled) {
       return;
     }

@@ -1,9 +1,12 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "smgrade",
+  "main": "src/worker.ts",
   "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "dist/public",
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   }
 }
