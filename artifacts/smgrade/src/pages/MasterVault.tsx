@@ -71,8 +71,21 @@ interface MostSearched {
   lastSearched: string;
 }
 
-export default function MasterVault() {
-  const [token, setToken] = useState(() => localStorage.getItem("smg_master_token") || "");
+export interface MasterVaultProps {
+  token?: string;
+  onLock?: () => void;
+  params?: any;
+  [key: string]: any;
+}
+
+export default function MasterVault({ token: propToken, onLock: propOnLock }: MasterVaultProps = {}) {
+  const [token, setToken] = useState(() => propToken || localStorage.getItem("smg_master_token") || "");
+
+  useEffect(() => {
+    if (propToken) {
+      setToken(propToken);
+    }
+  }, [propToken]);
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<"analytics" | "lookups" | "activity" | "searched" | "gear" | "db" | "storageTest">("analytics");
@@ -336,8 +349,20 @@ export default function MasterVault() {
           </button>
           <button 
             onClick={() => {
+              if (token) {
+                try {
+                  fetch("/api/master/logout", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ token }),
+                  }).catch(() => {});
+                } catch (_) {}
+              }
               localStorage.removeItem("smg_master_token");
               setToken("");
+              if (propOnLock) {
+                propOnLock();
+              }
             }}
             className="text-[9px] font-black uppercase tracking-widest border border-white/10 hover:border-red-500/30 hover:text-red-400 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
           >

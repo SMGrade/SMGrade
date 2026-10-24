@@ -500,7 +500,7 @@
         : [this.createItemSchema({ itemId: 'shield_starter_01', type: this.profile.activeShieldType || 1, level: this.profile.activeShieldLevel || 1, enchantments: this.profile.activeShieldEnchants || [], isLocked: false }, false)];
 
       const petsArray = (this.profile.pets || []).map(p => this.createPetSchema(p));
-      const activePetsArray = (this.profile.activePets || []).map(ap => new LocalEntitySchema(ap));
+      const activePetsArray = (this.profile.activePets || []).slice(0, 3).map(ap => new LocalEntitySchema(ap));
       const oresArray = (this.profile.ores || []).map(o => this.createOreSchema(o));
 
       const activeSwordItem = swordsArray.find(s => s.type === this.profile.activeSwordType) || swordsArray[0];
@@ -1295,9 +1295,9 @@
           inv.activePets.remove(removed);
           console.log(`[SMGrade Standalone] Unequipped pet ${pet.itemId}`);
         } else {
-          // Equip: strictly maximum 10 simultaneously spawned pets
-          if (inv.activePets.length >= 10) {
-            this.networkManager.app.fire("WarningTextController:setWarning", "You can only equip up to 10 pets!", 5, new pc.Color(1, 0, 0, 1));
+          // Equip: strictly maximum 3 simultaneously equipped pets (Task 4)
+          if (inv.activePets.length >= 3) {
+            this.networkManager.app.fire("WarningTextController:setWarning", "You can only equip up to 3 pets simultaneously!", 5, new pc.Color(1, 0, 0, 1));
             return;
           }
           const activePet = new LocalEntitySchema({
@@ -2115,33 +2115,43 @@
         window.MenuController.prototype.enableDisableMenu = function () { /* suppressed */ };
       }
 
-      // 2. Disable Trade World, Clan World, VIP promotions (LeaderArea retained for live 3-board leaderboards - Requirement 11)
-      const onlineEntities = [
-        'TradePortal',
+      // 2. Disable Online-Only Entities, Inactive Gates (Task 11), and 3D Leaderboards (Task 5)
+      const disabledEntities = [
+        // Online & VIP features
         'ClanButton', 'ClanNPC', 'WaitingForPlayersText',
         'GiftVIP', 'BuyVIP', 'BuyVIPButton', 'VipMaker', 'VIPController', 'Board',
-        'KillScoreboard', 'KillScoreboard2'
+        
+        // 3D Leaderboard structures (Task 5)
+        'GoldScoreboard', 'PowerScoreboard', 'LevelScoreboard', 'LeaderArea',
+        'KillScoreboard', 'KillScoreboard2', 'Scoreboard',
+
+        // Inactive World Gates & Portals from Spawn (Task 11)
+        'Portals', 'World_1_Portal', 'World_2_Portal', 'World_3_Portal', 'World_4_Portal',
+        'World_5_Portal', 'World_6_Portal', 'aquaworld_door', 'world8_door', 'world9_door',
+        'world10_door', 'world11_door', 'PVPPortal', 'TradePortal', 'DragonPortal', 'MinePortal'
       ];
 
-      onlineEntities.forEach(name => {
+      const disableHierarchy = (ent) => {
+        if (!ent) return;
+        ent.enabled = false;
+        if (ent.collision) ent.collision.enabled = false;
+        if (ent.children) {
+          ent.children.forEach(child => disableHierarchy(child));
+        }
+      };
+
+      disabledEntities.forEach(name => {
         const ent = app.root.findByName(name);
         if (ent) {
-          ent.enabled = false;
-          if (ent.collision) ent.collision.enabled = false;
-          console.log(`[SMGrade Standalone Room] Disabled online-only entity: ${name}`);
+          disableHierarchy(ent);
+          console.log(`[SMGrade Standalone Room] Disabled inactive/removed entity: ${name}`);
         }
       });
 
       const vipNpc = app.root.findByGuid('c694788b-21f6-4805-88ea-c6d94f06bf2a');
-      if (vipNpc) {
-        vipNpc.enabled = false;
-        if (vipNpc.collision) vipNpc.collision.enabled = false;
-      }
+      if (vipNpc) disableHierarchy(vipNpc);
       const vipBoard = app.root.findByGuid('164a74d0-2164-4b11-86e6-429efe85131e');
-      if (vipBoard) {
-        vipBoard.enabled = false;
-        if (vipBoard.collision) vipBoard.collision.enabled = false;
-      }
+      if (vipBoard) disableHierarchy(vipBoard);
 
       // 3. Keyboard-Help section cleanup: Retain ONLY I, P, T. Remove ESC, Y, U, Clan
       const buttonsGroup = app.root.findByName('ButtonsGroup');
@@ -2161,125 +2171,68 @@
         console.log('[SMGrade Standalone Room] Keyboard-help section configured: only I, P, T retained.');
       }
 
-      // Configure World 1 Leaderboard Controllers & Titles
-      this.setupWorld1Leaderboards();
+      // Initialize reliable distance-based proximity monitor for Storage and Elf NPCs
+      this.setupNpcProximityTriggers();
     }
 
-    setupWorld1Leaderboards() {
+    // Task 6 & 10: Reliable Proximity Triggers for Storage and Elf (Combiner) NPCs
+    setupNpcProximityTriggers() {
       const app = this.networkManager?.app;
-      if (!app || !app.root) return;
+      if (!app) return;
 
-      // Override LeaderboardController.prototype.setLeaderboard for clean score rendering (no "lvl " prefix, correct 10 slots)
-      if (window.LeaderboardController) {
-        window.LeaderboardController.prototype.setLeaderboard = function (rawJson) {
-          let list;
-          try {
-            list = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
-          } catch (e) {
-            return;
-          }
-          this.data = list;
-          if (!list || !this.leaderboardEntities) return;
+      const STORAGE_POS = { x: 19.7567, z: -8.3748 };
+      const ELF_POS = { x: -72.4436, z: 43.8260 };
 
-          for (let i = 0; i < this.leaderboardEntities.length; i++) {
-            const ent = this.leaderboardEntities[i];
-            if (!ent || !ent.element) continue;
-            const entry = list[i];
-            if (entry) {
-              const uname = entry.username || "—";
-              ent.element.text = `${i + 1}) ${uname}`;
-              if (ent.children && ent.children[0] && ent.children[0].element) {
-                const scoreVal = Number(entry.score) || 0;
-                ent.children[0].element.text = typeof numRound === 'function' ? numRound(scoreVal) : String(scoreVal);
-              }
-            } else {
-              ent.element.text = `${i + 1}) —`;
-              if (ent.children && ent.children[0] && ent.children[0].element) {
-                ent.children[0].element.text = "0";
-              }
+      let isNearStorage = false;
+      let isNearElf = false;
+
+      setInterval(() => {
+        const playerEnt = this.networkManager?.currentPlayerEntity;
+        if (!playerEnt) return;
+
+        const pos = playerEnt.getPosition();
+        const distStorage = Math.hypot(pos.x - STORAGE_POS.x, pos.z - STORAGE_POS.z);
+        const distElf = Math.hypot(pos.x - ELF_POS.x, pos.z - ELF_POS.z);
+
+        // Storage NPC Proximity (Task 10)
+        const storageUI = app.root?.findByName('StorageUI');
+        if (storageUI) {
+          const isPanelOpen = !!(storageUI.script?.storagePanelController?.isPanelEnabled);
+          if (distStorage <= 5.0) {
+            if (!isNearStorage && !isPanelOpen) {
+              isNearStorage = true;
+              storageUI.fire('StoragePanelController:showUI');
             }
-          }
-        };
-      }
-
-      const boardsConfig = [
-        { name: 'GoldScoreboard', title: 'MOST DWARFS' },
-        { name: 'PowerScoreboard', title: 'MOST PETS ENHANCED' },
-        { name: 'LevelScoreboard', title: 'TOTAL GAME ACTIVITY' }
-      ];
-
-      boardsConfig.forEach(cfg => {
-        const board = app.root.findByName(cfg.name);
-        if (!board) return;
-
-        // Board Title
-        const titleTextEnt = board.findByName('TitleText');
-        if (titleTextEnt && titleTextEnt.element) {
-          titleTextEnt.element.key = null;
-          titleTextEnt.element.text = cfg.title;
-        }
-
-        // Ensure 10 slots
-        const ctrl = board.script?.leaderboardController;
-        if (ctrl && ctrl.leaderboardEntities) {
-          const entitiesParent = board.findByName('Entities');
-          if (entitiesParent) {
-            while (ctrl.leaderboardEntities.length < 10) {
-              const lastEnt = ctrl.leaderboardEntities[ctrl.leaderboardEntities.length - 1];
-              if (!lastEnt) break;
-              const clone = lastEnt.clone();
-              clone.name = `LeaderboardEntity_${ctrl.leaderboardEntities.length + 1}`;
-              entitiesParent.addChild(clone);
-              ctrl.leaderboardEntities.push(clone);
-            }
-
-            // Distribute all 10 slots evenly within the original 0 to -1042 height
-            const step = -1042 / 9; // ~ -115.78
-            for (let i = 0; i < ctrl.leaderboardEntities.length; i++) {
-              const ent = ctrl.leaderboardEntities[i];
-              const pos = ent.getLocalPosition();
-              ent.setLocalPosition(pos.x, i * step, pos.z);
+          } else if (distStorage > 7.5) {
+            if (isNearStorage || isPanelOpen) {
+              isNearStorage = false;
+              storageUI.fire('StoragePanelController:hideUI');
             }
           }
         }
-      });
+
+        // Elf NPC Proximity (Task 6)
+        const combinerUI = app.root?.findByName('CombinerUI');
+        if (combinerUI) {
+          const isPanelOpen = !!(combinerUI.script?.combinerController?.isPanelEnabled);
+          if (distElf <= 5.0) {
+            if (!isNearElf && !isPanelOpen) {
+              isNearElf = true;
+              combinerUI.fire('CombinerController:show');
+            }
+          } else if (distElf > 7.5) {
+            if (isNearElf || isPanelOpen) {
+              isNearElf = false;
+              combinerUI.fire('CombinerController:hide');
+            }
+          }
+        }
+      }, 100);
     }
 
-    // Real-time Leaderboard Synchronization (All 3 World 1 Leaderboards)
-    async updateLiveLeaderboards() {
-      try {
-        const res = await fetch('/api/master/arcade/game-leaderboards');
-        if (!res.ok) return;
-        const data = await res.json();
-        
-        // Pad to exactly 10 slots
-        const pad10 = (list) => {
-          const arr = (list || []).slice(0, 10).map(x => ({ username: x.username, score: x.score }));
-          while (arr.length < 10) {
-            arr.push({ username: "—", score: 0 });
-          }
-          return arr;
-        };
-
-        const dwarfBoard = pad10(data.dwarfing);
-        const enhanceBoard = pad10(data.enhancing);
-        const activityBoard = pad10(data.activity || data.level);
-        this.lastLeaderboardData = { dwarfing: dwarfBoard, enhancing: enhanceBoard, activity: activityBoard };
-
-        this.setupWorld1Leaderboards();
-
-        if (this.networkManager?.app) {
-          // Board 1: Most Dwarfs
-          this.networkManager.app.fire("goldLeaderboard", JSON.stringify(dwarfBoard));
-          // Board 2: Most Pets Enhanced
-          this.networkManager.app.fire("powerLeaderboard", JSON.stringify(enhanceBoard));
-          // Board 3: Total Game Activity
-          this.networkManager.app.fire("levelLeaderboard", JSON.stringify(activityBoard));
-        }
-      } catch (err) {
-        console.warn('[SMGrade Leaderboards Sync Failed]:', err);
-      }
-    }
+    // Task 5: Leaderboards removed - no-op handlers
+    setupWorld1Leaderboards() {}
+    async updateLiveLeaderboards() {}
 
     async recordPlayerStat(stats) {
       try {
@@ -2296,9 +2249,6 @@
             ...stats
           })
         });
-
-        // Trigger immediate leaderboard refresh
-        this.updateLiveLeaderboards();
       } catch (e) {
         console.warn('[SMGrade Stat Sync Error]:', e);
       }
@@ -2359,7 +2309,7 @@
     const inv = room.state.playerInventories.items[room.sessionId];
     if (!inv) return;
 
-    const count = Math.max(1, parseInt(opts.amount, 10) || 1);
+    const count = Math.min(10, Math.max(1, parseInt(opts.amount, 10) || 1));
     const petType = opts.type !== undefined ? opts.type : 0;
     let lastPetSchema = null;
 

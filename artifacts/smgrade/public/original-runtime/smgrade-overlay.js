@@ -129,7 +129,7 @@
       <button class="smgrade-plus-btn power" id="sm-hud-power-plus" title="Add or edit Combat Power">+</button>
       <button class="smgrade-plus-btn level" id="sm-hud-level-plus" title="Set Player Level">+</button>
       <button class="smgrade-plus-btn ore" id="sm-hud-ore-plus" title="Add Mine World Ores">+</button>
-      <button class="smgrade-plus-btn dwarf" id="sm-hud-dwarf-btn" title="Open Blacksmith / Dwarf Forge">⚒️</button>
+      <button class="smgrade-plus-btn username" id="sm-hud-username-btn" title="Change Username">👑</button>
     `;
     document.body.appendChild(hud);
 
@@ -137,10 +137,10 @@
     document.getElementById('sm-hud-power-plus').addEventListener('click', (e) => { e.stopPropagation(); openResourceModal('power'); });
     document.getElementById('sm-hud-level-plus').addEventListener('click', (e) => { e.stopPropagation(); openResourceModal('level'); });
     document.getElementById('sm-hud-ore-plus').addEventListener('click', (e) => { e.stopPropagation(); openOreModal(); });
-    document.getElementById('sm-hud-dwarf-btn').addEventListener('click', (e) => { e.stopPropagation(); openDwarfForge(); });
+    document.getElementById('sm-hud-username-btn').addEventListener('click', (e) => { e.stopPropagation(); openUsernameModal(); });
   }
 
-  // --- 2. IN-INVENTORY TRIGGER BUTTONS (Phase 6 & Dwarfing) ---
+  // --- 2. IN-INVENTORY TRIGGER BUTTONS (Task 9: Dwarf Item button removed, exclusively Add Item) ---
   function createInInventoryTrigger() {
     let addBtn = document.getElementById('sm-inv-add-trigger');
     if (!addBtn) {
@@ -152,19 +152,6 @@
 
       addBtn.addEventListener('click', () => {
         openItemModal();
-      });
-    }
-
-    let dwarfBtn = document.getElementById('sm-inv-dwarf-trigger');
-    if (!dwarfBtn) {
-      dwarfBtn = document.createElement('button');
-      dwarfBtn.id = 'sm-inv-dwarf-trigger';
-      dwarfBtn.innerHTML = `<span>⚒️</span><span>Dwarf Item</span>`;
-      dwarfBtn.style.display = 'none';
-      document.body.appendChild(dwarfBtn);
-
-      dwarfBtn.addEventListener('click', () => {
-        openDwarfForge();
       });
     }
   }
@@ -511,7 +498,7 @@
           <div style="display: flex; align-items: center; gap: 12px;">
             <div style="display: flex; align-items: center; gap: 6px;">
               <span style="font-size: 12px; font-weight: 700; color: #cbd5e1;">Amount:</span>
-              <input type="number" id="sm-pet-amount-input" class="smgrade-select" value="1" min="1" max="999" style="width: 70px;" />
+              <input type="number" id="sm-pet-amount-input" class="smgrade-select" value="1" min="1" max="10" style="width: 70px;" />
             </div>
             <button class="smgrade-btn-primary" id="sm-summon-pet-btn" disabled>Add Pet</button>
           </div>
@@ -572,7 +559,7 @@
 
   function handleSummonPet() {
     if (!selectedPet) return;
-    const amount = parseInt(document.getElementById('sm-pet-amount-input').value, 10) || 1;
+    const amount = Math.min(10, Math.max(1, parseInt(document.getElementById('sm-pet-amount-input').value, 10) || 1));
 
     if (window.addStandalonePet) {
       window.addStandalonePet({
@@ -886,14 +873,10 @@
         setInterval(() => {
           const invCtrl = app.networkManager?.inventoryController;
           const invTrigger = document.getElementById('sm-inv-add-trigger');
-          const dwarfTrigger = document.getElementById('sm-inv-dwarf-trigger');
           if (invCtrl) {
             const isInvOpen = !!invCtrl.inventoryEnabled;
             if (invTrigger && invTrigger.style.display !== (isInvOpen ? 'flex' : 'none')) {
               invTrigger.style.display = isInvOpen ? 'flex' : 'none';
-            }
-            if (dwarfTrigger && dwarfTrigger.style.display !== (isInvOpen ? 'flex' : 'none')) {
-              dwarfTrigger.style.display = isInvOpen ? 'flex' : 'none';
             }
           }
 
@@ -945,14 +928,15 @@
     modal.className = 'smgrade-modal-overlay active';
     modal.style.zIndex = '99999';
     modal.innerHTML = `
-      <div class="smgrade-modal-dialog" style="max-width: 440px; text-align: center; border: 2px solid #f59e0b; box-shadow: 0 0 50px rgba(245,158,11,0.3); background: #0c1020;">
+      <div class="smgrade-modal-dialog" style="max-width: 440px; text-align: center; border: 2px solid #f59e0b; box-shadow: 0 0 50px rgba(245,158,11,0.3); background: #0c1020; position: relative;">
+        <button id="sm-user-close-btn" style="position: absolute; top: 14px; right: 16px; background: none; border: none; color: rgba(255,255,255,0.5); font-size: 20px; font-weight: bold; cursor: pointer; display: none; line-height: 1; padding: 4px;" title="Close">✕</button>
         <div style="padding: 28px 24px 20px;">
           <div style="font-size: 38px; margin-bottom: 8px;">👑</div>
-          <div style="font-size: 18px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; font-family: monospace;">
+          <div id="sm-user-modal-title" style="font-size: 18px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; font-family: monospace;">
             CLAIM YOUR WARRIOR NAME
           </div>
-          <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 8px; line-height: 1.5;">
-            Register a unique username to enter World 1 and compete on live leaderboards.
+          <p id="sm-user-modal-desc" style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 8px; line-height: 1.5;">
+            Register a unique username to enter World 1.
           </p>
 
           <div style="margin-top: 20px; text-align: left;">
@@ -986,6 +970,9 @@
     const input = document.getElementById('sm-user-input');
     const valText = document.getElementById('sm-user-validation');
     const claimBtn = document.getElementById('sm-user-claim-btn');
+    const closeBtn = document.getElementById('sm-user-close-btn');
+
+    closeBtn.addEventListener('click', closeUsernameModal);
 
     let checkTimer = null;
     input.addEventListener('input', () => {
@@ -1037,7 +1024,15 @@
     const valText = document.getElementById('sm-user-validation');
     const claimBtn = document.getElementById('sm-user-claim-btn');
     const username = input?.value.trim() || '';
+    const currentReg = localStorage.getItem('smg_registered_username') || '';
+    const isEditing = Boolean(currentReg);
     console.log('[SMGrade Overlay] handleClaimUsername called with:', username);
+
+    if (isEditing && username.toLowerCase() === currentReg.toLowerCase()) {
+      showToast(`Username is already ${username}`, '👑');
+      closeUsernameModal();
+      return;
+    }
 
     if (!/^[a-zA-Z0-9]{1,10}$/.test(username)) {
       valText.style.color = '#ef4444';
@@ -1046,7 +1041,7 @@
     }
 
     claimBtn.disabled = true;
-    claimBtn.textContent = 'REGISTERING...';
+    claimBtn.textContent = isEditing ? 'SAVING...' : 'REGISTERING...';
 
     try {
       let playerId = localStorage.getItem('smg_player_id');
@@ -1072,7 +1067,7 @@
         valText.style.color = '#ef4444';
         valText.textContent = data.error || 'Failed to register username.';
         claimBtn.disabled = false;
-        claimBtn.textContent = 'CLAIM & ENTER WORLD 1';
+        claimBtn.textContent = isEditing ? 'SAVE USERNAME' : 'CLAIM & ENTER WORLD 1';
         return;
       }
 
@@ -1084,7 +1079,6 @@
         if (window.standaloneRoom) {
           window.standaloneRoom.profile.username = username;
           window.standaloneRoom.persistInventory();
-          window.standaloneRoom.updateLiveLeaderboards();
         }
       } catch (e) {
         console.warn('[SMGrade Overlay] Room username sync warning:', e);
@@ -1106,20 +1100,56 @@
 
       closeUsernameModal();
       try {
-        showToast(`Welcome to World 1, ${username}!`, '👑');
+        showToast(isEditing ? `Username updated to ${username}!` : `Welcome to World 1, ${username}!`, '👑');
       } catch (_) {}
     } catch (err) {
       console.error('[SMGrade Claim Error]:', err);
       valText.style.color = '#ef4444';
       valText.textContent = 'Connection error. Please try again.';
       claimBtn.disabled = false;
-      claimBtn.textContent = 'CLAIM & ENTER WORLD 1';
+      claimBtn.textContent = isEditing ? 'SAVE USERNAME' : 'CLAIM & ENTER WORLD 1';
     }
   }
 
   function openUsernameModal() {
     createUsernameModal();
     const modal = document.getElementById('smgrade-username-modal');
+    const input = document.getElementById('sm-user-input');
+    const title = document.getElementById('sm-user-modal-title');
+    const desc = document.getElementById('sm-user-modal-desc');
+    const claimBtn = document.getElementById('sm-user-claim-btn');
+    const closeBtn = document.getElementById('sm-user-close-btn');
+    const valText = document.getElementById('sm-user-validation');
+
+    const currentReg = localStorage.getItem('smg_registered_username') || '';
+    if (currentReg) {
+      if (title) title.textContent = 'CHANGE YOUR USERNAME';
+      if (desc) desc.textContent = 'Update your unique username (1 to 10 alphanumeric characters).';
+      if (claimBtn) {
+        claimBtn.textContent = 'SAVE USERNAME';
+        claimBtn.disabled = false;
+      }
+      if (closeBtn) closeBtn.style.display = 'block';
+      if (input) input.value = currentReg;
+      if (valText) {
+        valText.style.color = '#10b981';
+        valText.textContent = `Current username: ${currentReg}`;
+      }
+    } else {
+      if (title) title.textContent = 'CLAIM YOUR WARRIOR NAME';
+      if (desc) desc.textContent = 'Register a unique username to enter World 1.';
+      if (claimBtn) {
+        claimBtn.textContent = 'CLAIM & ENTER WORLD 1';
+        claimBtn.disabled = false;
+      }
+      if (closeBtn) closeBtn.style.display = 'none';
+      if (input) input.value = '';
+      if (valText) {
+        valText.style.color = 'rgba(255,255,255,0.4)';
+        valText.textContent = 'Only letters (A-Z, a-z) and digits (0-9). No spaces or symbols.';
+      }
+    }
+
     if (modal) {
       modal.style.display = 'flex';
       modal.classList.add('active');

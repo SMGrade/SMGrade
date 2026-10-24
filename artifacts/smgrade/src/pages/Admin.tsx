@@ -1338,12 +1338,13 @@ export default function Admin() {
 
   if (masterUnlocked) {
     return (
-      <div className="min-h-screen text-white flex flex-col relative overflow-hidden bg-[#03050b]">
-        <ParticleBackground />
-        <div className="max-w-6xl mx-auto w-full px-6 py-10 z-10 relative">
-          <MasterVaultConsole token={masterToken} onLock={() => { setMasterUnlocked(false); setMasterToken(""); }} />
-        </div>
-      </div>
+      <MasterVaultConsole 
+        token={masterToken} 
+        onLock={() => { 
+          setMasterUnlocked(false); 
+          setMasterToken(""); 
+        }} 
+      />
     );
   }
 

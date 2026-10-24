@@ -45,7 +45,7 @@
 }
 
 .smgrade-plus-btn.gold {
-  top: 24px;
+  top: 64px;
   left: 172px;
   background: rgba(245, 158, 11, 0.28);
   border: 1.5px solid #fbbf24;
@@ -57,7 +57,7 @@
 }
 
 .smgrade-plus-btn.power {
-  top: 56px;
+  top: 96px;
   left: 172px;
   background: rgba(192, 132, 252, 0.28);
   border: 1.5px solid #c084fc;
@@ -92,16 +92,17 @@
   box-shadow: 0 0 12px rgba(52, 211, 153, 0.6);
 }
 
-.smgrade-plus-btn.dwarf {
+.smgrade-plus-btn.username {
   bottom: 28px;
   left: 305px;
-  background: rgba(239, 68, 68, 0.28);
-  border: 1.5px solid #f87171;
-  color: #f87171;
+  background: rgba(245, 158, 11, 0.28);
+  border: 1.5px solid #f59e0b;
+  color: #fbbf24;
+  font-size: 13px;
 }
-.smgrade-plus-btn.dwarf:hover {
-  background: rgba(239, 68, 68, 0.65);
-  box-shadow: 0 0 12px rgba(248, 113, 113, 0.6);
+.smgrade-plus-btn.username:hover {
+  background: rgba(245, 158, 11, 0.65);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
 }
 
 /* In-Inventory / In-Pet Trigger Buttons */
@@ -132,35 +133,6 @@
 #sm-inv-add-trigger:hover {
   transform: scale(1.05);
   box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6);
-}
-
-#sm-inv-dwarf-trigger {
-  position: absolute;
-  top: 36px;
-  right: 236px;
-  z-index: 1500;
-  display: none;
-  align-items: center;
-  gap: 6px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95));
-  border: 1.5px solid #f87171;
-  color: #ffffff;
-  padding: 6px 14px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 12px rgba(239, 68, 68, 0.4);
-  font-family: 'Inter', system-ui, sans-serif;
-  user-select: none;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-#sm-inv-dwarf-trigger:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
 }
 
 
