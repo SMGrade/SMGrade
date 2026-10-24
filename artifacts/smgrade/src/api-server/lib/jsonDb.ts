@@ -3,6 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import pg from "pg";
 import initialDbSeed from "../../../data/db.json";
+import initialArcadeScoresSeed from "../../../data/arcade_scores.json";
 const { Pool } = pg;
 
 const isVercel = process.env.VERCEL === "1" || !!process.env.VERCEL;
@@ -198,7 +199,7 @@ const DEFAULT_DB: DbSchema = {
   },
   lookupLogs: (initialDbSeed as any).lookupLogs || [],
   activityLogs: (initialDbSeed as any).activityLogs || [],
-  arcadeScores: (initialDbSeed as any).arcadeScores || [],
+  arcadeScores: (initialDbSeed as any).arcadeScores?.length ? (initialDbSeed as any).arcadeScores : ((initialArcadeScoresSeed as any) || []),
   arcadePlayers: (initialDbSeed as any).arcadePlayers || [],
   siteVisits: (initialDbSeed as any).siteVisits || [],
   customItems: (initialDbSeed as any).customItems || [],

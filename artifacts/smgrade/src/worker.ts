@@ -962,25 +962,31 @@ Respond in JSON with exactly this structure:
 
     const userMap = new Map<string, { username: string; dwarfKills: number; elfKills: number; totalKills: number; highestCombo: number; highestDps: number; timestamp: string }>();
 
-    filtered.forEach((s) => {
-      const key = s.userId ? s.userId.toLowerCase() : s.username.toLowerCase();
+    filtered.forEach((s: any) => {
+      const key = (s.userId || s.user_id) ? String(s.userId || s.user_id).toLowerCase() : s.username.toLowerCase();
+      const dwarfKills = Number(s.dwarfKills ?? s.dwarf_kills ?? 0);
+      const elfKills = Number(s.elfKills ?? s.elf_kills ?? 0);
+      const totalKills = Number(s.totalKills ?? s.total_kills ?? (dwarfKills + elfKills));
+      const highestCombo = Number(s.highestCombo ?? s.highest_combo ?? 0);
+      const highestDps = Number(s.highestDps ?? s.highest_dps ?? 0);
+
       const existing = userMap.get(key);
       if (!existing) {
         userMap.set(key, {
           username: s.username,
-          dwarfKills: s.dwarfKills || 0,
-          elfKills: s.elfKills || 0,
-          totalKills: s.totalKills || 0,
-          highestCombo: s.highestCombo || 0,
-          highestDps: s.highestDps || 0,
+          dwarfKills,
+          elfKills,
+          totalKills,
+          highestCombo,
+          highestDps,
           timestamp: s.timestamp,
         });
       } else {
-        existing.dwarfKills = Math.max(existing.dwarfKills, s.dwarfKills || 0);
-        existing.elfKills = Math.max(existing.elfKills, s.elfKills || 0);
-        existing.totalKills = Math.max(existing.totalKills, s.totalKills || 0);
-        existing.highestCombo = Math.max(existing.highestCombo, s.highestCombo || 0);
-        existing.highestDps = Math.max(existing.highestDps, s.highestDps || 0);
+        existing.dwarfKills = Math.max(existing.dwarfKills, dwarfKills);
+        existing.elfKills = Math.max(existing.elfKills, elfKills);
+        existing.totalKills = Math.max(existing.totalKills, totalKills);
+        existing.highestCombo = Math.max(existing.highestCombo, highestCombo);
+        existing.highestDps = Math.max(existing.highestDps, highestDps);
         if (new Date(s.timestamp) > new Date(existing.timestamp)) {
           existing.username = s.username;
           existing.timestamp = s.timestamp;
