@@ -818,6 +818,22 @@ export default function Arcade() {
     }
     return uid;
   });
+  const [leaderboardWindow, setLeaderboardWindow] = useState<"daily" | "weekly" | "all-time">("all-time");
+  const [leaderboardData, setLeaderboardData] = useState<any>(null);
+
+  const fetchLeaderboard = () => {
+    fetch(`/api/master/arcade/leaderboard?window=${leaderboardWindow}`)
+      .then(res => {
+        if (!res.ok) throw new Error("Leaderboard offline");
+        return res.json();
+      })
+      .then(data => setLeaderboardData(data))
+      .catch(err => console.warn(err.message));
+  };
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [leaderboardWindow]);
 
   // Weapon selected: 'punch' | 'slipper' | 'hammer' | 'bazooka' | 'nuke'
   const [activeWeapon, setActiveWeapon] = useState<"punch" | "slipper" | "hammer" | "bazooka" | "nuke">("punch");
@@ -1230,6 +1246,9 @@ export default function Arcade() {
           highestDps: Math.round(finalDmg * 10)
         })
       })
+      .then(() => {
+        fetchLeaderboard();
+      })
       .catch(err => console.error("Failed to submit score:", err));
     }
 
@@ -1331,6 +1350,131 @@ export default function Arcade() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [gameState, playerChar, targetHp, activeWeapon, rage, totalHits, defeats, achievements, targetDead, isHitStopped]);
+
+  const renderLeaderboards = () => (
+    <div className="w-full p-6 rounded-2xl border border-amber-500/15 bg-gradient-to-b from-[#0c1020]/80 to-[#070b13]/90 glass-panel space-y-5 shadow-[0_0_40px_rgba(245,158,11,0.06)]">
+      <div className="flex items-center justify-between border-b border-amber-500/10 pb-4">
+        <div className="text-sm font-black bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-500 bg-clip-text text-transparent uppercase tracking-wider flex items-center gap-2">
+          🏆 Global Leaderboards
+        </div>
+        <div className="flex gap-1.5">
+          {(["daily", "weekly", "all-time"] as const).map(w => (
+            <button
+              key={w}
+              onClick={(e) => { e.stopPropagation(); setLeaderboardWindow(w); playSound("click"); }}
+              className={`px-3 py-1 rounded-lg text-[9px] uppercase font-black tracking-wider transition-all cursor-pointer ${
+                leaderboardWindow === w 
+                  ? "bg-amber-500/20 border border-amber-500/40 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.2)]" 
+                  : "bg-white/[0.02] border border-white/[0.04] text-white/40 hover:text-white hover:border-white/10"
+              }`}
+            >
+              {w === "all-time" ? "All Time" : (w === "weekly" ? "Weekly" : "Daily")}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 3 Leaderboard Categories — Always Side-by-Side in ONE Row */}
+      <div className="w-full overflow-x-auto pb-2 scrollbar-thin">
+        <div className="flex flex-row flex-nowrap gap-4 min-w-[800px] lg:min-w-0 lg:grid lg:grid-cols-3">
+
+          {/* ☠️ Top 10 Total Kills */}
+          <div className="min-w-[260px] flex-1 flex-shrink-0 p-4 rounded-xl border border-amber-500/10 bg-black/20">
+            <div className="text-[11px] text-amber-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2 font-mono">
+              ☠️ Top 10 — Total Kills
+            </div>
+            <div className="space-y-1.5">
+              {leaderboardData?.totalKills && leaderboardData.totalKills.length > 0 ? (
+                leaderboardData.totalKills.slice(0, 10).map((entry: any, index: number) => {
+                  const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
+                  return (
+                    <div key={index} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${
+                      isMe ? "bg-amber-500/15 border border-amber-500/25 shadow-[0_0_12px_rgba(245,158,11,0.08)]" : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.03]"
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
+                          index === 0 ? "bg-[#ffd700]/20 text-[#ffd700] border-2 border-[#ffd700]/50 shadow-[0_0_8px_rgba(255,215,0,0.3)]" : 
+                          (index === 1 ? "bg-[#c0c0c0]/20 text-[#c0c0c0] border-2 border-[#c0c0c0]/50" : 
+                          (index === 2 ? "bg-[#cd7f32]/20 text-[#cd7f32] border-2 border-[#cd7f32]/50" : "bg-white/5 text-white/30 border border-white/5"))
+                        }`}>{index + 1}</span>
+                        <span className={`font-bold text-[12px] ${isMe ? "text-amber-300 font-extrabold" : "text-white/90"}`}>{entry.username}</span>
+                      </div>
+                      <span className={`font-black text-sm tabular-nums ${isMe ? "text-amber-400" : (index === 0 ? "text-[#ffd700]" : "text-amber-500/80")}`}>{entry.score}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-[11px] text-white/20 text-center py-6 font-mono">No records yet — be the first!</div>
+              )}
+            </div>
+          </div>
+
+          {/* 🧔 Top 10 Dwarf Kills */}
+          <div className="min-w-[260px] flex-1 flex-shrink-0 p-4 rounded-xl border border-amber-500/10 bg-black/20">
+            <div className="text-[11px] text-amber-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2 font-mono">
+              🧔 Top 10 — Dwarf Kills
+            </div>
+            <div className="space-y-1.5">
+              {leaderboardData?.dwarfKills && leaderboardData.dwarfKills.length > 0 ? (
+                leaderboardData.dwarfKills.slice(0, 10).map((entry: any, index: number) => {
+                  const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
+                  return (
+                    <div key={index} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${
+                      isMe ? "bg-amber-500/15 border border-amber-500/25 shadow-[0_0_12px_rgba(245,158,11,0.08)]" : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.03]"
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
+                          index === 0 ? "bg-[#ffd700]/20 text-[#ffd700] border-2 border-[#ffd700]/50 shadow-[0_0_8px_rgba(255,215,0,0.3)]" : 
+                          (index === 1 ? "bg-[#c0c0c0]/20 text-[#c0c0c0] border-2 border-[#c0c0c0]/50" : 
+                          (index === 2 ? "bg-[#cd7f32]/20 text-[#cd7f32] border-2 border-[#cd7f32]/50" : "bg-white/5 text-white/30 border border-white/5"))
+                        }`}>{index + 1}</span>
+                        <span className={`font-bold text-[12px] ${isMe ? "text-amber-300 font-extrabold" : "text-white/90"}`}>{entry.username}</span>
+                      </div>
+                      <span className={`font-black text-sm tabular-nums ${isMe ? "text-amber-400" : (index === 0 ? "text-[#ffd700]" : "text-amber-500/80")}`}>{entry.score}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-[11px] text-white/20 text-center py-6 font-mono">No records yet — be the first!</div>
+              )}
+            </div>
+          </div>
+
+          {/* 🧝 Top 10 Elf Kills */}
+          <div className="min-w-[260px] flex-1 flex-shrink-0 p-4 rounded-xl border border-emerald-500/10 bg-black/20">
+            <div className="text-[11px] text-emerald-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2 font-mono">
+              🧝 Top 10 — Elf Kills
+            </div>
+            <div className="space-y-1.5">
+              {leaderboardData?.elfKills && leaderboardData.elfKills.length > 0 ? (
+                leaderboardData.elfKills.slice(0, 10).map((entry: any, index: number) => {
+                  const isMe = entry.username.toLowerCase() === arcadeUsername.toLowerCase();
+                  return (
+                    <div key={index} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${
+                      isMe ? "bg-emerald-500/15 border border-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.08)]" : "bg-white/[0.01] border border-white/[0.02] hover:bg-white/[0.03]"
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
+                          index === 0 ? "bg-[#ffd700]/20 text-[#ffd700] border-2 border-[#ffd700]/50 shadow-[0_0_8px_rgba(255,215,0,0.3)]" : 
+                          (index === 1 ? "bg-[#c0c0c0]/20 text-[#c0c0c0] border-2 border-[#c0c0c0]/50" : 
+                          (index === 2 ? "bg-[#cd7f32]/20 text-[#cd7f32] border-2 border-[#cd7f32]/50" : "bg-white/5 text-white/30 border border-white/5"))
+                        }`}>{index + 1}</span>
+                        <span className={`font-bold text-[12px] ${isMe ? "text-emerald-300 font-extrabold" : "text-white/90"}`}>{entry.username}</span>
+                      </div>
+                      <span className={`font-black text-sm tabular-nums ${isMe ? "text-emerald-400" : (index === 0 ? "text-[#ffd700]" : "text-emerald-400/80")}`}>{entry.score}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-[11px] text-white/20 text-center py-6 font-mono">No records yet — be the first!</div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
 
   // 1. FULL VIEWPORT DWARF HUB (Requirements 13 & 14)
   if (arcadeMode === "dwarf") {
@@ -1696,6 +1840,11 @@ export default function Arcade() {
                   Play as Elf
                 </button>
               </div>
+            </div>
+
+            {/* Global Leaderboards on Select Screen */}
+            <div className="w-full pt-4">
+              {renderLeaderboards()}
             </div>
           </motion.div>
         ) : (
@@ -2126,6 +2275,11 @@ export default function Arcade() {
                 </div>
               </div>
 
+            </div>
+
+            {/* LIVE LEADERBOARDS — Full Width Container */}
+            <div className="col-span-1 lg:col-span-12">
+              {renderLeaderboards()}
             </div>
 
           </div>

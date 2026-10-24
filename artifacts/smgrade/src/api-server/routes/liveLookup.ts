@@ -22,6 +22,42 @@ function buildSendPacket(type: string, message: unknown): ArrayBuffer {
   return result.buffer;
 }
 
+async function createGameWebSocket(wsUrl: string): Promise<any> {
+  const wsHeaders = {
+    "Origin": "https://swordmasters.io",
+    "Referer": "https://swordmasters.io/",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+  };
+
+  // Cloudflare Workers fetch with Upgrade: websocket
+  if (typeof fetch === "function") {
+    try {
+      const resp = await fetch(wsUrl, {
+        headers: {
+          ...wsHeaders,
+          "Upgrade": "websocket",
+        }
+      });
+      if ((resp as any).webSocket) {
+        const ws = (resp as any).webSocket;
+        ws.accept();
+        return ws;
+      }
+    } catch (_) {}
+  }
+
+  // Global WebSocket constructor (Node.js with ws, or browser)
+  if (typeof (globalThis as any).WebSocket !== "undefined") {
+    try {
+      return new (globalThis as any).WebSocket(wsUrl, { headers: wsHeaders });
+    } catch (_) {
+      return new (globalThis as any).WebSocket(wsUrl);
+    }
+  }
+
+  throw new Error("No WebSocket implementation available in current runtime.");
+}
+
 export async function queryLivePlayer(username: string): Promise<any> {
   const fsRes = await fetch("https://loadbalancer.swordmasters.io/api/server/findServer", {
     method: "POST",
@@ -59,9 +95,9 @@ export async function queryLivePlayer(username: string): Promise<any> {
   ].join("&");
 
   const wsUrl = `wss://${mmData.room.publicAddress}/${mmData.room.processId}/${mmData.room.roomId}?${queryParams}`;
+  const ws = await createGameWebSocket(wsUrl);
 
   return new Promise((resolve, reject) => {
-    let ws: any = null;
     let responded = false;
 
     const timeoutHandle = setTimeout(() => {
@@ -70,20 +106,6 @@ export async function queryLivePlayer(username: string): Promise<any> {
       try { ws?.close(); } catch (_) {}
       reject(new Error("Player lookup timed out. Game servers did not respond."));
     }, 6000);
-
-    try {
-      ws = new (globalThis as any).WebSocket(wsUrl, {
-        headers: {
-          "Origin": "https://swordmasters.io",
-          "Referer": "https://swordmasters.io/",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        }
-      });
-    } catch (e: any) {
-      clearTimeout(timeoutHandle);
-      reject(e);
-      return;
-    }
 
     ws.binaryType = "arraybuffer";
 
@@ -206,9 +228,9 @@ export async function queryLivePlayerLightweight(username: string): Promise<any>
   ].join("&");
 
   const wsUrl = `wss://${mmData.room.publicAddress}/${mmData.room.processId}/${mmData.room.roomId}?${queryParams}`;
+  const ws = await createGameWebSocket(wsUrl);
 
   return new Promise((resolve, reject) => {
-    let ws: any = null;
     let responded = false;
 
     const timeoutHandle = setTimeout(() => {
@@ -217,20 +239,6 @@ export async function queryLivePlayerLightweight(username: string): Promise<any>
       try { ws?.close(); } catch (_) {}
       reject(new Error("Player lookup timed out. Game servers did not respond."));
     }, 6000);
-
-    try {
-      ws = new (globalThis as any).WebSocket(wsUrl, {
-        headers: {
-          "Origin": "https://swordmasters.io",
-          "Referer": "https://swordmasters.io/",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        }
-      });
-    } catch (e: any) {
-      clearTimeout(timeoutHandle);
-      reject(e);
-      return;
-    }
 
     ws.binaryType = "arraybuffer";
 

@@ -1616,26 +1616,32 @@
           return;
         }
 
-        const matching = list.filter(i => i.type === item.type && !i.isLocked);
+        const matching = list.filter(i => i.type === item.type && (i.level >= 5) && !i.isLocked);
         if (matching.length < 10) {
-          this.networkManager.app?.fire("WarningTextController:setWarning", `You need ${10 - matching.length} more matching items!`, 5, new pc.Color(1, 0, 0, 1));
+          this.networkManager.app?.fire("WarningTextController:setWarning", `You need ${10 - matching.length} more Level 5 matching items!`, 5, new pc.Color(1, 0, 0, 1));
           this.dispatchMessage("Server:CombinerController:forgeFailed");
           return;
         }
 
         let removed = 0;
         for (let i = list.length - 1; i >= 0 && removed < 10; i--) {
-          if (list[i].type === item.type && !list[i].isLocked) {
+          if (list[i].type === item.type && (list[i].level >= 5) && !list[i].isLocked) {
             delete this.networkManager.items[list[i].itemId];
             list.splice(i, 1);
             removed++;
           }
         }
 
-        const newLevel = Math.min(10, (item.level || 1) + 1);
+        let nextType;
+        if (isSword) {
+          nextType = item.type === 31 ? 37 : item.type + 1;
+        } else {
+          nextType = item.type === 30 ? 35 : item.type + 1;
+        }
+
         const newItem = this.createItemSchema({
-          type: item.type,
-          level: newLevel,
+          type: nextType,
+          level: 1,
           enchantments: [],
           isLocked: false
         }, isSword);
@@ -1649,7 +1655,7 @@
 
         this.persistInventory();
         if (window.logMasterAction) {
-          window.logMasterAction(this.profile.username, "Elf Combiner Forge", `Combined 10x into Level ${newLevel}!`, "Success");
+          window.logMasterAction(this.profile.username, "Elf Combiner Forge", `Combined 10x into Tier ${nextType} Level 1!`, "Success");
         }
 
         // Category 5: Elf operations (Live Leaderboard Sync)

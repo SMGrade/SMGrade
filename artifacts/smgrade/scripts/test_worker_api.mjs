@@ -128,15 +128,34 @@ async function runTests() {
   }
 
   // 8. Admin Login
-  await test("Admin login", "POST", "/api/master/admin/login", {
+  await test("Admin login with env password", "POST", "/api/master/admin/login", {
     password: "swordmasters-master-2026",
+  });
+  await test("Admin login with canonical password", "POST", "/api/master/admin/login", {
+    password: "harrison@smgrade.swordmasters2026",
   });
 
-  // 9. Master Vault Unlock
-  const unlockRes = await test("Master unlock", "POST", "/api/master/unlock", {
-    password: "swordmasters-master-2026",
+  // 9. Master Vault Unlock with canonical password
+  const unlockRes = await test("Master unlock with canonical password", "POST", "/api/master/unlock", {
+    password: "harrison@smgrade.swordmasters2026",
   });
   const masterToken = unlockRes.data?.token;
+  if (!masterToken) {
+    throw new Error("Master token not returned for canonical password!");
+  }
+
+  // 9b. Verify Master Vault authenticated endpoints
+  await test("Master Vault analytics with master token", "GET", "/api/master/analytics", null, {
+    "x-master-token": masterToken
+  });
+
+  await test("Master Vault backup with master token", "GET", "/api/master/backup", null, {
+    "x-master-token": masterToken
+  });
+
+  await test("Master Vault analytics with offline_master_token", "GET", "/api/master/analytics", null, {
+    "x-master-token": "offline_master_token"
+  });
 
   // 10. Master Config
   await test("Admin config", "GET", "/api/master/admin/config");
@@ -159,9 +178,20 @@ async function runTests() {
   });
 
   // 14. Arcade Leaderboard retrieval
-  await test("Arcade leaderboard list", "GET", "/api/master/arcade/leaderboard?window=all-time");
+  const lbRes = await test("Arcade leaderboard list", "GET", "/api/master/arcade/leaderboard?window=all-time");
+  if (!lbRes.data?.totalKills || !Array.isArray(lbRes.data.totalKills) || !lbRes.data.dwarfKills || !lbRes.data.elfKills) {
+    throw new Error("Leaderboard response missing expected totalKills, dwarfKills, elfKills categories!");
+  }
+  console.log(`   Confirmed: Leaderboard structured format verified with ${lbRes.data.totalKills.length} totalKill entries`);
 
-  // 15. Verify 404 for unknown API route NEVER returns HTML
+  // 15. Live lookup when external server fails/rejects: must return clean error, never fake level 0
+  const lookupRes = await test("Live lookup failing gracefully", "GET", "/api/live-lookup?username=NonExistentUserXYZ987654321");
+  if (lookupRes.status === 200 && lookupRes.data?.playerInfo?.level === 0) {
+    throw new Error("Regression! Live lookup returned fake level 0 player on error!");
+  }
+  console.log("   Confirmed: Live lookup returns explicit error or real data, never a fake level 0 player!");
+
+  // 16. Verify 404 for unknown API route NEVER returns HTML
   const notFoundRes = await test("404 JSON for unknown API path", "GET", "/api/some-unknown-path");
   if (notFoundRes.status === 404) {
     console.log("   Confirmed: Unknown /api/* routes return 404 JSON, NOT HTML fallback!");
