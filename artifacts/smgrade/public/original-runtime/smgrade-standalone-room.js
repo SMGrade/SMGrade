@@ -232,6 +232,22 @@
       return this.items.slice(start, end);
     }
 
+    splice(start, deleteCount, ...itemsToAdd) {
+      const removed = this.items.splice(start, deleteCount, ...itemsToAdd);
+      removed.forEach(item => {
+        this.removeListeners.forEach(cb => {
+          try { cb(item); } catch (e) {}
+        });
+      });
+      itemsToAdd.forEach(item => {
+        this.addListeners.forEach(cb => {
+          try { cb(item); } catch (e) {}
+        });
+      });
+      this.triggerChange();
+      return removed;
+    }
+
     [Symbol.iterator]() {
       return this.items[Symbol.iterator]();
     }
@@ -1544,61 +1560,118 @@
           const copies = Math.floor(Math.random() * item.level) + 1;
           const targetLevel = item.level - 1;
 
-          // Downgrade original item and clear enchantments
-          item.level = targetLevel;
-          item.enchantments = new LocalArraySchema([]);
+          // Dispatch success first so UI animation reads original activeItem.level (e.g. 3)
+          // and correctly displays Level (3 - 1) = 2, avoiding skipping intermediate levels!
+          this.dispatchMessage("Server:DowngraderController:forge", copies);
 
-          // If currently equipped, update active weapon
+          // Apply downgrade and add copies in microtask to keep animation state and inventory consistent
+          queueMicrotask(() => {
+            item.level = targetLevel;
+            item.enchantments = new LocalArraySchema([]);
+
+            // If currently equipped, update active weapon
+            if (isSword && inv.activeSword.itemId === item.itemId) {
+              inv.activeSword.set('level', targetLevel);
+              inv.activeSword.enchantments.items = [];
+              inv.activeSword.enchantments.triggerChange();
+              const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
+              if (pCtrl) pCtrl.setActiveSword(item.type, []);
+            } else if (!isSword && inv.activeShield.itemId === item.itemId) {
+              inv.activeShield.set('level', targetLevel);
+              inv.activeShield.enchantments.items = [];
+              inv.activeShield.enchantments.triggerChange();
+              const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
+              if (pCtrl) pCtrl.setActiveShield(item.type, []);
+            }
+
+            // Add extra copies if copies > 1
+            for (let c = 1; c < copies; c++) {
+              const copySchema = this.createItemSchema({
+                type: item.type,
+                level: targetLevel,
+                enchantments: [],
+                isLocked: false
+              }, isSword);
+              if (isSword) {
+                inv.swords.push(copySchema);
+                this.networkManager.items[copySchema.itemId] = copySchema;
+              } else {
+                inv.shields.push(copySchema);
+                this.networkManager.items[copySchema.itemId] = copySchema;
+              }
+            }
+
+            this.persistInventory();
+            if (window.logMasterAction) {
+              window.logMasterAction(this.profile.username, "Item Downgraded", `Downgraded to Level ${targetLevel} (Yielded x${copies})`, "Success");
+            }
+
+            // Category 3: Downgrader operations (Live Leaderboard Sync)
+            this.recordPlayerStat({ downgraderDelta: 1 });
+
+            if (this.networkManager.inventoryController) {
+              this.networkManager.inventoryController.sortInventory();
+              this.networkManager.inventoryController.setActiveSlot();
+            }
+          });
+        } else {
+          // FAILURE ("BURN"): Remove burned item from inventory and storage, and grant compensation gold!
+          const list = isSword ? inv.swords : inv.shields;
+          const swordsCatalog = window.SWORDMASTERS_SWORDS || (window.StaticData && StaticData.swords) || window.swords || [];
+          const shieldsCatalog = window.SWORDMASTERS_SHIELDS || (window.StaticData && StaticData.shields) || window.shields || [];
+          const itemMeta = isSword ? (swordsCatalog[item.type] || { priceGold: 100 }) : (shieldsCatalog[item.type] || { priceGold: 100 });
+          const goldGain = Math.round(Number(itemMeta.priceGold || 100) * Math.pow(2, (item.level || 1) - 1));
+
+          // If currently equipped, unequip and reset to Level 1 default
           if (isSword && inv.activeSword.itemId === item.itemId) {
-            inv.activeSword.set('level', targetLevel);
+            inv.activeSword.set('type', 1);
+            inv.activeSword.set('level', 1);
+            inv.activeSword.set('itemId', 'default_sword');
             inv.activeSword.enchantments.items = [];
             inv.activeSword.enchantments.triggerChange();
+            inv.set('activeSword', inv.activeSword);
+            this.profile.activeSwordType = 1;
+            this.profile.activeSwordLevel = 1;
+            this.profile.activeSwordEnchants = [];
             const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
-            if (pCtrl) pCtrl.setActiveSword(item.type, []);
+            if (pCtrl) pCtrl.setActiveSword(1, []);
           } else if (!isSword && inv.activeShield.itemId === item.itemId) {
-            inv.activeShield.set('level', targetLevel);
+            inv.activeShield.set('type', 1);
+            inv.activeShield.set('level', 1);
+            inv.activeShield.set('itemId', 'default_shield');
             inv.activeShield.enchantments.items = [];
             inv.activeShield.enchantments.triggerChange();
+            inv.set('activeShield', inv.activeShield);
+            this.profile.activeShieldType = 1;
+            this.profile.activeShieldLevel = 1;
+            this.profile.activeShieldEnchants = [];
             const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
-            if (pCtrl) pCtrl.setActiveShield(item.type, []);
+            if (pCtrl) pCtrl.setActiveShield(1, []);
           }
 
-          // Add extra copies if copies > 1
-          for (let c = 1; c < copies; c++) {
-            const copySchema = this.createItemSchema({
-              type: item.type,
-              level: targetLevel,
-              enchantments: [],
-              isLocked: false
-            }, isSword);
-            if (isSword) {
-              inv.swords.push(copySchema);
-              this.networkManager.items[copySchema.itemId] = copySchema;
-            } else {
-              inv.shields.push(copySchema);
-              this.networkManager.items[copySchema.itemId] = copySchema;
-            }
+          // Remove burned item from items registry and list
+          delete this.networkManager.items[item.itemId];
+          list.remove(item);
+
+          // Add compensation gold
+          inv.set('gold', (inv.gold || 0) + goldGain);
+          this.networkManager.goldAmount = inv.gold;
+          if (this.networkManager.goldStatText?.element) {
+            this.networkManager.goldStatText.element.text = numRound(inv.gold);
           }
+          this.profile.gold = inv.gold;
 
           this.persistInventory();
           if (window.logMasterAction) {
-            window.logMasterAction(this.profile.username, "Item Downgraded", `Downgraded to Level ${targetLevel} (Yielded x${copies})`, "Success");
+            window.logMasterAction(this.profile.username, "Downgrade Burned", `Item burned in downgrader for ${goldGain} gold`, "Success");
           }
 
-          // Category 3: Downgrader operations (Live Leaderboard Sync)
-          this.recordPlayerStat({ downgraderDelta: 1 });
-
-          this.dispatchMessage("Server:DowngraderController:forge", copies);
+          this.dispatchMessage("Server:DowngraderController:forgeFailed");
 
           if (this.networkManager.inventoryController) {
             this.networkManager.inventoryController.sortInventory();
             this.networkManager.inventoryController.setActiveSlot();
           }
-        } else {
-          if (window.logMasterAction) {
-            window.logMasterAction(this.profile.username, "Downgrade Failed", `Downgrade attempt failed`, "Failed");
-          }
-          this.dispatchMessage("Server:DowngraderController:forgeFailed");
         }
       }
 
@@ -1616,20 +1689,18 @@
           return;
         }
 
-        const matching = list.filter(i => i.type === item.type && (i.level >= 5) && !i.isLocked);
+        const matching = list.items.filter(i => i.type === item.type && (i.level >= 5) && !i.isLocked);
         if (matching.length < 10) {
           this.networkManager.app?.fire("WarningTextController:setWarning", `You need ${10 - matching.length} more Level 5 matching items!`, 5, new pc.Color(1, 0, 0, 1));
           this.dispatchMessage("Server:CombinerController:forgeFailed");
           return;
         }
 
-        let removed = 0;
-        for (let i = list.length - 1; i >= 0 && removed < 10; i--) {
-          if (list[i].type === item.type && (list[i].level >= 5) && !list[i].isLocked) {
-            delete this.networkManager.items[list[i].itemId];
-            list.splice(i, 1);
-            removed++;
-          }
+        // Consume exactly 10 matching Level 5 items
+        const toConsume = matching.slice(0, 10);
+        for (const consumed of toConsume) {
+          delete this.networkManager.items[consumed.itemId];
+          list.remove(consumed);
         }
 
         let nextType;
@@ -1646,11 +1717,7 @@
           isLocked: false
         }, isSword);
 
-        if (isSword) {
-          inv.swords.push(newItem);
-        } else {
-          inv.shields.push(newItem);
-        }
+        list.push(newItem);
         this.networkManager.items[newItem.itemId] = newItem;
 
         this.persistInventory();
@@ -2220,16 +2287,25 @@
         // Elf NPC Proximity (Task 6)
         const combinerUI = app.root?.findByName('CombinerUI');
         if (combinerUI) {
-          const isPanelOpen = !!(combinerUI.script?.combinerController?.isPanelEnabled);
-          if (distElf <= 5.0) {
+          const ctrl = combinerUI.script?.combinerController;
+          const isPanelOpen = !!(ctrl?.isPanelEnabled);
+          if (distElf <= 5.5) {
             if (!isNearElf && !isPanelOpen) {
               isNearElf = true;
-              combinerUI.fire('CombinerController:show');
+              if (ctrl && typeof ctrl.show === 'function') {
+                ctrl.show();
+              } else {
+                combinerUI.fire('CombinerController:show');
+              }
             }
-          } else if (distElf > 7.5) {
+          } else if (distElf > 8.0) {
             if (isNearElf || isPanelOpen) {
               isNearElf = false;
-              combinerUI.fire('CombinerController:hide');
+              if (ctrl && typeof ctrl.hide === 'function') {
+                ctrl.hide();
+              } else {
+                combinerUI.fire('CombinerController:hide');
+              }
             }
           }
         }

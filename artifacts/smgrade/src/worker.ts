@@ -73,6 +73,7 @@ function isMasterPasswordValid(password: string, env: Env): boolean {
   const envAdmin = env.ADMIN_PASSWORD || (typeof process !== "undefined" ? process.env?.ADMIN_PASSWORD : "");
   const envMaster = env.MASTER_PASSWORD || (typeof process !== "undefined" ? process.env?.MASTER_PASSWORD : "");
   const allowed = [
+    "harrison@smgrade2026",
     "harrison@smgrade.swordmasters2026",
     "swordmasters-master-2026",
   ];
@@ -586,7 +587,10 @@ Respond in JSON with exactly this structure:
       return jsonResponse({ items, prices, benchmarks, constants });
     }
     if (method === "POST") {
-      if (!verifyMasterToken(req)) return errorResponse("Unauthorized", 401);
+      const adminPass = req.headers.get("x-admin-password") || "";
+      const isPassValid = isMasterPasswordValid(adminPass, env);
+      const isTokenValid = verifyMasterToken(req);
+      if (!isPassValid && !isTokenValid) return errorResponse("Unauthorized admin config access", 401);
       const body: any = await req.json().catch(() => ({}));
       if (body.items) await jsonDb.saveCustomItems(body.items);
       if (body.prices) await jsonDb.saveCustomPrices(body.prices);
@@ -982,9 +986,9 @@ Respond in JSON with exactly this structure:
           timestamp: s.timestamp,
         });
       } else {
-        existing.dwarfKills = Math.max(existing.dwarfKills, dwarfKills);
-        existing.elfKills = Math.max(existing.elfKills, elfKills);
-        existing.totalKills = Math.max(existing.totalKills, totalKills);
+        existing.dwarfKills += dwarfKills;
+        existing.elfKills += elfKills;
+        existing.totalKills += totalKills;
         existing.highestCombo = Math.max(existing.highestCombo, highestCombo);
         existing.highestDps = Math.max(existing.highestDps, highestDps);
         if (new Date(s.timestamp) > new Date(existing.timestamp)) {

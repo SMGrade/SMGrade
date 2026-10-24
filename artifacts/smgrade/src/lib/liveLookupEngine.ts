@@ -1,22 +1,7 @@
-// @ts-ignore
-import { Client, registerSerializer } from "colyseus.js";
-
-class DummySerializer {
-  setState(rawState: any) {}
-  getState() { return null; }
-  patch(patches: any) {}
-  teardown() {}
-  handshake(bytes: any, it: any) {}
-}
-
-registerSerializer("j6CSBEPV_", DummySerializer);
-registerSerializer("CFQ2R9YEZ", DummySerializer);
-registerSerializer("9qPNKmk1V", DummySerializer);
-registerSerializer("GPkSQyZ3y", DummySerializer);
-registerSerializer("none", DummySerializer);
 import { formatNumber } from "./numberParser.js";
 import { resolveItemByGameType } from "./gearDatabase.js";
 import type { ParsedPlayer } from "./parser.js";
+import { queryLivePlayer, queryLivePlayerLightweight } from "./gameProtocol.js";
 
 export interface LiveConnectionStatus {
   step: number;
@@ -30,145 +15,14 @@ export async function fetchLivePlayerInfo(
   username: string,
   onStatusUpdate?: (status: LiveConnectionStatus) => void
 ): Promise<any> {
-  // Step 1: findServer
-  if (onStatusUpdate) onStatusUpdate({ step: 1, message: "Querying server load balancer..." });
-  const fsRes = await fetch("https://loadbalancer.swordmasters.io/api/server/findServer", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" }
-  });
-  if (!fsRes.ok) throw new Error(`Load balancer returned status ${fsRes.status}`);
-  const fsData = (await fsRes.json()) as any;
-  if (!fsData.token) throw new Error("Load balancer did not provide authentication token.");
-
-  // Step 2: joinOrCreate
-  if (onStatusUpdate) onStatusUpdate({ step: 2, message: "Requesting matchmaking room seat..." });
-  const host = fsData.data?.foundServer || "eu1";
-  const mmRes = await fetch(`https://${host}.swordmasters.io/matchmake/joinOrCreate/world_1`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ 
-      token: fsData.token,
-      auth: fsData.token,
-      password: fsData.token,
-      accessToken: fsData.token,
-      jwt: fsData.token
-    })
-  });
-  if (!mmRes.ok) throw new Error(`Matchmaker request failed with status ${mmRes.status}`);
-  const mmData = (await mmRes.json()) as any;
-
-  if (!mmData.room || !mmData.room.publicAddress || !mmData.sessionId) {
-    throw new Error("Matchmaker response payload is missing reservation data.");
+  if (onStatusUpdate) onStatusUpdate({ step: 1, message: "Connecting to game server via live protocol..." });
+  try {
+    const playerInfo = await queryLivePlayer(username);
+    if (onStatusUpdate) onStatusUpdate({ step: 2, message: "Extracting inventory..." });
+    return playerInfo;
+  } catch (err: any) {
+    throw err;
   }
-
-  // Step 3: Connect Colyseus Client
-  if (onStatusUpdate) onStatusUpdate({ step: 3, message: "Opening secure websocket connection..." });
-  const client = new Client(`wss://${mmData.room.publicAddress}`);
-  
-  // Inject tokens dynamically in buildEndpoint
-  client.buildEndpoint = function (room: any, options: any) {
-    if (options === void 0) { options = {}; }
-    var params = [];
-    for (var name_1 in options) {
-        if (!options.hasOwnProperty(name_1)) {
-            continue;
-        }
-        params.push(name_1 + "=" + options[name_1]);
-    }
-    params.push("token=" + encodeURIComponent(fsData.token));
-    params.push("auth=" + encodeURIComponent(fsData.token));
-    params.push("password=" + encodeURIComponent(fsData.token));
-    params.push("accessToken=" + encodeURIComponent(fsData.token));
-    params.push("jwt=" + encodeURIComponent(fsData.token));
-    params.push("Authorization=" + encodeURIComponent("Bearer " + fsData.token));
-    return this.endpoint + "/" + room.processId + "/" + room.roomId + "?" + params.join('&');
-  };
-
-  const rm = client.createRoom(mmData.room.name);
-  rm.id = mmData.room.roomId;
-  rm.sessionId = mmData.sessionId;
-
-  const wsUrl = client.buildEndpoint(mmData.room, { sessionId: rm.sessionId });
-
-  // Trigger connect
-  rm.connect(wsUrl);
-
-  const ws = (rm.connection?.transport as any)?.ws as WebSocket;
-  if (!ws) {
-    throw new Error("WebSocket transport was not constructed by the library.");
-  }
-
-  // Await socket open connection state (max 6s)
-  await new Promise<void>((resolve, reject) => {
-    let resolved = false;
-    const timer = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        rm.leave();
-        reject(new Error("WebSocket handshake timed out."));
-      }
-    }, 6000);
-
-    ws.addEventListener("open", () => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timer);
-        resolve();
-      }
-    });
-
-    ws.addEventListener("close", (e) => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timer);
-        rm.leave();
-        reject(new Error(`WebSocket connection closed. Code ${e.code}: ${e.reason || "Abnormal closure"}`));
-      }
-    });
-
-    if (ws.readyState === WebSocket.OPEN) {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timer);
-        resolve();
-      }
-    }
-  });
-
-  // Step 4: Dispatch lookup packet and await result (max 6s)
-  if (onStatusUpdate) onStatusUpdate({ step: 4, message: "Retrieving character inventory..." });
-
-  return new Promise((resolve, reject) => {
-    let resolved = false;
-    const timer = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        rm.leave();
-        reject(new Error("Game server request timed out."));
-      }
-    }, 6000);
-
-    rm.onMessage("Server:SkinStatue:GetPlayerInfo", (message: any) => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timer);
-        rm.leave();
-        resolve(message);
-      }
-    });
-
-    rm.onError((code: number, msg?: string) => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timer);
-        rm.leave();
-        reject(new Error(`Game server returned error ${code}: ${msg || "Query rejected"}`));
-      }
-    });
-
-    // Request player stats from world room
-    rm.send("Client:SkinStatue:GetPlayerInfo", { username: username.trim() });
-  });
 }
 
 /**
@@ -235,148 +89,12 @@ export async function fetchLivePlayerInfoLightweight(
   username: string,
   onStatusUpdate?: (status: LiveConnectionStatus) => void
 ): Promise<any> {
-  // Step 1: findServer
-  if (onStatusUpdate) onStatusUpdate({ step: 1, message: "Querying server load balancer..." });
-  const fsRes = await fetch("https://loadbalancer.swordmasters.io/api/server/findServer", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" }
-  });
-  if (!fsRes.ok) throw new Error(`Load balancer returned status ${fsRes.status}`);
-  const fsData = (await fsRes.json()) as any;
-  if (!fsData.token) throw new Error("Load balancer did not provide authentication token.");
-
-  // Step 2: joinOrCreate
-  if (onStatusUpdate) onStatusUpdate({ step: 2, message: "Requesting matchmaking room seat..." });
-  const host = fsData.data?.foundServer || "eu1";
-  const mmRes = await fetch(`https://${host}.swordmasters.io/matchmake/joinOrCreate/world_1`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ 
-      token: fsData.token,
-      auth: fsData.token,
-      password: fsData.token,
-      accessToken: fsData.token,
-      jwt: fsData.token
-    })
-  });
-  if (!mmRes.ok) throw new Error(`Matchmaker request failed with status ${mmRes.status}`);
-  const mmData = (await mmRes.json()) as any;
-
-  if (!mmData.room || !mmData.room.publicAddress || !mmData.sessionId) {
-    throw new Error("Matchmaker response payload is missing reservation data.");
+  if (onStatusUpdate) onStatusUpdate({ step: 1, message: "Connecting to game server via live protocol..." });
+  try {
+    const data = await queryLivePlayerLightweight(username);
+    if (onStatusUpdate) onStatusUpdate({ step: 2, message: "Retrieved lightweight stats." });
+    return data;
+  } catch (err: any) {
+    throw err;
   }
-
-  // Step 3: Connect Colyseus Client
-  if (onStatusUpdate) onStatusUpdate({ step: 3, message: "Opening secure websocket connection..." });
-  const client = new Client(`wss://${mmData.room.publicAddress}`);
-  
-  client.buildEndpoint = function (room: any, options: any) {
-    if (options === void 0) { options = {}; }
-    var params = [];
-    for (var name_1 in options) {
-        if (!options.hasOwnProperty(name_1)) {
-            continue;
-        }
-        params.push(name_1 + "=" + options[name_1]);
-    }
-    params.push("token=" + encodeURIComponent(fsData.token));
-    params.push("auth=" + encodeURIComponent(fsData.token));
-    params.push("password=" + encodeURIComponent(fsData.token));
-    params.push("accessToken=" + encodeURIComponent(fsData.token));
-    params.push("jwt=" + encodeURIComponent(fsData.token));
-    params.push("Authorization=" + encodeURIComponent("Bearer " + fsData.token));
-    return this.endpoint + "/" + room.processId + "/" + room.roomId + "?" + params.join('&');
-  };
-
-  const rm = client.createRoom(mmData.room.name);
-  rm.id = mmData.room.roomId;
-  rm.sessionId = mmData.sessionId;
-
-  const wsUrl = client.buildEndpoint(mmData.room, { sessionId: rm.sessionId });
-  rm.connect(wsUrl);
-
-  const ws = (rm.connection?.transport as any)?.ws as WebSocket;
-  if (!ws) {
-    throw new Error("WebSocket transport was not constructed by the library.");
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    let resolved = false;
-    const timer = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        rm.leave();
-        reject(new Error("WebSocket handshake timed out."));
-      }
-    }, 6000);
-
-    ws.addEventListener("open", () => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timer);
-        resolve();
-      }
-    });
-
-    ws.addEventListener("close", (e) => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timer);
-        rm.leave();
-        reject(new Error(`WebSocket connection closed. Code ${e.code}: ${e.reason || "Abnormal closure"}`));
-      }
-    });
-
-    if (ws.readyState === WebSocket.OPEN) {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timer);
-        resolve();
-      }
-    }
-  });
-
-  // Step 4: Dispatch lookup packet and await result
-  if (onStatusUpdate) onStatusUpdate({ step: 4, message: "Retrieving lightweight stats..." });
-
-  return new Promise((resolve, reject) => {
-    let resolved = false;
-    const timer = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        rm.leave();
-        reject(new Error("Game server request timed out."));
-      }
-    }, 6000);
-
-    rm.onMessage("Server:GiftVIP:FindPlayerCallback", (message: any) => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timer);
-        rm.leave();
-        if (!message || !message.found) {
-          reject(new Error("Player not found."));
-        } else {
-          resolve({
-            username: message.username,
-            level: message.inv?.level || 1,
-            gold: message.inv?.gold || 0,
-            power: message.inv?.power || 0,
-            _id: message._id
-          });
-        }
-      }
-    });
-
-    rm.onError((code: number, msg?: string) => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timer);
-        rm.leave();
-        reject(new Error(`Game server returned error ${code}: ${msg || "Query rejected"}`));
-      }
-    });
-
-    rm.send("Client:GiftVIP:FindPlayer", { username: username.trim() });
-  });
 }

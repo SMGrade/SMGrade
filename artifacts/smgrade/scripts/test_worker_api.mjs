@@ -134,6 +134,9 @@ async function runTests() {
   await test("Admin login with canonical password", "POST", "/api/master/admin/login", {
     password: "harrison@smgrade.swordmasters2026",
   });
+  await test("Admin login with admin password", "POST", "/api/master/admin/login", {
+    password: "harrison@smgrade2026",
+  });
 
   // 9. Master Vault Unlock with canonical password
   const unlockRes = await test("Master unlock with canonical password", "POST", "/api/master/unlock", {
@@ -159,6 +162,12 @@ async function runTests() {
 
   // 10. Master Config
   await test("Admin config", "GET", "/api/master/admin/config");
+  await test("Admin config update with x-admin-password", "POST", "/api/master/admin/config", {
+    items: [],
+    prices: []
+  }, {
+    "x-admin-password": "harrison@smgrade2026"
+  });
 
   // 11. Arcade Player Check Username
   await test("Arcade check username", "GET", "/api/master/arcade/player/check-username?username=SuperDwarf&playerId=p123");
@@ -182,7 +191,11 @@ async function runTests() {
   if (!lbRes.data?.totalKills || !Array.isArray(lbRes.data.totalKills) || !lbRes.data.dwarfKills || !lbRes.data.elfKills) {
     throw new Error("Leaderboard response missing expected totalKills, dwarfKills, elfKills categories!");
   }
-  console.log(`   Confirmed: Leaderboard structured format verified with ${lbRes.data.totalKills.length} totalKill entries`);
+  const topTotalScore = lbRes.data.totalKills[0]?.score || 0;
+  if (topTotalScore < 1000) {
+    throw new Error(`Regression! Leaderboard top score is only ${topTotalScore}, historical accumulated scores not loaded!`);
+  }
+  console.log(`   Confirmed: Leaderboard structured format verified with ${lbRes.data.totalKills.length} totalKill entries, Top Score: ${topTotalScore} (${lbRes.data.totalKills[0]?.username})`);
 
   // 15. Live lookup when external server fails/rejects: must return clean error, never fake level 0
   const lookupRes = await test("Live lookup failing gracefully", "GET", "/api/live-lookup?username=NonExistentUserXYZ987654321");

@@ -14,7 +14,7 @@ export function buildSendPacket(type: string, message: unknown): ArrayBuffer {
   return result.buffer;
 }
 
-export async function createGameWebSocket(wsUrl: string): Promise<any> {
+export async function createGameWebSocket(wsUrl: string): Promise<{ ws: any; acceptIfNeeded: () => void }> {
   const wsHeaders = {
     "Origin": "https://swordmasters.io",
     "Referer": "https://swordmasters.io/",
@@ -24,7 +24,8 @@ export async function createGameWebSocket(wsUrl: string): Promise<any> {
   // Cloudflare Workers fetch with Upgrade: websocket
   if (typeof fetch === "function") {
     try {
-      const resp = await fetch(wsUrl, {
+      const fetchUrl = wsUrl.replace(/^wss:\/\//i, "https://").replace(/^ws:\/\//i, "http://");
+      const resp = await fetch(fetchUrl, {
         headers: {
           ...wsHeaders,
           "Upgrade": "websocket",
@@ -32,8 +33,13 @@ export async function createGameWebSocket(wsUrl: string): Promise<any> {
       });
       if ((resp as any).webSocket) {
         const ws = (resp as any).webSocket;
-        ws.accept();
-        return ws;
+        // Do NOT call accept() here! Return callback so listeners can be attached first.
+        return {
+          ws,
+          acceptIfNeeded: () => {
+            try { ws.accept(); } catch (_) {}
+          }
+        };
       }
     } catch (_) {}
   }
@@ -41,9 +47,11 @@ export async function createGameWebSocket(wsUrl: string): Promise<any> {
   // Global WebSocket constructor (Node.js with ws, or browser)
   if (typeof (globalThis as any).WebSocket !== "undefined") {
     try {
-      return new (globalThis as any).WebSocket(wsUrl, { headers: wsHeaders });
+      const ws = new (globalThis as any).WebSocket(wsUrl, { headers: wsHeaders });
+      return { ws, acceptIfNeeded: () => {} };
     } catch (_) {
-      return new (globalThis as any).WebSocket(wsUrl);
+      const ws = new (globalThis as any).WebSocket(wsUrl);
+      return { ws, acceptIfNeeded: () => {} };
     }
   }
 
@@ -87,7 +95,7 @@ export async function queryLivePlayer(username: string): Promise<any> {
   ].join("&");
 
   const wsUrl = `wss://${mmData.room.publicAddress}/${mmData.room.processId}/${mmData.room.roomId}?${queryParams}`;
-  const ws = await createGameWebSocket(wsUrl);
+  const { ws, acceptIfNeeded } = await createGameWebSocket(wsUrl);
 
   return new Promise((resolve, reject) => {
     let responded = false;
@@ -97,21 +105,35 @@ export async function queryLivePlayer(username: string): Promise<any> {
       responded = true;
       try { ws?.close(); } catch (_) {}
       reject(new Error("Player lookup timed out. Game servers did not respond."));
-    }, 6000);
+    }, 7000);
 
-    ws.binaryType = "arraybuffer";
+    try {
+      ws.binaryType = "arraybuffer";
+    } catch (_) {}
 
-    ws.addEventListener("message", (event: any) => {
+    ws.addEventListener("message", async (event: any) => {
       try {
-        const data = event.data as ArrayBuffer;
-        const bytes = Array.from(new Uint8Array(data)) as number[];
+        let raw = event.data;
+        if (typeof Blob !== "undefined" && raw instanceof Blob) {
+          raw = await raw.arrayBuffer();
+        }
+        let buffer: ArrayBuffer;
+        if (raw instanceof ArrayBuffer) {
+          buffer = raw;
+        } else if (raw?.buffer instanceof ArrayBuffer) {
+          buffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+        } else {
+          return;
+        }
+
+        const bytes = new Uint8Array(buffer);
         const code = bytes[0];
 
         if (code === JOIN_ROOM) {
           const ack = new Uint8Array([JOIN_ROOM]);
           ws.send(ack.buffer);
 
-          const packet = buildSendPacket("Client:SkinStatue:GetPlayerInfo", { username });
+          const packet = buildSendPacket("Client:SkinStatue:GetPlayerInfo", { username: username.trim() });
           ws.send(packet);
 
         } else if (code === ROOM_DATA) {
@@ -119,13 +141,13 @@ export async function queryLivePlayer(username: string): Promise<any> {
           let payloadOffset: number;
 
           try {
-            [type, payloadOffset] = msgpackDecodePartial(data, 1);
+            [type, payloadOffset] = msgpackDecodePartial(buffer, 1);
           } catch (typeErr: any) {
             return;
           }
 
           if (type === "Server:SkinStatue:GetPlayerInfo") {
-            const slicedBuffer = data.slice(payloadOffset);
+            const slicedBuffer = buffer.slice(payloadOffset);
             let message: any;
             try {
               message = msgpackDecode(slicedBuffer, 0);
@@ -144,10 +166,16 @@ export async function queryLivePlayer(username: string): Promise<any> {
               clearTimeout(timeoutHandle);
               try { ws?.close(); } catch (_) {}
               const playerInfo = message?.playerInfo || message;
-              if (!playerInfo?.username || !playerInfo?.inv) {
-                reject(new Error("Player not found or inventory data is empty."));
+              if (message?.found === false || (!playerInfo?.username && !playerInfo?.inv)) {
+                reject(new Error("Player not found."));
+              } else if (!playerInfo?.inv) {
+                reject(new Error("Player found but inventory data is empty."));
               } else {
-                resolve(playerInfo);
+                resolve({
+                  username: playerInfo.username || username,
+                  inv: playerInfo.inv,
+                  _id: message._id || playerInfo._id
+                });
               }
             }
           }
@@ -177,9 +205,13 @@ export async function queryLivePlayer(username: string): Promise<any> {
       if (!responded) {
         responded = true;
         clearTimeout(timeoutHandle);
-        reject(new Error("WebSocket closed unexpectedly by the game host."));
+        const reason = event.reason ? `: ${event.reason}` : "";
+        reject(new Error(`WebSocket closed by game host (Code ${event.code || 1006}${reason}).`));
       }
     });
+
+    // NOW that all listeners are safely attached, accept the WebSocket if in Cloudflare Workers!
+    acceptIfNeeded();
   });
 }
 
@@ -220,7 +252,7 @@ export async function queryLivePlayerLightweight(username: string): Promise<any>
   ].join("&");
 
   const wsUrl = `wss://${mmData.room.publicAddress}/${mmData.room.processId}/${mmData.room.roomId}?${queryParams}`;
-  const ws = await createGameWebSocket(wsUrl);
+  const { ws, acceptIfNeeded } = await createGameWebSocket(wsUrl);
 
   return new Promise((resolve, reject) => {
     let responded = false;
@@ -232,19 +264,33 @@ export async function queryLivePlayerLightweight(username: string): Promise<any>
       reject(new Error("Player lookup timed out. Game servers did not respond."));
     }, 6000);
 
-    ws.binaryType = "arraybuffer";
+    try {
+      ws.binaryType = "arraybuffer";
+    } catch (_) {}
 
-    ws.addEventListener("message", (event: any) => {
+    ws.addEventListener("message", async (event: any) => {
       try {
-        const data = event.data as ArrayBuffer;
-        const bytes = Array.from(new Uint8Array(data)) as number[];
+        let raw = event.data;
+        if (typeof Blob !== "undefined" && raw instanceof Blob) {
+          raw = await raw.arrayBuffer();
+        }
+        let buffer: ArrayBuffer;
+        if (raw instanceof ArrayBuffer) {
+          buffer = raw;
+        } else if (raw?.buffer instanceof ArrayBuffer) {
+          buffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+        } else {
+          return;
+        }
+
+        const bytes = new Uint8Array(buffer);
         const code = bytes[0];
 
         if (code === JOIN_ROOM) {
           const ack = new Uint8Array([JOIN_ROOM]);
           ws.send(ack.buffer);
 
-          const packet = buildSendPacket("Client:GiftVIP:FindPlayer", { username });
+          const packet = buildSendPacket("Client:GiftVIP:FindPlayer", { username: username.trim() });
           ws.send(packet);
 
         } else if (code === ROOM_DATA) {
@@ -252,13 +298,13 @@ export async function queryLivePlayerLightweight(username: string): Promise<any>
           let payloadOffset: number;
 
           try {
-            [type, payloadOffset] = msgpackDecodePartial(data, 1);
+            [type, payloadOffset] = msgpackDecodePartial(buffer, 1);
           } catch (typeErr: any) {
             return;
           }
 
           if (type === "Server:GiftVIP:FindPlayerCallback") {
-            const slicedBuffer = data.slice(payloadOffset);
+            const slicedBuffer = buffer.slice(payloadOffset);
             let message: any;
             try {
               message = msgpackDecode(slicedBuffer, 0);
@@ -315,8 +361,11 @@ export async function queryLivePlayerLightweight(username: string): Promise<any>
       if (!responded) {
         responded = true;
         clearTimeout(timeoutHandle);
-        reject(new Error("WebSocket closed unexpectedly by the game host."));
+        const reason = event.reason ? `: ${event.reason}` : "";
+        reject(new Error(`WebSocket closed by game host (Code ${event.code || 1006}${reason}).`));
       }
     });
+
+    acceptIfNeeded();
   });
 }
