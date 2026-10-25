@@ -116,10 +116,14 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
   const unlocked = !!token;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [isLoadingVault, setIsLoadingVault] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const attemptUnlock = async () => {
-    if (isUnlocking) return;
+    if (isUnlocking || isLoadingVault) return;
     setIsUnlocking(true);
+    setError(false);
+    setLoadError(null);
     try {
       const cleanPass = password.trim();
       const res = await fetch("/api/master/unlock", {
@@ -130,43 +134,53 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
       if (res.ok) {
         const json = await res.json();
         if (json.token) {
+          setIsLoadingVault(true);
           localStorage.setItem("smg_master_token", json.token);
           sessionStorage.setItem("smg_master_token", json.token);
+          await fetchVaultData(json.token);
           setToken(json.token);
-          setError(false);
+          setIsLoadingVault(false);
         } else {
           setError(true);
         }
       } else {
         setError(true);
       }
-    } catch {
+    } catch (err: any) {
       setError(true);
+      setLoadError(err.message || "Decryption network request failed");
     } finally {
       setIsUnlocking(false);
     }
   };
 
-  const fetchVaultData = async () => {
-    if (!token) return;
+  const fetchVaultData = async (authToken?: string) => {
+    const currentToken = authToken || token;
+    if (!currentToken) return;
 
     try {
       const headers = {
-        "x-master-token": token,
-        "Authorization": `Bearer ${token}`
+        "x-master-token": currentToken,
+        "Authorization": `Bearer ${currentToken}`
       };
 
       // Fetch analytics
       try {
         const statsRes = await fetch("/api/master/analytics", { headers });
-        if (statsRes.status === 401 && token !== "offline_master_token") {
+        if (statsRes.status === 401 && currentToken !== "offline_master_token") {
           localStorage.removeItem("smg_master_token");
           sessionStorage.removeItem("smg_master_token");
           setToken("");
           return;
         }
-        if (statsRes.ok) setStats(await statsRes.json());
-      } catch {}
+        if (!statsRes.ok) {
+          setLoadError(`Analytics request failed: HTTP ${statsRes.status}`);
+        } else {
+          setStats(await statsRes.json());
+        }
+      } catch (err: any) {
+        setLoadError(err.message || "Analytics network request failed");
+      }
 
       // Fetch lookups with universal query & filters
       let lookupUrl = "/api/master/lookup-logs?";
@@ -180,8 +194,12 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
         if (lookupsRes.ok) {
           const d = await lookupsRes.json();
           setLookups(Array.isArray(d) ? d : (d?.logs || []));
+        } else {
+          setLoadError(`Lookup logs request failed: HTTP ${lookupsRes.status}`);
         }
-      } catch {}
+      } catch (err: any) {
+        setLoadError(err.message || "Lookup logs network request failed");
+      }
 
       // Fetch activities with universal query
       let actUrl = "/api/master/activity-logs?";
@@ -192,8 +210,12 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
         if (actRes.ok) {
           const d = await actRes.json();
           backendActs = Array.isArray(d) ? d : (d?.logs || []);
+        } else {
+          setLoadError(`Activity logs request failed: HTTP ${actRes.status}`);
         }
-      } catch {}
+      } catch (err: any) {
+        setLoadError(err.message || "Activity logs network request failed");
+      }
 
       try {
         const localLogs = JSON.parse(localStorage.getItem("smg_master_logs") || "[]");
@@ -314,6 +336,20 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
     }
   };
 
+  if (isLoadingVault) {
+    return (
+      <div className="min-h-screen text-white flex flex-col justify-center items-center bg-[#03050b] p-6">
+        <div className="w-full max-w-sm border border-amber-500/20 rounded-2xl p-8 bg-[#070b13]/80 glass-panel shadow-[0_8px_32px_rgba(255,215,0,0.1)] text-center space-y-4">
+          <div className="w-12 h-12 border-3 border-amber-500/20 border-t-amber-400 rounded-full animate-spin mx-auto" />
+          <div>
+            <h2 className="text-xs font-black uppercase tracking-widest text-amber-400 font-display">SYNCHRONIZING MASTER ARCHIVES</h2>
+            <p className="text-[10px] text-white/50 font-mono mt-1">Retrieving player lookups, activity audits, and visit metrics from persistent database...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!unlocked) {
     return (
       <div className="min-h-screen text-white flex flex-col justify-center items-center bg-[#03050b] p-6">
@@ -346,6 +382,12 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
 
   return (
     <div className="min-h-screen bg-[#03050b] text-white flex flex-col">
+      {loadError && (
+        <div className="bg-red-500/10 border-b border-red-500/20 px-4 py-2 flex items-center justify-between text-xs text-red-400">
+          <span>⚠️ {loadError}</span>
+          <button onClick={() => setLoadError(null)} className="text-[10px] font-bold uppercase underline cursor-pointer">Dismiss</button>
+        </div>
+      )}
       {/* Header Banner */}
       <header className="border-b border-white/[0.04] px-4 py-2 bg-[#070b13]/80 backdrop-blur-md sticky top-0 z-20 flex justify-between items-center shadow-lg">
         <div className="flex items-center gap-3">

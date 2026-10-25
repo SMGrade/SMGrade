@@ -13,19 +13,29 @@ const router = Router();
 // Master Password (can be configured via env)
 const MASTER_PASSWORD = process.env.MASTER_PASSWORD || "harrison@smgrade.swordmasters2026";
 
-function isMasterPasswordValid(password: string): boolean {
+const ADMIN_HASH = "208ca5c3458cd1ef8770b06f46e7bf6f90777149408d06618dbe8ffb5d1f597e";
+const VAULT_HASH = "9ddfee9a33d701c3dcf8ba65a3cf6b84570956e436260c0bff5a2416f17958c3";
+const ADMIN_SALT = "smg_admin_salt_2026_v1";
+const VAULT_SALT = "smg_vault_salt_2026_v1";
+
+function isAdminPasswordValid(password: string): boolean {
   if (!password) return false;
   const p = password.trim();
-  const allowed = [
-    "harrison@smgrade",
-    "harrison@smgrade2026",
-    "harrison@smgrade.swordmasters2026",
-    "swordmasters-master-2026",
-    "smgrade2026"
-  ];
-  if (process.env.ADMIN_PASSWORD) allowed.push(process.env.ADMIN_PASSWORD.trim());
-  if (process.env.MASTER_PASSWORD) allowed.push(process.env.MASTER_PASSWORD.trim());
-  return allowed.includes(p);
+  if (process.env.ADMIN_PASSWORD && process.env.ADMIN_PASSWORD !== "[SENSITIVE]" && p === process.env.ADMIN_PASSWORD.trim()) return true;
+  const hash = crypto.createHash("sha256").update(p + ADMIN_SALT).digest("hex");
+  return hash === ADMIN_HASH;
+}
+
+function isVaultPasswordValid(password: string): boolean {
+  if (!password) return false;
+  const p = password.trim();
+  if (process.env.MASTER_PASSWORD && process.env.MASTER_PASSWORD !== "[SENSITIVE]" && p === process.env.MASTER_PASSWORD.trim()) return true;
+  const hash = crypto.createHash("sha256").update(p + VAULT_SALT).digest("hex");
+  return hash === VAULT_HASH;
+}
+
+function isMasterPasswordValid(password: string): boolean {
+  return isAdminPasswordValid(password) || isVaultPasswordValid(password);
 }
 
 // Rate limiting & Brute force protection map for Master Vault unlock
@@ -116,7 +126,7 @@ router.post("/unlock", async (req: any, res: any) => {
 
   const { password } = req.body || {};
 
-  if (isMasterPasswordValid(password)) {
+  if (isVaultPasswordValid(password)) {
     tracker.attempts = 0;
     tracker.lockoutUntil = 0;
     jsonDb.resetFailedUnlockAttempt(ipAddress);
@@ -839,7 +849,7 @@ router.get("/admin/config", (req: any, res: any) => {
 
 router.post("/admin/login", async (req: any, res: any) => {
   const { password } = req.body;
-  if (!isMasterPasswordValid(password)) {
+  if (!isAdminPasswordValid(password)) {
     return res.status(401).json({ error: "Incorrect administrative password." });
   }
   const token = crypto.randomUUID();
