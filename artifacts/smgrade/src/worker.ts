@@ -335,6 +335,32 @@ export async function handleApiRequest(req: Request, env: Env, ctx?: any): Promi
 
     try {
       const scores = scorePlayer(player);
+      if (player && player.username && (player.level || player.level === 0)) {
+        const userSession = getUserSession(req);
+        await jsonDb.addLookupLog({
+          usernameSearched: String(player.username).trim(),
+          ipAddress: clientIp,
+          sessionId: "grade-calc",
+          userAccount: userSession?.username || null,
+          userType: userSession ? "Registered" : "Guest",
+          status: "Success",
+          responseTimeMs: 0,
+          grade: scores.overallGrade || "B",
+          overallScore: scores.overallScore || 50,
+          powerScore: scores.powerScore || 50,
+          wealthScore: scores.wealthScore || 50,
+          gearScore: scores.gearScore || 50,
+          progressionScore: scores.progressScore || 50,
+          levelTier: scores.levelTier || "Initiate I",
+          recommendedUpgrade: scores.upgradeAdvice?.immediate ? `${scores.upgradeAdvice.immediate.name} Lv${scores.upgradeAdvice.immediate.level}` : "None",
+          playerLevel: Number(player.level) || 0,
+          playerPower: Number(player.powerRaw ?? player.power) || 0,
+          playerGold: Number(player.goldRaw ?? player.gold) || 0,
+          equippedSword: player.sword ? `${player.sword}${player.swordLevel ? ` Lv${player.swordLevel}` : ""}` : "None",
+          equippedShield: player.shield ? `${player.shield}${player.shieldLevel ? ` Lv${player.shieldLevel}` : ""}` : "None",
+          worldNumber: Number(player.world) || 1,
+        });
+      }
       return jsonResponse({ success: true, scores });
     } catch (err: any) {
       return errorResponse(err.message || "Failed to calculate scores", 500);
@@ -508,6 +534,31 @@ Respond in JSON with exactly this structure:
       const scores = scorePlayer(normalized);
       const duration = Date.now() - startTime;
 
+      const userSession = getUserSession(req);
+      await jsonDb.addLookupLog({
+        usernameSearched: normalized.username || username,
+        ipAddress: clientIp,
+        sessionId: "live-lookup",
+        userAccount: userSession?.username || null,
+        userType: userSession ? "Registered" : "Guest",
+        status: "Success",
+        responseTimeMs: duration,
+        grade: scores.overallGrade || "B",
+        overallScore: scores.overallScore || 50,
+        powerScore: scores.powerScore || 50,
+        wealthScore: scores.wealthScore || 50,
+        gearScore: scores.gearScore || 50,
+        progressionScore: scores.progressScore || 50,
+        levelTier: scores.levelTier || "Initiate I",
+        recommendedUpgrade: scores.upgradeAdvice?.immediate ? `${scores.upgradeAdvice.immediate.name} Lv${scores.upgradeAdvice.immediate.level}` : "None",
+        playerLevel: normalized.level || 0,
+        playerPower: normalized.powerRaw || 0,
+        playerGold: normalized.goldRaw || 0,
+        equippedSword: normalized.sword || "Unknown",
+        equippedShield: normalized.shield || "Unknown",
+        worldNumber: 1,
+      });
+
       await jsonDb.addActivityLog(username, "Live Lookup", `Looked up ${username}`, "Success", duration);
       return jsonResponse({ success: true, playerInfo, scores });
     } catch (err: any) {
@@ -530,7 +581,16 @@ Respond in JSON with exactly this structure:
     const password = String(body.password || "").trim();
 
     if (isMasterPasswordValid(password, env)) {
-      return jsonResponse({ success: true, message: "Admin authenticated." });
+      const token = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
+      await jsonDb.addMasterSession(token);
+      await jsonDb.addAuditLog("Admin Panel", "Admin Authenticated", `Login successful from IP: ${clientIp}`);
+      return jsonResponse({
+        success: true,
+        message: "Admin authenticated.",
+        token,
+        role: "admin",
+        expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+      });
     }
     return errorResponse("Invalid administrative credentials.", 401);
   }
@@ -1055,11 +1115,36 @@ Respond in JSON with exactly this structure:
     return jsonResponse({ success: true, score });
   }
 
-  if (path === "/api/master/arcade/player-history" || path === "/api/arcade/player-history") {
+  if (path === "/api/master/arcade/player-history" || path === "/api/arcade/player-history" || path === "/api/player-history") {
     const username = (url.searchParams.get("username") || "").trim().toLowerCase();
-    const scores = await jsonDb.getArcadeScores();
-    const playerLogs = scores.filter((s) => s.username.toLowerCase() === username);
-    return jsonResponse(playerLogs);
+    if (!username) {
+      return jsonResponse([]);
+    }
+    const allLogs = jsonDb.getLookupLogs();
+    const playerLogs = allLogs.filter(
+      (l) => l.usernameSearched.toLowerCase() === username && l.status === "Success" && (l.playerLevel || 0) > 0
+    );
+    playerLogs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const historyEntries = playerLogs.map((l) => ({
+      timestamp: l.timestamp,
+      level: l.playerLevel || 0,
+      power: l.playerPower || 0,
+      gold: l.playerGold || 0,
+      grade: l.grade || "B",
+      score: l.overallScore ?? Math.round(((l.gearScore || 50) + (l.wealthScore || 50) + (l.powerScore || 50) + (l.progressionScore || 50)) / 4),
+      tier: l.levelTier || "Initiate I",
+      equippedSword: l.equippedSword || "None",
+      equippedShield: l.equippedShield || "None",
+      gearScore: l.gearScore ?? 0,
+    }));
+    return jsonResponse(historyEntries);
+  }
+
+  if ((path === "/api/master/arcade/reset" || path === "/api/arcade/reset") && method === "POST") {
+    if (!verifyMasterToken(req)) return errorResponse("Unauthorized", 401);
+    await jsonDb.resetArcadeScores();
+    await jsonDb.addAuditLog("Master Admin", "Arcade Reset", `SM Revenge leaderboard reset executed from IP: ${clientIp}`);
+    return jsonResponse({ success: true, message: "Arcade leaderboard reset successfully." });
   }
 
   // 7. User Management Routes (/api/master/users/*)
@@ -1178,6 +1263,49 @@ Respond in JSON with exactly this structure:
 export default {
   async fetch(req: Request, env: Env, ctx: any): Promise<Response> {
     const url = new URL(req.url);
+    const pathname = url.pathname.toLowerCase();
+
+    // STRICT SECURITY GUARD: Block any attempt to access sensitive, configuration, database, or backup files
+    const sensitivePatterns = [
+      "/.env",
+      "/env.",
+      "/db.json",
+      "/arcade_scores",
+      "/neon_",
+      "/supabase_",
+      "/data/",
+      "/artifacts/",
+      "/backups/",
+      "/scripts/",
+      "/src/",
+      "package.json",
+      "pnpm-lock.yaml",
+      "tsconfig.json",
+      "wrangler.jsonc",
+      "wrangler.json",
+      "vite.config.ts"
+    ];
+
+    const isSensitive = sensitivePatterns.some((p) => pathname.includes(p)) ||
+      pathname.endsWith(".env") ||
+      pathname.endsWith(".json.bak") ||
+      pathname.endsWith(".bak") ||
+      pathname.endsWith(".tar.gz") ||
+      pathname.endsWith(".zip") ||
+      pathname.endsWith(".sql") ||
+      pathname.endsWith(".ts") ||
+      pathname.endsWith(".map");
+
+    if (isSensitive) {
+      return new Response(JSON.stringify({ error: "Access Denied: Private resource." }), {
+        status: 403,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Content-Type-Options": "nosniff",
+          "Cache-Control": "no-store",
+        },
+      });
+    }
 
     // If request is directed to /api/*, route directly to API handler
     if (url.pathname.startsWith("/api/") || url.pathname === "/api") {

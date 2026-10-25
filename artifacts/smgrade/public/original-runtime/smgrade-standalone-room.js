@@ -2244,6 +2244,29 @@
         console.log('[SMGrade Standalone Room] Keyboard-help section configured: only I, P, T retained.');
       }
 
+      // 4. In-Game Rules Board: Update to "No rules Y'all enjoy"
+      try {
+        const rulesRoot = app.root.findByGuid('29d90e89-6e8d-49ab-acd9-5fb44ecae145') || app.root.findByName('Rules');
+        if (rulesRoot) {
+          const disabledText = app.root.findByGuid('8db180a9-8e10-4ec1-95b2-efbf894d3620') || rulesRoot.findByName('disabledText');
+          if (disabledText) {
+            disabledText.enabled = false;
+            if (disabledText.element) disabledText.element.enabled = false;
+          }
+          const rulesText = app.root.findByGuid('e70fd6a5-c104-4643-b6a8-57971c6be74a') || rulesRoot.findByName('text');
+          if (rulesText) {
+            rulesText.enabled = true;
+            if (rulesText.element) {
+              rulesText.element.enabled = true;
+              rulesText.element.text = "No rules Y'all enjoy";
+            }
+          }
+          console.log('[SMGrade Standalone Room] Rules board set to: "No rules Y\'all enjoy"');
+        }
+      } catch (err) {
+        console.warn('[SMGrade Standalone Room] Failed to configure rules board:', err);
+      }
+
       // Initialize reliable distance-based proximity monitor for Storage and Elf NPCs
       this.setupNpcProximityTriggers();
     }

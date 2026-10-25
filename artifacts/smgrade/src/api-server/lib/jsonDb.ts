@@ -735,6 +735,26 @@ export class JsonDatabase {
     return this.data.arcadeScores || [];
   }
 
+  public async resetArcadeScores(): Promise<void> {
+    return this.executeAtomic(async () => {
+      this.data.arcadeScores = [];
+      if (this.pool && !this.dbDisabled) {
+        try {
+          await this.pool.query('TRUNCATE TABLE arcade_scores');
+        } catch (err) {
+          console.warn("[SMGrade DB] Failed to truncate arcade_scores table in database:", err);
+        }
+      }
+      try {
+        const arcadeFile = path.join(process.cwd(), "data", "arcade_scores.json");
+        if (fs.existsSync(arcadeFile)) {
+          fs.writeFileSync(arcadeFile, "[]\n", "utf8");
+        }
+      } catch (e) {}
+      await this.save(this.data);
+    });
+  }
+
   public async addArcadeScore(score: Omit<ArcadeScore, "id" | "timestamp">): Promise<ArcadeScore> {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();

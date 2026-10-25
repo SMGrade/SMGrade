@@ -28,10 +28,15 @@ function PasswordGate({ onUnlock, onTriggerMaster }: { onUnlock: () => void; onT
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: value })
       });
-      const data = await res.json() as { success?: boolean; error?: string };
+      const data = await res.json() as { success?: boolean; token?: string; error?: string };
       if (res.ok && data.success) {
         sessionStorage.setItem(ADMIN_KEY, "1");
         sessionStorage.setItem("smg_admin_password", value);
+        if (data.token) {
+          sessionStorage.setItem("smg_admin_token", data.token);
+          sessionStorage.setItem("smg_master_token", data.token);
+          localStorage.setItem("smg_master_token", data.token);
+        }
         onUnlock();
       } else {
         setError(true);
@@ -1420,6 +1425,7 @@ export default function Admin() {
     saveMarketData(marketItems);
 
     const adminPasswordToken = sessionStorage.getItem("smg_admin_password") || "";
+    const adminToken = sessionStorage.getItem("smg_admin_token") || sessionStorage.getItem("smg_master_token") || localStorage.getItem("smg_master_token") || "";
 
     console.log("[Client Save Payload]:", {
       itemsCount: items?.length,
@@ -1434,6 +1440,7 @@ export default function Admin() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(adminToken ? { "Authorization": `Bearer ${adminToken}`, "x-master-token": adminToken } : {}),
         "x-admin-password": adminPasswordToken
       },
       body: JSON.stringify({
@@ -1472,11 +1479,13 @@ export default function Admin() {
     setUnmappedAlerts([]);
 
     const adminPasswordToken = sessionStorage.getItem("smg_admin_password") || "";
+    const adminToken = sessionStorage.getItem("smg_admin_token") || sessionStorage.getItem("smg_master_token") || localStorage.getItem("smg_master_token") || "";
 
     fetch("/api/master/admin/config", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(adminToken ? { "Authorization": `Bearer ${adminToken}`, "x-master-token": adminToken } : {}),
         "x-admin-password": adminPasswordToken
       },
       body: JSON.stringify({

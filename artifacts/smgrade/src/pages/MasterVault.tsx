@@ -129,27 +129,14 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
       if (res.ok) {
         const json = await res.json();
         localStorage.setItem("smg_master_token", json.token);
+        sessionStorage.setItem("smg_master_token", json.token);
         setToken(json.token);
-        setError(false);
-      } else {
-        if (password === "harrison@smgrade.swordmasters2026") {
-          const offlineToken = "offline_master_token";
-          localStorage.setItem("smg_master_token", offlineToken);
-          setToken(offlineToken);
-          setError(false);
-        } else {
-          setError(true);
-        }
-      }
-    } catch {
-      if (password === "harrison@smgrade.swordmasters2026") {
-        const offlineToken = "offline_master_token";
-        localStorage.setItem("smg_master_token", offlineToken);
-        setToken(offlineToken);
         setError(false);
       } else {
         setError(true);
       }
+    } catch {
+      setError(true);
     } finally {
       setIsUnlocking(false);
     }

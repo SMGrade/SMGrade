@@ -58,3 +58,10 @@ artifacts/smgrade/src/api-server/**/*.js.map
 
 artifacts/smgrade/scratch/
 .vercel
+/db_storage.json
+/data/
+.neon
+artifacts/backups/
+artifacts/smgrade/scripts/diagnose_production.mjs
+artifacts/smgrade/scripts/test_authentic_ui_click.mjs
+artifacts/smgrade/scripts/test_live_lookup.ts
