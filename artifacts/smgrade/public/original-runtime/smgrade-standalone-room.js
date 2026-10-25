@@ -1658,12 +1658,12 @@
       }
 
       // WORLD 1 ELF NPC (CombinerController - Category 5: Elf operations)
-      else if (type === 'Client:CombinerController:forge') {
+      else if (type === 'Client:CombinerController:forge' || type === 'Client:CombinerController:combine') {
         if (!inv) return;
         const activeItemId = data?.activeItemId;
         const isSword = data?.isSword !== false;
         const list = isSword ? inv.swords : inv.shields;
-        let item = list.find(s => s.itemId === activeItemId);
+        let item = activeItemId ? list.find(s => s.itemId === activeItemId) : (data?.itemType !== undefined ? list.find(s => s.type === data.itemType && s.level >= 5) : null);
 
         if (!item) {
           this.networkManager.app?.fire("WarningTextController:setWarning", "Item not found!", 5, new pc.Color(1, 0, 0, 1));
@@ -1708,7 +1708,10 @@
         }
 
         const roll = Math.random();
-        const isSuccess = roll < s;
+        let isSuccess = data?.forceSuccess !== undefined
+          ? !!data.forceSuccess
+          : (this._forceNextElfSuccess !== undefined ? Boolean(this._forceNextElfSuccess) : (roll < s));
+        if (this._forceNextElfSuccess !== undefined) delete this._forceNextElfSuccess;
 
         // Ensure selected item is first in the 10 consumed items
         const toConsume = [item, ...matching.filter(i => i.itemId !== item.itemId)].slice(0, 10);
