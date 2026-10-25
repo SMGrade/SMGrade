@@ -1696,39 +1696,191 @@
           return;
         }
 
-        // Consume exactly 10 matching Level 5 items
-        const toConsume = matching.slice(0, 10);
+        // Exact percentage-based success/failure mechanics from game source code:
+        // Level > 5000: 40%, > 4000: 35%, > 3000: 30%, > 2000: 25%, <= 2000: 10%
+        const playerLevel = inv.level || this.profile.level || 1;
+        let s = playerLevel > 5000 ? 0.40 :
+                playerLevel > 4000 ? 0.35 :
+                playerLevel > 3000 ? 0.30 :
+                playerLevel > 2000 ? 0.25 : 0.10;
+
+        let fortuneLvl = 0;
+        if (typeof getFortuneLevel === "function") {
+          try { fortuneLvl = getFortuneLevel(); } catch (_) {}
+        }
+        s *= (1 + 0.05 * fortuneLvl);
+        if (s > 1) s = 1;
+
+        // Luck boost handling (cost: 1e15 gold for T44 sword / T42 shield, else 1e14 gold)
+        const currentPrice = (isSword && item.type === 44) || (!isSword && item.type === 42) ? 1e15 : 1e14;
+        if (data?.luckBoost) {
+          if ((this.networkManager.goldAmount || 0) >= currentPrice) {
+            this.networkManager.goldAmount -= currentPrice;
+            inv.set('gold', this.networkManager.goldAmount);
+            this.profile.gold = this.networkManager.goldAmount;
+            if (this.networkManager.goldStatText?.element) {
+              this.networkManager.goldStatText.element.text = numRound(this.networkManager.goldAmount);
+            }
+            s = Math.min(2 * s, 1.0);
+          }
+        }
+
+        const roll = Math.random();
+        const isSuccess = roll < s;
+
+        // Ensure selected item is first in the 10 consumed items
+        const toConsume = [item, ...matching.filter(i => i.itemId !== item.itemId)].slice(0, 10);
+        const consumedIds = new Set(toConsume.map(c => c.itemId));
+
+        // Consume exactly 10 matching Level 5 items from schema list and lookup table
         for (const consumed of toConsume) {
           delete this.networkManager.items[consumed.itemId];
           list.remove(consumed);
         }
 
-        let nextType;
-        if (isSword) {
-          nextType = item.type === 31 ? 37 : item.type + 1;
+        // Permanently remove from persisted profile inventory
+        if (this.profile.inventory) {
+          if (isSword && this.profile.inventory.swords) {
+            this.profile.inventory.swords = this.profile.inventory.swords.filter(s => !consumedIds.has(s.itemId));
+          } else if (!isSword && this.profile.inventory.shields) {
+            this.profile.inventory.shields = this.profile.inventory.shields.filter(sh => !consumedIds.has(sh.itemId));
+          }
+        }
+
+        if (isSuccess) {
+          // SUCCESS: Upgrade item to next tier at Level 1 with enchantments cleared
+          let nextType;
+          if (isSword) {
+            nextType = item.type === 31 ? 37 : item.type + 1;
+          } else {
+            nextType = item.type === 30 ? 35 : item.type + 1;
+          }
+
+          const newItem = this.createItemSchema({
+            type: nextType,
+            level: 1,
+            enchantments: [],
+            isLocked: false
+          }, isSword);
+
+          list.push(newItem);
+          this.networkManager.items[newItem.itemId] = newItem;
+
+          if (this.profile.inventory) {
+            const pList = isSword ? (this.profile.inventory.swords = this.profile.inventory.swords || []) : (this.profile.inventory.shields = this.profile.inventory.shields || []);
+            pList.push({
+              itemId: newItem.itemId,
+              type: newItem.type,
+              level: newItem.level,
+              enchantments: [],
+              isLocked: false
+            });
+          }
+
+          // If active item was among consumed, equip the new upgraded item
+          if (isSword && inv.activeSword && consumedIds.has(inv.activeSword.itemId)) {
+            inv.activeSword.set('type', newItem.type);
+            inv.activeSword.set('level', newItem.level);
+            inv.activeSword.set('itemId', newItem.itemId);
+            inv.activeSword.enchantments.items = [];
+            inv.activeSword.enchantments.triggerChange?.();
+            inv.set('activeSword', inv.activeSword);
+            this.profile.activeSword = newItem.type;
+            this.profile.activeSwordLevel = newItem.level;
+            this.profile.activeSwordId = newItem.itemId;
+            this.profile.activeSwordType = newItem.type;
+            const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
+            if (pCtrl) pCtrl.setActiveSword(newItem.type, []);
+          } else if (!isSword && inv.activeShield && consumedIds.has(inv.activeShield.itemId)) {
+            inv.activeShield.set('type', newItem.type);
+            inv.activeShield.set('level', newItem.level);
+            inv.activeShield.set('itemId', newItem.itemId);
+            inv.activeShield.enchantments.items = [];
+            inv.activeShield.enchantments.triggerChange?.();
+            inv.set('activeShield', inv.activeShield);
+            this.profile.activeShield = newItem.type;
+            this.profile.activeShieldLevel = newItem.level;
+            this.profile.activeShieldId = newItem.itemId;
+            this.profile.activeShieldType = newItem.type;
+            const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
+            if (pCtrl) pCtrl.setActiveShield(newItem.type, []);
+            this.recalculatePlayerStats(inv);
+          }
+
+          this.persistInventory();
+          saveLocalArcadeProfile(this.profile);
+          if (window.logMasterAction) {
+            window.logMasterAction(this.profile.username, "Elf Combiner Forge", `Combined 10x Level 5 into Tier ${nextType} Level 1! (Odds: ${Math.round(s * 100)}%)`, "Success");
+          }
+
+          // Category 5: Elf operations (Live Leaderboard Sync)
+          this.recordPlayerStat({ elfDelta: 1 });
+
+          this.dispatchMessage("Server:CombinerController:forge", newItem);
         } else {
-          nextType = item.type === 30 ? 35 : item.type + 1;
+          // FAILURE / BURN: Permanently burn and remove item(s), award refund gold exactly as game source code specifies
+          const swordsCatalog = window.SWORDMASTERS_SWORDS || (window.StaticData && StaticData.swords) || window.swords || [];
+          const shieldsCatalog = window.SWORDMASTERS_SHIELDS || (window.StaticData && StaticData.shields) || window.shields || [];
+          const itemMeta = isSword ? (swordsCatalog[item.type] || { priceGold: 100 }) : (shieldsCatalog[item.type] || { priceGold: 100 });
+          const refundGold = Math.round(Number(itemMeta.priceGold || 100) * Math.pow(2, (item.level || 5) - 1));
+
+          // If active item was burned, reset to default starter equipment
+          if (isSword && inv.activeSword && consumedIds.has(inv.activeSword.itemId)) {
+            inv.activeSword.set('type', 1);
+            inv.activeSword.set('level', 1);
+            inv.activeSword.set('itemId', 'starter_sword');
+            inv.activeSword.enchantments.items = [];
+            inv.activeSword.enchantments.triggerChange?.();
+            inv.set('activeSword', inv.activeSword);
+            this.profile.activeSword = 1;
+            this.profile.activeSwordLevel = 1;
+            this.profile.activeSwordId = 'starter_sword';
+            this.profile.activeSwordType = 1;
+            const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
+            if (pCtrl) pCtrl.setActiveSword(1, []);
+          } else if (!isSword && inv.activeShield && consumedIds.has(inv.activeShield.itemId)) {
+            inv.activeShield.set('type', 1);
+            inv.activeShield.set('level', 1);
+            inv.activeShield.set('itemId', 'starter_shield');
+            inv.activeShield.enchantments.items = [];
+            inv.activeShield.enchantments.triggerChange?.();
+            inv.set('activeShield', inv.activeShield);
+            this.profile.activeShield = 1;
+            this.profile.activeShieldLevel = 1;
+            this.profile.activeShieldId = 'starter_shield';
+            this.profile.activeShieldType = 1;
+            const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
+            if (pCtrl) pCtrl.setActiveShield(1, []);
+            this.recalculatePlayerStats(inv);
+          }
+
+          // Credit refund gold to player
+          this.networkManager.goldAmount = (this.networkManager.goldAmount || 0) + refundGold;
+          inv.set('gold', this.networkManager.goldAmount);
+          this.profile.gold = this.networkManager.goldAmount;
+          if (this.networkManager.goldStatText?.element) {
+            this.networkManager.goldStatText.element.text = numRound(this.networkManager.goldAmount);
+          }
+
+          this.persistInventory();
+          saveLocalArcadeProfile(this.profile);
+
+          if (window.logMasterAction) {
+            window.logMasterAction(
+              this.profile.username,
+              "Elf Combiner Burn",
+              `Elf combine failed: 10x Level 5 items burned permanently. Refunded ${refundGold} gold. (Odds: ${Math.round(s * 100)}%)`,
+              "Failed"
+            );
+          }
+
+          // Category 5: Elf operations (Live Leaderboard Sync)
+          this.recordPlayerStat({ elfDelta: 1 });
+
+          // Dispatch Server:CombinerController:forgeFailed to trigger flame particles, burn sound, refund warning & removal
+          this.dispatchMessage("Server:CombinerController:forgeFailed");
         }
 
-        const newItem = this.createItemSchema({
-          type: nextType,
-          level: 1,
-          enchantments: [],
-          isLocked: false
-        }, isSword);
-
-        list.push(newItem);
-        this.networkManager.items[newItem.itemId] = newItem;
-
-        this.persistInventory();
-        if (window.logMasterAction) {
-          window.logMasterAction(this.profile.username, "Elf Combiner Forge", `Combined 10x into Tier ${nextType} Level 1!`, "Success");
-        }
-
-        // Category 5: Elf operations (Live Leaderboard Sync)
-        this.recordPlayerStat({ elfDelta: 1 });
-
-        this.dispatchMessage("Server:CombinerController:forge", newItem);
         if (this.networkManager.inventoryController) {
           this.networkManager.inventoryController.sortInventory();
           this.networkManager.inventoryController.setActiveSlot();
