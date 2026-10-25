@@ -370,6 +370,13 @@
           }));
         }
 
+        if (parsed.activeSword !== undefined && parsed.activeSwordType === undefined) {
+          parsed.activeSwordType = parsed.activeSword;
+        }
+        if (parsed.activeShield !== undefined && parsed.activeShieldType === undefined) {
+          parsed.activeShieldType = parsed.activeShield;
+        }
+
         const registeredName = localStorage.getItem('smg_registered_username');
         if (registeredName) {
           parsed.username = registeredName;
@@ -507,42 +514,58 @@
       this.state.players.add(this.sessionId, playerSchema);
 
       // B. Setup Player Inventory Schema from Persistent Profile
-      const swordsArray = (this.profile.swords && this.profile.swords.length > 0)
-        ? this.profile.swords.map(s => this.createItemSchema(s, true))
-        : [this.createItemSchema({ itemId: 'sword_starter_01', type: this.profile.activeSwordType || 1, level: this.profile.activeSwordLevel || 1, enchantments: this.profile.activeSwordEnchants || [], isLocked: false }, true)];
+      const rawSwords = Array.isArray(this.profile.swords)
+        ? this.profile.swords
+        : (this.profile.activeSwordType > 0
+          ? [{ itemId: 'sword_starter_01', type: this.profile.activeSwordType || 1, level: this.profile.activeSwordLevel || 1, enchantments: this.profile.activeSwordEnchants || [], isLocked: false }]
+          : []);
+      const swordsArray = rawSwords.map(s => this.createItemSchema(s, true));
 
-      const shieldsArray = (this.profile.shields && this.profile.shields.length > 0)
-        ? this.profile.shields.map(s => this.createItemSchema(s, false))
-        : [this.createItemSchema({ itemId: 'shield_starter_01', type: this.profile.activeShieldType || 1, level: this.profile.activeShieldLevel || 1, enchantments: this.profile.activeShieldEnchants || [], isLocked: false }, false)];
+      const rawShields = Array.isArray(this.profile.shields)
+        ? this.profile.shields
+        : (this.profile.activeShieldType > 0
+          ? [{ itemId: 'shield_starter_01', type: this.profile.activeShieldType || 1, level: this.profile.activeShieldLevel || 1, enchantments: this.profile.activeShieldEnchants || [], isLocked: false }]
+          : []);
+      const shieldsArray = rawShields.map(s => this.createItemSchema(s, false));
 
       const petsArray = (this.profile.pets || []).map(p => this.createPetSchema(p));
       const activePetsArray = (this.profile.activePets || []).slice(0, 3).map(ap => new LocalEntitySchema(ap));
       const oresArray = (this.profile.ores || []).map(o => this.createOreSchema(o));
 
-      const activeSwordItem = swordsArray.find(s => s.type === this.profile.activeSwordType) || swordsArray[0];
-      const activeShieldItem = shieldsArray.find(s => s.type === this.profile.activeShieldType) || shieldsArray[0];
+      // Resolve equipped sword/shield state without automatic fallback to starter gear
+      const isSwordEquipped = (Number(this.profile.activeSwordType) > 0) && (this.profile.activeSwordId !== 'none');
+      const activeSwordItem = isSwordEquipped
+        ? (swordsArray.find(s => (this.profile.activeSwordId && s.itemId === this.profile.activeSwordId) || (s.type === this.profile.activeSwordType))
+           || { type: Number(this.profile.activeSwordType), level: this.profile.activeSwordLevel || 1, itemId: this.profile.activeSwordId || 'active_sword', enchantments: this.profile.activeSwordEnchants || [] })
+        : null;
 
-      // Decouple active weapon schemas from inventory items so equipping/unequipping doesn't mutate inventory
+      const isShieldEquipped = (Number(this.profile.activeShieldType) > 0) && (this.profile.activeShieldId !== 'none');
+      const activeShieldItem = isShieldEquipped
+        ? (shieldsArray.find(s => (this.profile.activeShieldId && s.itemId === this.profile.activeShieldId) || (s.type === this.profile.activeShieldType))
+           || { type: Number(this.profile.activeShieldType), level: this.profile.activeShieldLevel || 1, itemId: this.profile.activeShieldId || 'active_shield', enchantments: this.profile.activeShieldEnchants || [] })
+        : null;
+
+      // Decouple active weapon schemas from inventory items (type: 0, itemId: 'none' when unequipped)
       const activeSwordSchema = new LocalEntitySchema({
-        type: activeSwordItem.type,
-        level: activeSwordItem.level,
-        itemId: activeSwordItem.itemId,
-        enchantments: new LocalArraySchema((activeSwordItem.enchantments?.items || activeSwordItem.enchantments || []).map(e => new LocalEntitySchema({
+        type: activeSwordItem ? activeSwordItem.type : 0,
+        level: activeSwordItem ? activeSwordItem.level : 1,
+        itemId: activeSwordItem ? activeSwordItem.itemId : 'none',
+        enchantments: new LocalArraySchema(activeSwordItem ? ((activeSwordItem.enchantments?.items || activeSwordItem.enchantments || []).map(e => new LocalEntitySchema({
           type: e.type,
           level: e.level,
           name: e.name || ''
-        })))
+        }))) : [])
       });
 
       const activeShieldSchema = new LocalEntitySchema({
-        type: activeShieldItem.type,
-        level: activeShieldItem.level,
-        itemId: activeShieldItem.itemId,
-        enchantments: new LocalArraySchema((activeShieldItem.enchantments?.items || activeShieldItem.enchantments || []).map(e => new LocalEntitySchema({
+        type: activeShieldItem ? activeShieldItem.type : 0,
+        level: activeShieldItem ? activeShieldItem.level : 1,
+        itemId: activeShieldItem ? activeShieldItem.itemId : 'none',
+        enchantments: new LocalArraySchema(activeShieldItem ? ((activeShieldItem.enchantments?.items || activeShieldItem.enchantments || []).map(e => new LocalEntitySchema({
           type: e.type,
           level: e.level,
           name: e.name || ''
-        })))
+        }))) : [])
       });
 
       const swordsSchema = new LocalArraySchema(swordsArray);
@@ -634,6 +657,22 @@
         }
         if (this.networkManager.powerStatText?.element) {
           this.networkManager.powerStatText.element.text = numRound(this.profile.power || 2500);
+        }
+        const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
+        if (pCtrl) {
+          if (!isSwordEquipped) {
+            pCtrl.setActiveSword(0, []);
+            pCtrl.activeSwordType = 0;
+            if (pCtrl.activeSword) pCtrl.activeSword.enabled = false;
+          }
+          if (!isShieldEquipped) {
+            pCtrl.setActiveShield(0, []);
+            pCtrl.activeShieldType = 0;
+            if (pCtrl.activeShield) pCtrl.activeShield.enabled = false;
+          }
+        }
+        if (this.networkManager.inventoryController) {
+          this.networkManager.inventoryController.setActiveSlot();
         }
         this.updateLiveLeaderboards();
       }, 500);
@@ -837,15 +876,15 @@
 
         const playerCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
         const activeSword = inv?.activeSword;
-        const activeSwordType = activeSword?.type || 1;
+        const activeSwordType = (activeSword && activeSword.type !== undefined) ? activeSword.type : 0;
         const activeSwordLevel = activeSword?.level || 1;
         const swordsCatalog = window.SWORDMASTERS_SWORDS || (window.StaticData && StaticData.swords) || [];
-        const swordData = swordsCatalog[activeSwordType] || { damage: 10 };
+        const swordData = (activeSwordType > 0 ? swordsCatalog[activeSwordType] : null) || { damage: 5 };
 
         // Base damage calculation
-        const baseDmg = swordData.damage || 10;
+        const baseDmg = swordData.damage || 5;
         const powerMult = inv?.powerMultiplier || 1.0;
-        const levelMult = activeSwordLevel;
+        const levelMult = activeSwordType > 0 ? activeSwordLevel : 1;
         let finalDamage = Math.max(1, Math.round(baseDmg * levelMult * powerMult));
 
         // Evaluate sword enchantments
@@ -1020,6 +1059,8 @@
               inv.set('activeSword', inv.activeSword);
               this.profile.activeSwordType = swordItem.type;
               this.profile.activeSwordLevel = swordItem.level;
+              this.profile.activeSwordId = swordItem.itemId;
+              this.profile.activeSword = swordItem.type;
               this.profile.activeSwordEnchants = enchants.map(e => ({ type: e.type, level: e.level, name: e.name }));
               saveLocalArcadeProfile(this.profile);
               const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
@@ -1031,24 +1072,9 @@
               }
             }
           } else {
-            // Unequip sword back to starter sword
-            inv.activeSword.set('type', 1);
-            inv.activeSword.set('level', 1);
-            inv.activeSword.set('itemId', 'default_sword');
-            inv.activeSword.enchantments.items = [];
-            inv.activeSword.enchantments.triggerChange();
-            inv.set('activeSword', inv.activeSword);
-            this.profile.activeSwordType = 1;
-            this.profile.activeSwordLevel = 1;
-            this.profile.activeSwordEnchants = [];
+            // Unequip sword
+            this.unequipSwordLocally();
             saveLocalArcadeProfile(this.profile);
-            const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
-            if (pCtrl) {
-              pCtrl.setActiveSword(1, []);
-            }
-            if (this.networkManager.inventoryController) {
-              this.networkManager.inventoryController.setActiveSlot();
-            }
           }
         } else {
           if (data.equip) {
@@ -1067,6 +1093,8 @@
               inv.set('activeShield', inv.activeShield);
               this.profile.activeShieldType = shieldItem.type;
               this.profile.activeShieldLevel = shieldItem.level;
+              this.profile.activeShieldId = shieldItem.itemId;
+              this.profile.activeShield = shieldItem.type;
               this.profile.activeShieldEnchants = enchants.map(e => ({ type: e.type, level: e.level, name: e.name }));
               this.recalculatePlayerStats(inv);
               saveLocalArcadeProfile(this.profile);
@@ -1079,25 +1107,9 @@
               }
             }
           } else {
-            // Unequip shield back to starter shield
-            inv.activeShield.set('type', 1);
-            inv.activeShield.set('level', 1);
-            inv.activeShield.set('itemId', 'default_shield');
-            inv.activeShield.enchantments.items = [];
-            inv.activeShield.enchantments.triggerChange();
-            inv.set('activeShield', inv.activeShield);
-            this.profile.activeShieldType = 1;
-            this.profile.activeShieldLevel = 1;
-            this.profile.activeShieldEnchants = [];
-            this.recalculatePlayerStats(inv);
+            // Unequip shield
+            this.unequipShieldLocally();
             saveLocalArcadeProfile(this.profile);
-            const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
-            if (pCtrl) {
-              pCtrl.setActiveShield(1, []);
-            }
-            if (this.networkManager.inventoryController) {
-              this.networkManager.inventoryController.setActiveSlot();
-            }
           }
         }
       }
@@ -1241,12 +1253,7 @@
               this.profile.inventory.swords = this.profile.inventory.swords.filter(s => s.itemId !== item.itemId);
             }
             if (inv.activeSword && inv.activeSword.itemId === item.itemId) {
-              inv.activeSword.set('type', 1);
-              inv.activeSword.set('level', 1);
-              inv.activeSword.set('itemId', 'starter_sword');
-              this.profile.activeSword = 1;
-              this.profile.activeSwordLevel = 1;
-              this.profile.activeSwordId = 'starter_sword';
+              this.unequipSwordLocally();
             }
           } else {
             const shIdx = inv.shields.items.findIndex(sh => sh.itemId === item.itemId);
@@ -1255,15 +1262,10 @@
               this.profile.inventory.shields = this.profile.inventory.shields.filter(sh => sh.itemId !== item.itemId);
             }
             if (inv.activeShield && inv.activeShield.itemId === item.itemId) {
-              inv.activeShield.set('type', 0);
-              inv.activeShield.set('level', 1);
-              inv.activeShield.set('itemId', 'none');
-              this.profile.activeShield = 0;
-              this.profile.activeShieldLevel = 1;
-              this.profile.activeShieldId = 'none';
-              this.recalculatePlayerStats(inv);
+              this.unequipShieldLocally();
             }
           }
+          delete this.networkManager.items[item.itemId];
 
           // Credit refund gold to player
           this.networkManager.goldAmount = (this.networkManager.goldAmount || 0) + refundGold;
@@ -1622,31 +1624,11 @@
           const itemMeta = isSword ? (swordsCatalog[item.type] || { priceGold: 100 }) : (shieldsCatalog[item.type] || { priceGold: 100 });
           const goldGain = Math.round(Number(itemMeta.priceGold || 100) * Math.pow(2, (item.level || 1) - 1));
 
-          // If currently equipped, unequip and reset to Level 1 default
+          // If currently equipped, unequip and sync 3D player visuals immediately
           if (isSword && inv.activeSword.itemId === item.itemId) {
-            inv.activeSword.set('type', 1);
-            inv.activeSword.set('level', 1);
-            inv.activeSword.set('itemId', 'default_sword');
-            inv.activeSword.enchantments.items = [];
-            inv.activeSword.enchantments.triggerChange();
-            inv.set('activeSword', inv.activeSword);
-            this.profile.activeSwordType = 1;
-            this.profile.activeSwordLevel = 1;
-            this.profile.activeSwordEnchants = [];
-            const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
-            if (pCtrl) pCtrl.setActiveSword(1, []);
+            this.unequipSwordLocally();
           } else if (!isSword && inv.activeShield.itemId === item.itemId) {
-            inv.activeShield.set('type', 1);
-            inv.activeShield.set('level', 1);
-            inv.activeShield.set('itemId', 'default_shield');
-            inv.activeShield.enchantments.items = [];
-            inv.activeShield.enchantments.triggerChange();
-            inv.set('activeShield', inv.activeShield);
-            this.profile.activeShieldType = 1;
-            this.profile.activeShieldLevel = 1;
-            this.profile.activeShieldEnchants = [];
-            const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
-            if (pCtrl) pCtrl.setActiveShield(1, []);
+            this.unequipShieldLocally();
           }
 
           // Remove burned item from items registry and list
@@ -1824,34 +1806,11 @@
           const itemMeta = isSword ? (swordsCatalog[item.type] || { priceGold: 100 }) : (shieldsCatalog[item.type] || { priceGold: 100 });
           const refundGold = Math.round(Number(itemMeta.priceGold || 100) * Math.pow(2, (item.level || 5) - 1));
 
-          // If active item was burned, reset to default starter equipment
+          // If active item was burned, unequip completely so it disappears from 3D player immediately
           if (isSword && inv.activeSword && consumedIds.has(inv.activeSword.itemId)) {
-            inv.activeSword.set('type', 1);
-            inv.activeSword.set('level', 1);
-            inv.activeSword.set('itemId', 'starter_sword');
-            inv.activeSword.enchantments.items = [];
-            inv.activeSword.enchantments.triggerChange?.();
-            inv.set('activeSword', inv.activeSword);
-            this.profile.activeSword = 1;
-            this.profile.activeSwordLevel = 1;
-            this.profile.activeSwordId = 'starter_sword';
-            this.profile.activeSwordType = 1;
-            const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
-            if (pCtrl) pCtrl.setActiveSword(1, []);
+            this.unequipSwordLocally();
           } else if (!isSword && inv.activeShield && consumedIds.has(inv.activeShield.itemId)) {
-            inv.activeShield.set('type', 1);
-            inv.activeShield.set('level', 1);
-            inv.activeShield.set('itemId', 'starter_shield');
-            inv.activeShield.enchantments.items = [];
-            inv.activeShield.enchantments.triggerChange?.();
-            inv.set('activeShield', inv.activeShield);
-            this.profile.activeShield = 1;
-            this.profile.activeShieldLevel = 1;
-            this.profile.activeShieldId = 'starter_shield';
-            this.profile.activeShieldType = 1;
-            const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
-            if (pCtrl) pCtrl.setActiveShield(1, []);
-            this.recalculatePlayerStats(inv);
+            this.unequipShieldLocally();
           }
 
           // Credit refund gold to player
@@ -2120,22 +2079,7 @@
 
             // If equipped, unequip and sync 3D player visuals immediately
             if (inv.activeSword && inv.activeSword.itemId === item.itemId) {
-              inv.activeSword.set('type', 1);
-              inv.activeSword.set('level', 1);
-              inv.activeSword.set('itemId', 'default_sword');
-              inv.activeSword.enchantments.items = [];
-              inv.activeSword.enchantments.triggerChange();
-              inv.set('activeSword', inv.activeSword);
-              this.profile.activeSwordType = 1;
-              this.profile.activeSwordLevel = 1;
-              this.profile.activeSwordEnchants = [];
-              const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
-              if (pCtrl) {
-                pCtrl.setActiveSword(1, []);
-              }
-              if (this.networkManager.inventoryController) {
-                this.networkManager.inventoryController.setActiveSlot();
-              }
+              this.unequipSwordLocally();
             }
 
             // Remove using LocalArraySchema.remove so onRemove listeners fire, resetting slot UI and re-sorting inventory
@@ -2162,23 +2106,7 @@
 
             // If equipped, unequip and sync 3D player visuals immediately
             if (inv.activeShield && inv.activeShield.itemId === item.itemId) {
-              inv.activeShield.set('type', 1);
-              inv.activeShield.set('level', 1);
-              inv.activeShield.set('itemId', 'default_shield');
-              inv.activeShield.enchantments.items = [];
-              inv.activeShield.enchantments.triggerChange();
-              inv.set('activeShield', inv.activeShield);
-              this.profile.activeShieldType = 1;
-              this.profile.activeShieldLevel = 1;
-              this.profile.activeShieldEnchants = [];
-              this.recalculatePlayerStats(inv);
-              const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
-              if (pCtrl) {
-                pCtrl.setActiveShield(1, []);
-              }
-              if (this.networkManager.inventoryController) {
-                this.networkManager.inventoryController.setActiveSlot();
-              }
+              this.unequipShieldLocally();
             }
 
             inv.shields.remove(item);
@@ -2242,11 +2170,11 @@
       if (!inv) return;
       const level = inv.level || 1;
       const shieldsCatalog = window.SWORDMASTERS_SHIELDS || (window.StaticData && StaticData.shields) || [];
-      const activeShieldType = inv.activeShield?.type || 1;
-      const shieldData = shieldsCatalog[activeShieldType] || { damageProtection: 100 };
-      const prot = (shieldData.damageProtection || 100) * (inv.activeShield?.level || 1);
+      const activeShieldType = inv.activeShield?.type || 0;
+      const shieldData = activeShieldType > 0 ? (shieldsCatalog[activeShieldType] || { damageProtection: 100 }) : { damageProtection: 0 };
+      const prot = activeShieldType > 0 ? ((shieldData.damageProtection || 100) * (inv.activeShield?.level || 1)) : 0;
 
-      const shieldMultiplier = 1 + Math.min(2.0, (prot - 100) / 500);
+      const shieldMultiplier = activeShieldType > 0 ? (1 + Math.min(2.0, Math.max(0, prot - 100) / 500)) : 1.0;
       const newMaxHealth = Math.max(100, Math.round((100 + (level - 1) * 15) * shieldMultiplier));
 
       inv.set('maxHealth', newMaxHealth);
@@ -2258,6 +2186,80 @@
 
       if (this.networkManager?.healthBar) {
         this.networkManager.healthBar.setup();
+      }
+    }
+
+    unequipSwordLocally() {
+      const inv = this.state.playerInventories.items[this.sessionId];
+      if (!inv) return;
+
+      if (inv.activeSword) {
+        inv.activeSword.set('type', 0);
+        inv.activeSword.set('level', 1);
+        inv.activeSword.set('itemId', 'none');
+        if (inv.activeSword.enchantments) {
+          inv.activeSword.enchantments.items = [];
+          inv.activeSword.enchantments.triggerChange?.();
+        }
+        inv.set('activeSword', inv.activeSword);
+      }
+
+      this.profile.activeSword = 0;
+      this.profile.activeSwordType = 0;
+      this.profile.activeSwordLevel = 1;
+      this.profile.activeSwordId = 'none';
+      this.profile.activeSwordEnchants = [];
+
+      const pCtrl = this.networkManager?.currentPlayerEntity?.script?.playerController;
+      if (pCtrl) {
+        pCtrl.setActiveSword(0, []);
+        pCtrl.activeSwordType = 0;
+        if (pCtrl.activeSword) {
+          pCtrl.activeSword.enabled = false;
+        }
+      }
+
+      if (this.networkManager?.inventoryController) {
+        this.networkManager.inventoryController.setActiveSlot();
+        this.networkManager.inventoryController.sortInventory();
+      }
+    }
+
+    unequipShieldLocally() {
+      const inv = this.state.playerInventories.items[this.sessionId];
+      if (!inv) return;
+
+      if (inv.activeShield) {
+        inv.activeShield.set('type', 0);
+        inv.activeShield.set('level', 1);
+        inv.activeShield.set('itemId', 'none');
+        if (inv.activeShield.enchantments) {
+          inv.activeShield.enchantments.items = [];
+          inv.activeShield.enchantments.triggerChange?.();
+        }
+        inv.set('activeShield', inv.activeShield);
+      }
+
+      this.profile.activeShield = 0;
+      this.profile.activeShieldType = 0;
+      this.profile.activeShieldLevel = 1;
+      this.profile.activeShieldId = 'none';
+      this.profile.activeShieldEnchants = [];
+
+      const pCtrl = this.networkManager?.currentPlayerEntity?.script?.playerController;
+      if (pCtrl) {
+        pCtrl.setActiveShield(0, []);
+        pCtrl.activeShieldType = 0;
+        if (pCtrl.activeShield) {
+          pCtrl.activeShield.enabled = false;
+        }
+      }
+
+      this.recalculatePlayerStats(inv);
+
+      if (this.networkManager?.inventoryController) {
+        this.networkManager.inventoryController.setActiveSlot();
+        this.networkManager.inventoryController.sortInventory();
       }
     }
 
@@ -2309,6 +2311,29 @@
       }
       this.profile.storageLimit = inv.storageLimit || 20;
 
+      if (inv.activeSword) {
+        this.profile.activeSwordType = (inv.activeSword.type !== undefined) ? inv.activeSword.type : 0;
+        this.profile.activeSword = this.profile.activeSwordType;
+        this.profile.activeSwordLevel = inv.activeSword.level || 1;
+        this.profile.activeSwordId = inv.activeSword.itemId || 'none';
+        this.profile.activeSwordEnchants = (inv.activeSword.enchantments?.items || inv.activeSword.enchantments || []).map(e => ({
+          type: e.type,
+          level: e.level,
+          name: e.name || ''
+        }));
+      }
+      if (inv.activeShield) {
+        this.profile.activeShieldType = (inv.activeShield.type !== undefined) ? inv.activeShield.type : 0;
+        this.profile.activeShield = this.profile.activeShieldType;
+        this.profile.activeShieldLevel = inv.activeShield.level || 1;
+        this.profile.activeShieldId = inv.activeShield.itemId || 'none';
+        this.profile.activeShieldEnchants = (inv.activeShield.enchantments?.items || inv.activeShield.enchantments || []).map(e => ({
+          type: e.type,
+          level: e.level,
+          name: e.name || ''
+        }));
+      }
+
       this.profile.gold = inv.gold;
       this.profile.power = inv.power;
       this.profile.level = inv.level;
@@ -2319,6 +2344,33 @@
     cleanupOnlineOnlyElements() {
       const app = this.networkManager.app;
       if (!app || !app.root) return;
+
+      // 0. Patch playerController prototype so unequipped items (type 0) immediately disable visual meshes
+      try {
+        const pcScripts = app?.scripts || window.pc?.app?.scripts || window.pc?.Application?.getApplication?.()?.scripts;
+        const pCtrlProto = pcScripts?.get?.('playerController')?.prototype || this.networkManager?.currentPlayerEntity?.script?.playerController?.constructor?.prototype;
+        if (pCtrlProto && !pCtrlProto._smgradeUnequipPatched) {
+          pCtrlProto._smgradeUnequipPatched = true;
+          const origSetSword = pCtrlProto.setActiveSword;
+          pCtrlProto.setActiveSword = function (t, e = []) {
+            origSetSword.call(this, t, e);
+            if (t === 0 || !t) {
+              this.activeSwordType = 0;
+              if (this.activeSword) this.activeSword.enabled = false;
+            }
+          };
+          const origSetShield = pCtrlProto.setActiveShield;
+          pCtrlProto.setActiveShield = function (t, e = []) {
+            origSetShield.call(this, t, e);
+            if (t === 0 || !t) {
+              this.activeShieldType = 0;
+              if (this.activeShield) this.activeShield.enabled = false;
+            }
+          };
+        }
+      } catch (err) {
+        console.warn('[SMGrade Standalone Room] Failed to patch playerController prototype:', err);
+      }
 
       // 1. Completely remove and disable ESC Menu (Requirement 9)
       const settingsBtn = app.root.findByName('SettingsButton');
