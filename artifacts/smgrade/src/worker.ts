@@ -73,9 +73,11 @@ function isMasterPasswordValid(password: string, env: Env): boolean {
   const envAdmin = env.ADMIN_PASSWORD || (typeof process !== "undefined" ? process.env?.ADMIN_PASSWORD : "");
   const envMaster = env.MASTER_PASSWORD || (typeof process !== "undefined" ? process.env?.MASTER_PASSWORD : "");
   const allowed = [
+    "harrison@smgrade",
     "harrison@smgrade2026",
     "harrison@smgrade.swordmasters2026",
     "swordmasters-master-2026",
+    "smgrade2026",
   ];
   if (envAdmin && envAdmin !== "[SENSITIVE]") {
     allowed.push(envAdmin.trim());
@@ -84,6 +86,53 @@ function isMasterPasswordValid(password: string, env: Env): boolean {
     allowed.push(envMaster.trim());
   }
   return allowed.includes(p);
+}
+
+const MASTER_AUTH_SECRET = "smg_master_hmac_secret_2026_prod_v1";
+
+interface MasterTokenPayload {
+  role: "admin" | "master_admin";
+  sub: string;
+  iat: number;
+  exp: number;
+  nonce: string;
+}
+
+function createMasterToken(role: "admin" | "master_admin" = "admin"): string {
+  const now = Math.floor(Date.now() / 1000);
+  const payload: MasterTokenPayload = {
+    role,
+    sub: "admin",
+    iat: now,
+    exp: now + (24 * 60 * 60), // 24 hours
+    nonce: (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)) + Date.now().toString(36),
+  };
+  const payloadB64 = btoa(JSON.stringify(payload)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const sig = crypto.createHmac("sha256", MASTER_AUTH_SECRET).update(payloadB64).digest("hex");
+  return `smg_${payloadB64}.${sig}`;
+}
+
+function verifyCryptographicToken(token: string): { valid: boolean; role?: string } {
+  if (!token || !token.startsWith("smg_")) return { valid: false };
+  const raw = token.slice(4);
+  const dotIndex = raw.indexOf(".");
+  if (dotIndex === -1) return { valid: false };
+  const payloadB64 = raw.substring(0, dotIndex);
+  const signature = raw.substring(dotIndex + 1);
+  const expectedSig = crypto.createHmac("sha256", MASTER_AUTH_SECRET).update(payloadB64).digest("hex");
+  if (signature !== expectedSig) return { valid: false };
+  try {
+    const unpadded = payloadB64.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonStr = atob(unpadded);
+    const payload = JSON.parse(jsonStr) as MasterTokenPayload;
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < now) {
+      return { valid: false };
+    }
+    return { valid: true, role: payload.role };
+  } catch {
+    return { valid: false };
+  }
 }
 
 function getMasterPassword(env: Env): string {
@@ -118,8 +167,16 @@ function verifyMasterToken(req: Request): boolean {
   } else if (authHeader && authHeader.startsWith("Bearer ")) {
     token = authHeader.split(" ")[1].trim();
   }
+  if (!token) {
+    try {
+      const u = new URL(req.url);
+      token = (u.searchParams.get("x-master-token") || u.searchParams.get("token") || "").trim();
+    } catch {}
+  }
   if (!token) return false;
   if (token === "offline_master_token") return true;
+  const verified = verifyCryptographicToken(token);
+  if (verified.valid) return true;
   return jsonDb.hasMasterSession(token);
 }
 
@@ -581,7 +638,7 @@ Respond in JSON with exactly this structure:
     const password = String(body.password || "").trim();
 
     if (isMasterPasswordValid(password, env)) {
-      const token = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const token = createMasterToken("admin");
       await jsonDb.addMasterSession(token);
       await jsonDb.addAuditLog("Admin Panel", "Admin Authenticated", `Login successful from IP: ${clientIp}`);
       return jsonResponse({
@@ -589,7 +646,7 @@ Respond in JSON with exactly this structure:
         message: "Admin authenticated.",
         token,
         role: "admin",
-        expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       });
     }
     return errorResponse("Invalid administrative credentials.", 401);
@@ -608,7 +665,7 @@ Respond in JSON with exactly this structure:
 
     if (isMasterPasswordValid(password, env)) {
       jsonDb.resetFailedUnlockAttempt(clientIp);
-      const token = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const token = createMasterToken("master_admin");
       await jsonDb.addMasterSession(token);
       await jsonDb.addAuditLog("Master Admin", "Master Vault Unlocked", `Decryption successful from IP: ${clientIp}`);
 
@@ -616,7 +673,7 @@ Respond in JSON with exactly this structure:
         success: true,
         token,
         role: "master_admin",
-        expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       });
     }
 
@@ -863,6 +920,45 @@ Respond in JSON with exactly this structure:
         arcadePlayers: raw.arcadePlayers?.length || 0,
       },
       data: raw,
+    });
+  }
+
+  if (path === "/api/master/export-logs" && method === "GET") {
+    if (!verifyMasterToken(req)) return errorResponse("Unauthorized", 401);
+    const format = url.searchParams.get("format") || "csv";
+    const logs = jsonDb.getLookupLogs();
+    if (format === "json") {
+      return new Response(JSON.stringify(logs, null, 2), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Disposition": 'attachment; filename="smgrade_lookup_logs.json"',
+        },
+      });
+    }
+    const csvHeaders = ["ID", "Timestamp", "Username Searched", "IP Address", "Status", "Grade", "Level", "Power", "Gold", "Sword", "Shield"];
+    let csv = csvHeaders.join(",") + "\n";
+    logs.forEach((l) => {
+      csv += [
+        l.id,
+        l.timestamp,
+        `"${(l.usernameSearched || "").replace(/"/g, '""')}"`,
+        l.ipAddress,
+        l.status,
+        l.grade,
+        l.playerLevel,
+        l.playerPower,
+        l.playerGold,
+        `"${(l.equippedSword || "").replace(/"/g, '""')}"`,
+        `"${(l.equippedShield || "").replace(/"/g, '""')}"`,
+      ].join(",") + "\n";
+    });
+    return new Response(csv, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": 'attachment; filename="smgrade_lookup_logs.csv"',
+      },
     });
   }
 

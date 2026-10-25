@@ -121,17 +121,22 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
     if (isUnlocking) return;
     setIsUnlocking(true);
     try {
+      const cleanPass = password.trim();
       const res = await fetch("/api/master/unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password: cleanPass }),
       });
       if (res.ok) {
         const json = await res.json();
-        localStorage.setItem("smg_master_token", json.token);
-        sessionStorage.setItem("smg_master_token", json.token);
-        setToken(json.token);
-        setError(false);
+        if (json.token) {
+          localStorage.setItem("smg_master_token", json.token);
+          sessionStorage.setItem("smg_master_token", json.token);
+          setToken(json.token);
+          setError(false);
+        } else {
+          setError(true);
+        }
       } else {
         setError(true);
       }
@@ -146,13 +151,17 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
     if (!token) return;
 
     try {
-      const headers = { "x-master-token": token };
+      const headers = {
+        "x-master-token": token,
+        "Authorization": `Bearer ${token}`
+      };
 
       // Fetch analytics
       try {
         const statsRes = await fetch("/api/master/analytics", { headers });
         if (statsRes.status === 401 && token !== "offline_master_token") {
           localStorage.removeItem("smg_master_token");
+          sessionStorage.removeItem("smg_master_token");
           setToken("");
           return;
         }

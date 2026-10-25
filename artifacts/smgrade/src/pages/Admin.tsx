@@ -23,20 +23,19 @@ function PasswordGate({ onUnlock, onTriggerMaster }: { onUnlock: () => void; onT
     setError(false);
     if (!value.trim()) return;
     try {
+      const cleanPass = value.trim();
       const res = await fetch("/api/master/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: value })
+        body: JSON.stringify({ password: cleanPass })
       });
       const data = await res.json() as { success?: boolean; token?: string; error?: string };
-      if (res.ok && data.success) {
+      if (res.ok && data.success && data.token) {
         sessionStorage.setItem(ADMIN_KEY, "1");
-        sessionStorage.setItem("smg_admin_password", value);
-        if (data.token) {
-          sessionStorage.setItem("smg_admin_token", data.token);
-          sessionStorage.setItem("smg_master_token", data.token);
-          localStorage.setItem("smg_master_token", data.token);
-        }
+        sessionStorage.setItem("smg_admin_password", cleanPass);
+        sessionStorage.setItem("smg_admin_token", data.token);
+        sessionStorage.setItem("smg_master_token", data.token);
+        localStorage.setItem("smg_master_token", data.token);
         onUnlock();
       } else {
         setError(true);
@@ -1195,7 +1194,13 @@ export default function Admin() {
   useEffect(() => {
     if (!unlocked) return;
     console.log("[Admin UI] Fetching server configuration...");
-    fetch(`/api/master/admin/config?t=${Date.now()}`)
+    const token = sessionStorage.getItem("smg_admin_token") || sessionStorage.getItem("smg_master_token") || localStorage.getItem("smg_master_token") || "";
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+      headers["x-master-token"] = token;
+    }
+    fetch(`/api/master/admin/config?t=${Date.now()}`, { headers })
       .then((res) => {
         console.log("[Admin UI] Received response status:", res.status);
         if (!res.ok) throw new Error("Server configuration request failed");
@@ -1314,7 +1319,8 @@ export default function Admin() {
     if (isUnlocking) return;
     setIsUnlocking(true);
     setMasterError("");
-    if (!masterPassword.trim()) {
+    const cleanPass = masterPassword.trim();
+    if (!cleanPass) {
       setMasterError("Password cannot be blank.");
       setIsUnlocking(false);
       return;
@@ -1323,16 +1329,18 @@ export default function Admin() {
       const res = await fetch("/api/master/unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: masterPassword }),
+        body: JSON.stringify({ password: cleanPass }),
       });
       const data = await res.json() as { token?: string; error?: string };
       if (res.ok && data.token) {
+        sessionStorage.setItem("smg_master_token", data.token);
+        localStorage.setItem("smg_master_token", data.token);
         setMasterToken(data.token);
         setMasterUnlocked(true);
         setShowMasterPrompt(false);
         setMasterPassword("");
       } else {
-        setMasterError(data.error || "Decryption failed.");
+        setMasterError(data.error || "Decryption failed: invalid key.");
       }
     } catch {
       setMasterError("Connection error.");
