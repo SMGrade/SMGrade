@@ -817,67 +817,115 @@ Respond in JSON with exactly this structure:
 
   if (path === "/api/master/lookups" || path === "/api/master/lookup-logs" || path === "/api/lookup-logs") {
     if (!verifyMasterToken(req)) return errorResponse("Unauthorized", 401);
-    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
-    const limit = Math.max(1, Math.min(100, parseInt(url.searchParams.get("limit") || "50", 10)));
-    const search = (url.searchParams.get("search") || "").toLowerCase();
-
     let logs = jsonDb.getLookupLogs();
-    if (search) {
-      logs = logs.filter((l) => l.usernameSearched.toLowerCase().includes(search) || l.ipAddress.includes(search));
+    const q = (url.searchParams.get("q") || url.searchParams.get("search") || "").toLowerCase();
+    const username = (url.searchParams.get("username") || "").toLowerCase();
+    const grade = url.searchParams.get("grade") || "";
+    const status = url.searchParams.get("status") || "";
+    const world = url.searchParams.get("world") || "";
+
+    if (q) {
+      logs = logs.filter((l) =>
+        (l.usernameSearched || "").toLowerCase().includes(q) ||
+        (l.ipAddress || "").includes(q) ||
+        (l.grade || "").toLowerCase().includes(q)
+      );
+    }
+    if (username) {
+      logs = logs.filter((l) => (l.usernameSearched || "").toLowerCase().includes(username));
+    }
+    if (grade) {
+      logs = logs.filter((l) => l.grade === grade);
+    }
+    if (status) {
+      logs = logs.filter((l) => l.status === status);
+    }
+    if (world) {
+      logs = logs.filter((l) => String(l.worldNumber) === world);
     }
 
-    const total = logs.length;
-    const start = (page - 1) * limit;
-    const paginated = logs.slice(start, start + limit);
+    if (url.searchParams.has("paginated")) {
+      const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+      const limit = Math.max(1, Math.min(100, parseInt(url.searchParams.get("limit") || "50", 10)));
+      const total = logs.length;
+      const start = (page - 1) * limit;
+      const paginated = logs.slice(start, start + limit);
+      return jsonResponse({ logs: paginated, total, page, limit, totalPages: Math.ceil(total / limit) });
+    }
 
-    return jsonResponse({ logs: paginated, total, page, limit, totalPages: Math.ceil(total / limit) });
+    return jsonResponse(logs);
   }
 
   if (path === "/api/master/activity" || path === "/api/master/activity-logs" || path === "/api/activity-logs") {
     if (!verifyMasterToken(req)) return errorResponse("Unauthorized", 401);
-    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
-    const limit = Math.max(1, Math.min(100, parseInt(url.searchParams.get("limit") || "50", 10)));
-    const search = (url.searchParams.get("search") || "").toLowerCase();
-
     let logs = jsonDb.getActivityLogs();
-    if (search) {
-      logs = logs.filter((l) => l.username.toLowerCase().includes(search) || l.action.toLowerCase().includes(search));
+    const q = (url.searchParams.get("q") || url.searchParams.get("search") || "").toLowerCase();
+    if (q) {
+      logs = logs.filter((l) => (l.username || "").toLowerCase().includes(q) || (l.action || "").toLowerCase().includes(q));
     }
 
-    const total = logs.length;
-    const start = (page - 1) * limit;
-    const paginated = logs.slice(start, start + limit);
+    if (url.searchParams.has("paginated")) {
+      const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+      const limit = Math.max(1, Math.min(100, parseInt(url.searchParams.get("limit") || "50", 10)));
+      const total = logs.length;
+      const start = (page - 1) * limit;
+      const paginated = logs.slice(start, start + limit);
+      return jsonResponse({ logs: paginated, total, page, limit, totalPages: Math.ceil(total / limit) });
+    }
 
-    return jsonResponse({ logs: paginated, total, page, limit, totalPages: Math.ceil(total / limit) });
+    return jsonResponse(logs);
   }
 
   if (path === "/api/master/popular-gear" || path === "/api/popular-gear") {
     if (!verifyMasterToken(req)) return errorResponse("Unauthorized", 401);
     const lookups = jsonDb.getLookupLogs();
 
-    const swordCounts: Record<string, number> = {};
-    const shieldCounts: Record<string, number> = {};
+    const swords: Record<string, number> = {};
+    const shields: Record<string, number> = {};
+    const worlds: Record<number, number> = {};
+    const grades: Record<string, number> = {};
+    const recommendations: Record<string, number> = {};
 
     lookups.forEach((l) => {
-      if (l.equippedSword && l.equippedSword !== "Unknown") {
-        swordCounts[l.equippedSword] = (swordCounts[l.equippedSword] || 0) + 1;
-      }
-      if (l.equippedShield && l.equippedShield !== "Unknown") {
-        shieldCounts[l.equippedShield] = (shieldCounts[l.equippedShield] || 0) + 1;
-      }
+      if (l.equippedSword && l.equippedSword !== "Unknown") swords[l.equippedSword] = (swords[l.equippedSword] || 0) + 1;
+      if (l.equippedShield && l.equippedShield !== "Unknown") shields[l.equippedShield] = (shields[l.equippedShield] || 0) + 1;
+      if (l.worldNumber) worlds[l.worldNumber] = (worlds[l.worldNumber] || 0) + 1;
+      if (l.grade) grades[l.grade] = (grades[l.grade] || 0) + 1;
+      if (l.recommendedUpgrade) recommendations[l.recommendedUpgrade] = (recommendations[l.recommendedUpgrade] || 0) + 1;
     });
 
-    const popularSwords = Object.entries(swordCounts)
+    const popularSwords = Object.entries(swords)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    const popularShields = Object.entries(shieldCounts)
+    const popularShields = Object.entries(shields)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    return jsonResponse({ popularSwords, popularShields });
+    const popularGrades = Object.entries(grades)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const popularWorlds = Object.entries(worlds)
+      .map(([name, count]) => ({ name: `World ${name}`, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const popularRecs = Object.entries(recommendations)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    return jsonResponse({
+      swords: popularSwords,
+      shields: popularShields,
+      grades: popularGrades,
+      worlds: popularWorlds,
+      recommendations: popularRecs,
+      popularSwords,
+      popularShields
+    });
   }
 
   if (path === "/api/master/most-searched" || path === "/api/most-searched") {

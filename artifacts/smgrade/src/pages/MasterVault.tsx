@@ -59,9 +59,9 @@ interface AnalyticsStats {
 interface PopularGear {
   swords: { name: string; count: number }[];
   shields: { name: string; count: number }[];
-  worlds: { name: string; count: number }[];
+  worlds?: { name: string; count: number }[];
   grades: { name: string; count: number }[];
-  recommendations: { name: string; count: number }[];
+  recommendations?: { name: string; count: number }[];
 }
 
 interface MostSearched {
@@ -177,7 +177,10 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
       
       try {
         const lookupsRes = await fetch(lookupUrl, { headers });
-        if (lookupsRes.ok) setLookups(await lookupsRes.json());
+        if (lookupsRes.ok) {
+          const d = await lookupsRes.json();
+          setLookups(Array.isArray(d) ? d : (d?.logs || []));
+        }
       } catch {}
 
       // Fetch activities with universal query
@@ -186,7 +189,10 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
       let backendActs: ActivityLog[] = [];
       try {
         const actRes = await fetch(actUrl, { headers });
-        if (actRes.ok) backendActs = await actRes.json();
+        if (actRes.ok) {
+          const d = await actRes.json();
+          backendActs = Array.isArray(d) ? d : (d?.logs || []);
+        }
       } catch {}
 
       try {
@@ -206,11 +212,23 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
 
       // Fetch most searched
       const msRes = await fetch("/api/master/most-searched", { headers });
-      if (msRes.ok) setMostSearched(await msRes.json());
+      if (msRes.ok) {
+        const d = await msRes.json();
+        setMostSearched(Array.isArray(d) ? d : []);
+      }
 
       // Fetch popular gear
       const pgRes = await fetch("/api/master/popular-gear", { headers });
-      if (pgRes.ok) setPopularGear(await pgRes.json());
+      if (pgRes.ok) {
+        const d = await pgRes.json();
+        setPopularGear({
+          swords: d?.swords || d?.popularSwords || [],
+          shields: d?.shields || d?.popularShields || [],
+          worlds: d?.worlds || [],
+          grades: d?.grades || [],
+          recommendations: d?.recommendations || []
+        });
+      }
 
       // Fetch full backup for database explorer
       const backupRes = await fetch("/api/master/backup", { headers });
@@ -510,7 +528,7 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
               <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
                 <h3 className="text-xs uppercase font-black tracking-widest text-amber-400 font-display">Grade Distribution (Lookups Meta)</h3>
                 <div className="space-y-3">
-                  {popularGear?.grades.map((g) => {
+                  {popularGear?.grades?.map((g) => {
                     const pct = stats?.totalLookups ? Math.round((g.count / stats.totalLookups) * 100) : 0;
                     return (
                       <div key={g.name} className="space-y-1">
@@ -524,7 +542,7 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
                       </div>
                     );
                   })}
-                  {(!popularGear || popularGear.grades.length === 0) && (
+                  {(!popularGear || (popularGear.grades || []).length === 0) && (
                     <p className="text-xs text-white/30 italic">No grade analysis records available yet.</p>
                   )}
                 </div>
@@ -832,13 +850,13 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
               <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
                 <h3 className="text-xs uppercase font-black tracking-widest text-amber-400 font-display">Equipped Swords Distribution</h3>
                 <div className="space-y-3">
-                  {popularGear?.swords.map((s, idx) => (
+                  {popularGear?.swords?.map((s, idx) => (
                     <div key={idx} className="flex justify-between text-[10px] font-bold border-b border-white/[0.02] pb-2 last:border-0">
                       <span className="text-white">{s.name}</span>
                       <span className="font-mono text-amber-400">{s.count} times</span>
                     </div>
                   ))}
-                  {(!popularGear || popularGear.swords.length === 0) && (
+                  {(!popularGear || (popularGear.swords || []).length === 0) && (
                     <p className="text-xs text-white/30 italic">No sword stats recorded yet.</p>
                   )}
                 </div>
@@ -848,13 +866,13 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
               <div className="border border-white/[0.04] rounded-2xl p-5 bg-[#070b13]/60 glass-panel space-y-4">
                 <h3 className="text-xs uppercase font-black tracking-widest text-amber-400 font-display">Equipped Shields Distribution</h3>
                 <div className="space-y-3">
-                  {popularGear?.shields.map((s, idx) => (
+                  {popularGear?.shields?.map((s, idx) => (
                     <div key={idx} className="flex justify-between text-[10px] font-bold border-b border-white/[0.02] pb-2 last:border-0">
                       <span className="text-white">{s.name}</span>
                       <span className="font-mono text-amber-400">{s.count} times</span>
                     </div>
                   ))}
-                  {(!popularGear || popularGear.shields.length === 0) && (
+                  {(!popularGear || (popularGear.shields || []).length === 0) && (
                     <p className="text-xs text-white/30 italic">No shield stats recorded yet.</p>
                   )}
                 </div>
