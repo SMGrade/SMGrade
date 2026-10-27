@@ -430,15 +430,17 @@ export class JsonDatabase {
     return this.data;
   }
 
-  public async testConnection(): Promise<{ connected: boolean; error?: string; row?: any; poolExists: boolean }> {
-    if (!this.databaseUrl) {
+  public async testConnection(): Promise<{ connected: boolean; error?: string; row?: any; poolExists: boolean; connUrl?: string; stack?: string }> {
+    const connStr = this.databaseUrl || process.env.DATABASE_URL || "";
+    const sanitizedUrl = connStr.replace(/:[^:]+@/, ":***@");
+    if (!connStr) {
       return { connected: false, poolExists: false, error: "No databaseUrl configured" };
     }
     try {
       const res = await this.query("SELECT NOW() as now, count(*) as count FROM master_vault_state");
-      return { connected: true, poolExists: true, row: res.rows?.[0] };
+      return { connected: true, poolExists: true, row: res.rows?.[0], connUrl: sanitizedUrl };
     } catch (err: any) {
-      return { connected: false, poolExists: true, error: err.message || String(err) };
+      return { connected: false, poolExists: true, error: err.message || String(err), connUrl: sanitizedUrl, stack: err.stack };
     }
   }
 
