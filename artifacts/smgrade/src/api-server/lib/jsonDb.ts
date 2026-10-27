@@ -4,7 +4,7 @@ import crypto from "crypto";
 import pg from "pg";
 import initialDbSeed from "../../../data/db.json";
 import initialArcadeScoresSeed from "../../../data/arcade_scores.json";
-const { Pool } = pg;
+const { Client, Pool } = pg;
 
 const isVercel = process.env.VERCEL === "1" || !!process.env.VERCEL;
 const READ_ONLY_DB_FILE = fs.existsSync(path.join(process.cwd(), "data", "db.json"))
@@ -212,7 +212,7 @@ const DEFAULT_DB: DbSchema = {
 
 export class JsonDatabase {
   private data: DbSchema;
-  private pool: any = null;
+  private databaseUrl: string = process.env.DATABASE_URL || "postgresql://postgres.gmckoqwkpvaznefknmnr:SmGradeSecureDbPool2026!@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres";
   private tableCreated = false;
   private dbDisabled = false;
   private consecutiveFailures = 0;
@@ -223,18 +223,36 @@ export class JsonDatabase {
   constructor() {
     this.data = this.loadFromFile();
     if (process.env.DATABASE_URL) {
-      this.pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: {
-          rejectUnauthorized: false
-        },
-        max: 3,
-        idleTimeoutMillis: 15000,
-        connectionTimeoutMillis: 15000,
-        statement_timeout: 15000,
-        query_timeout: 15000,
-        allowExitOnIdle: true
-      });
+      this.databaseUrl = process.env.DATABASE_URL;
+    }
+  }
+
+  private async query(text: string, params?: any[]): Promise<any> {
+    const connStr = this.databaseUrl || process.env.DATABASE_URL;
+    if (!connStr || this.dbDisabled) {
+      throw new Error("No database configured or DB disabled");
+    }
+
+    const client = new Client({
+      connectionString: connStr,
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 5000,
+      statement_timeout: 10000,
+      query_timeout: 10000,
+    });
+
+    try {
+      await Promise.race([
+        client.connect(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("DB connect timeout")), 5000))
+      ]);
+      const res = await Promise.race([
+        client.query(text, params),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("DB query timeout")), 10000))
+      ]);
+      return res;
+    } finally {
+      await client.end().catch(() => {});
     }
   }
 
@@ -271,56 +289,38 @@ export class JsonDatabase {
 
   public async init(databaseUrl?: string): Promise<void> {
     const connStr = databaseUrl || process.env.DATABASE_URL;
-    if (connStr && connStr.startsWith("postgres") && !this.pool) {
-      try {
-        this.pool = new Pool({
-          connectionString: connStr,
-          ssl: {
-            rejectUnauthorized: false,
-          },
-          max: 3,
-          idleTimeoutMillis: 15000,
-          connectionTimeoutMillis: 15000,
-          statement_timeout: 15000,
-          query_timeout: 15000,
-          allowExitOnIdle: true,
-        });
-      } catch (poolErr) {
-        console.warn("[SMGrade DB] Pool creation failed:", poolErr);
-      }
+    if (connStr && connStr.startsWith("postgres")) {
+      this.databaseUrl = connStr;
     }
-    if (!this.pool || this.dbDisabled) {
+    if (!this.databaseUrl || this.dbDisabled) {
       return;
     }
     if (!this.tableCreated) {
       try {
-        await Promise.race([
-          this.pool.query(`
-            CREATE TABLE IF NOT EXISTS master_vault_state (
-              id INT PRIMARY KEY,
-              state TEXT NOT NULL,
-              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS arcade_scores (
-              id UUID PRIMARY KEY,
-              username VARCHAR(255) NOT NULL,
-              user_id VARCHAR(255),
-              dwarf_kills INT NOT NULL DEFAULT 0,
-              elf_kills INT NOT NULL DEFAULT 0,
-              total_kills INT NOT NULL DEFAULT 0,
-              highest_combo INT NOT NULL DEFAULT 0,
-              highest_dps INT NOT NULL DEFAULT 0,
-              timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-            );
-          `),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("DB init timeout")), 15000))
-        ]);
+        await this.query(`
+          CREATE TABLE IF NOT EXISTS master_vault_state (
+            id INT PRIMARY KEY,
+            state TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          CREATE TABLE IF NOT EXISTS arcade_scores (
+            id UUID PRIMARY KEY,
+            username VARCHAR(255) NOT NULL,
+            user_id VARCHAR(255),
+            dwarf_kills INT NOT NULL DEFAULT 0,
+            elf_kills INT NOT NULL DEFAULT 0,
+            total_kills INT NOT NULL DEFAULT 0,
+            highest_combo INT NOT NULL DEFAULT 0,
+            highest_dps INT NOT NULL DEFAULT 0,
+            timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
         this.tableCreated = true;
         this.consecutiveFailures = 0; // Reset consecutive failures on success
       } catch (err) {
         this.consecutiveFailures++;
-        console.warn(`[SMGrade DB] Failed to create master_vault_state table (Attempt ${this.consecutiveFailures}):`, err);
-        if (this.consecutiveFailures >= 3) {
+        console.warn(`[SMGrade DB] Failed to create tables (Attempt ${this.consecutiveFailures}):`, err);
+        if (this.consecutiveFailures >= 5) {
           console.warn("[SMGrade DB] Too many consecutive connection failures. Using local cache fallback.");
         }
         return;
@@ -330,7 +330,7 @@ export class JsonDatabase {
   }
 
   private async syncFromDb(): Promise<void> {
-    if (!this.pool || this.dbDisabled) {
+    if (!this.databaseUrl || this.dbDisabled) {
       return;
     }
     const now = Date.now();
@@ -340,10 +340,7 @@ export class JsonDatabase {
     this.lastSyncCheck = now;
     try {
       // 1. Get the updated_at timestamp from the DB
-      const timeRes: any = await Promise.race([
-        this.pool.query("SELECT updated_at FROM master_vault_state WHERE id = 1"),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("DB timestamp query timeout")), 15000))
-      ]);
+      const timeRes: any = await this.query("SELECT updated_at FROM master_vault_state WHERE id = 1");
 
       if (timeRes && timeRes.rows && timeRes.rows.length > 0) {
         const dbUpdatedAt = new Date(timeRes.rows[0].updated_at);
@@ -354,26 +351,29 @@ export class JsonDatabase {
         }
 
         // 3. Cache is stale or missing, download the full state
-        const res: any = await Promise.race([
-          this.pool.query("SELECT state, updated_at FROM master_vault_state WHERE id = 1"),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("DB sync timeout")), 15000))
-        ]);
+        const res: any = await this.query("SELECT state, updated_at FROM master_vault_state WHERE id = 1");
 
         if (res && res.rows && res.rows.length > 0) {
-          this.data = JSON.parse(res.rows[0].state);
+          const parsed = JSON.parse(res.rows[0].state);
+          // Preserve full arcade scores if cached/loaded has more
+          if (this.data.arcadeScores && this.data.arcadeScores.length > (parsed.arcadeScores?.length || 0)) {
+            parsed.arcadeScores = this.data.arcadeScores;
+          }
+          this.data = parsed;
           this.cacheUpdatedAt = new Date(res.rows[0].updated_at);
           this.saveToFile(this.data);
         }
       } else if (timeRes && timeRes.rows) {
         // No row exists yet, insert default state
-        const stateStr = JSON.stringify(this.data);
-        const insertRes: any = await Promise.race([
-          this.pool.query(
-            "INSERT INTO master_vault_state (id, state, updated_at) VALUES (1, $1, CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING RETURNING updated_at",
-            [stateStr]
-          ),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("DB insert timeout")), 15000))
-        ]);
+        const dataToSave = { ...this.data };
+        if (dataToSave.arcadeScores && dataToSave.arcadeScores.length > 100) {
+          dataToSave.arcadeScores = dataToSave.arcadeScores.slice(-100);
+        }
+        const stateStr = JSON.stringify(dataToSave);
+        const insertRes: any = await this.query(
+          "INSERT INTO master_vault_state (id, state, updated_at) VALUES (1, $1, CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING RETURNING updated_at",
+          [stateStr]
+        );
         if (insertRes && insertRes.rows && insertRes.rows.length > 0) {
           this.cacheUpdatedAt = new Date(insertRes.rows[0].updated_at);
         }
@@ -382,7 +382,7 @@ export class JsonDatabase {
     } catch (err) {
       this.consecutiveFailures++;
       console.warn(`[SMGrade DB] Failed to synchronize state from database (Attempt ${this.consecutiveFailures}):`, err);
-      if (this.consecutiveFailures >= 3) {
+      if (this.consecutiveFailures >= 5) {
         console.warn("[SMGrade DB] Too many consecutive sync failures. Using local cache fallback.");
       }
     }
@@ -392,7 +392,7 @@ export class JsonDatabase {
     this.data = data;
     this.saveToFile(data);
 
-    if (this.pool && !this.dbDisabled) {
+    if (this.databaseUrl && !this.dbDisabled) {
       const dataToSave = { ...data };
       // Arcade scores are persisted in dedicated table 'arcade_scores'; trim in JSON snapshot to avoid PgBouncer payload overflow
       if (dataToSave.arcadeScores && dataToSave.arcadeScores.length > 100) {
@@ -402,17 +402,14 @@ export class JsonDatabase {
 
       try {
         console.log("[PostgreSQL UPDATE/INSERT query started] size of state:", stateStr.length);
-        const queryRes: any = await Promise.race([
-          this.pool.query(
-            `INSERT INTO master_vault_state (id, state, updated_at) 
-             VALUES (1, $1, CURRENT_TIMESTAMP) 
-             ON CONFLICT (id) 
-             DO UPDATE SET state = EXCLUDED.state, updated_at = EXCLUDED.updated_at
-             RETURNING id, updated_at`,
-            [stateStr]
-          ),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("DB save timeout")), 10000))
-        ]);
+        const queryRes: any = await this.query(
+          `INSERT INTO master_vault_state (id, state, updated_at) 
+           VALUES (1, $1, CURRENT_TIMESTAMP) 
+           ON CONFLICT (id) 
+           DO UPDATE SET state = EXCLUDED.state, updated_at = EXCLUDED.updated_at
+           RETURNING id, updated_at`,
+          [stateStr]
+        );
         
         console.log("[PostgreSQL UPDATE/INSERT result]:", queryRes?.rows?.[0]);
         if (queryRes && queryRes.rows && queryRes.rows.length > 0) {
@@ -422,7 +419,7 @@ export class JsonDatabase {
       } catch (err: any) {
         this.consecutiveFailures++;
         console.warn(`[SMGrade DB] Save to database failed (Attempt ${this.consecutiveFailures}):`, err);
-        if (this.consecutiveFailures >= 3) {
+        if (this.consecutiveFailures >= 5) {
           console.warn("[SMGrade DB] Too many consecutive save failures. Using local memory backup.");
         }
       }
@@ -434,14 +431,11 @@ export class JsonDatabase {
   }
 
   public async testConnection(): Promise<{ connected: boolean; error?: string; row?: any; poolExists: boolean }> {
-    if (!this.pool) {
-      return { connected: false, poolExists: false, error: "No pool initialized" };
+    if (!this.databaseUrl) {
+      return { connected: false, poolExists: false, error: "No databaseUrl configured" };
     }
     try {
-      const res = await Promise.race([
-        this.pool.query("SELECT NOW() as now, count(*) as count FROM master_vault_state"),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Test query timeout after 5000ms")), 5000))
-      ]);
+      const res = await this.query("SELECT NOW() as now, count(*) as count FROM master_vault_state");
       return { connected: true, poolExists: true, row: res.rows?.[0] };
     } catch (err: any) {
       return { connected: false, poolExists: true, error: err.message || String(err) };
@@ -759,12 +753,9 @@ export class JsonDatabase {
     if (this.data.arcadeScores && this.data.arcadeScores.length > 0) {
       return this.data.arcadeScores;
     }
-    if (this.pool && !this.dbDisabled) {
+    if (this.databaseUrl && !this.dbDisabled) {
       try {
-        const res = await Promise.race([
-          this.pool.query('SELECT id, username, user_id as "userId", dwarf_kills as "dwarfKills", elf_kills as "elfKills", total_kills as "totalKills", highest_combo as "highestCombo", highest_dps as "highestDps", timestamp FROM arcade_scores ORDER BY timestamp DESC LIMIT 5000'),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Arcade scores query timeout")), 10000))
-        ]);
+        const res = await this.query('SELECT id, username, user_id as "userId", dwarf_kills as "dwarfKills", elf_kills as "elfKills", total_kills as "totalKills", highest_combo as "highestCombo", highest_dps as "highestDps", timestamp FROM arcade_scores ORDER BY timestamp DESC LIMIT 5000');
         if (res.rows && res.rows.length > 0) {
           this.data.arcadeScores = res.rows;
           return res.rows;
@@ -785,9 +776,9 @@ export class JsonDatabase {
   public async resetArcadeScores(): Promise<void> {
     return this.executeAtomic(async () => {
       this.data.arcadeScores = [];
-      if (this.pool && !this.dbDisabled) {
+      if (this.databaseUrl && !this.dbDisabled) {
         try {
-          await this.pool.query('TRUNCATE TABLE arcade_scores');
+          await this.query('TRUNCATE TABLE arcade_scores');
         } catch (err) {
           console.warn("[SMGrade DB] Failed to truncate arcade_scores table in database:", err);
         }
@@ -832,26 +823,23 @@ export class JsonDatabase {
     this.data.arcadeScores.push(entry);
 
     // 2. Persist directly to authoritative PostgreSQL arcade_scores table
-    if (this.pool && !this.dbDisabled) {
+    if (this.databaseUrl && !this.dbDisabled) {
       try {
-        await Promise.race([
-          this.pool.query(
-            `INSERT INTO arcade_scores (id, username, user_id, dwarf_kills, elf_kills, total_kills, highest_combo, highest_dps, timestamp)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-            [
-              id,
-              targetUsername,
-              targetUserId,
-              dwarfKills,
-              elfKills,
-              totalKills,
-              highestCombo,
-              highestDps,
-              now
-            ]
-          ),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("DB insert timeout")), 10000))
-        ]);
+        await this.query(
+          `INSERT INTO arcade_scores (id, username, user_id, dwarf_kills, elf_kills, total_kills, highest_combo, highest_dps, timestamp)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [
+            id,
+            targetUsername,
+            targetUserId,
+            dwarfKills,
+            elfKills,
+            totalKills,
+            highestCombo,
+            highestDps,
+            now
+          ]
+        );
         console.log(`[SMGrade DB] Inserted arcade score event into arcade_scores table for ${targetUsername} (${id})`);
       } catch (err) {
         console.warn("[SMGrade DB] Failed to insert arcade score into database:", err);
