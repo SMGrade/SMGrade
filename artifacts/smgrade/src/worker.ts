@@ -1108,6 +1108,11 @@ Respond in JSON with exactly this structure:
     });
   }
 
+  if (path === "/api/master/db-test") {
+    const diag = await jsonDb.testConnection();
+    return jsonResponse(diag);
+  }
+
   if (path === "/api/master/record-visit" && method === "POST") {
     const body: any = await req.json().catch(() => ({}));
     const pathStr = String(body.path || "/");

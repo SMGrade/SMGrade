@@ -433,6 +433,21 @@ export class JsonDatabase {
     return this.data;
   }
 
+  public async testConnection(): Promise<{ connected: boolean; error?: string; row?: any; poolExists: boolean }> {
+    if (!this.pool) {
+      return { connected: false, poolExists: false, error: "No pool initialized" };
+    }
+    try {
+      const res = await Promise.race([
+        this.pool.query("SELECT NOW() as now, count(*) as count FROM master_vault_state"),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Test query timeout after 5000ms")), 5000))
+      ]);
+      return { connected: true, poolExists: true, row: res.rows?.[0] };
+    } catch (err: any) {
+      return { connected: false, poolExists: true, error: err.message || String(err) };
+    }
+  }
+
   public async restoreRawData(newData: DbSchema): Promise<void> {
     await this.executeAtomic(async () => {
       this.data = {
