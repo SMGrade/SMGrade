@@ -186,7 +186,7 @@ function verifyMasterToken(req: Request): boolean {
   return jsonDb.hasMasterSession(token);
 }
 
-const SUPABASE_DATABASE_URL = "postgresql://postgres.gmckoqwkpvaznefknmnr:SmGradeSecureDbPool2026!@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres";
+const SUPABASE_DATABASE_URL = "postgresql://postgres.gmckoqwkpvaznefknmnr:SmGradeSecureDbPool2026!@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres";
 
 async function syncDatabaseOverrides(env: Env): Promise<void> {
   const dbUrl = (env.DATABASE_URL && env.DATABASE_URL !== "[SENSITIVE]")
