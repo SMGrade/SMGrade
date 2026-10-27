@@ -10,6 +10,6 @@
     "not_found_handling": "single-page-application"
   },
   "vars": {
-    "DATABASE_URL": "postgresql://postgres.gmckoqwkpvaznefknmnr:SmGradeSecureDbPool2026!@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
+    "DATABASE_URL": "postgresql://neondb_owner:npg_HKs3fJjWVe5O@ep-fancy-bird-azb1az4j.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
   }
 }

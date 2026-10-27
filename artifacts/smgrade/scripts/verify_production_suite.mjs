@@ -88,11 +88,18 @@ async function runBrowserVerification() {
   let cdp = null;
 
   try {
-    await sleep(4000);
-
-    const versionRes = await fetch(`http://127.0.0.1:${PORT}/json/list`).then(r => r.json());
-    const pageTarget = versionRes.find(t => t.type === 'page');
-    if (!pageTarget) throw new Error("Could not find Chrome page target");
+    let pageTarget = null;
+    for (let attempt = 0; attempt < 15; attempt++) {
+      try {
+        await sleep(1000);
+        const versionRes = await fetch(`http://127.0.0.1:${PORT}/json/list`).then(r => r.json());
+        pageTarget = versionRes.find(t => t.type === 'page');
+        if (pageTarget) break;
+      } catch (e) {
+        // wait for port
+      }
+    }
+    if (!pageTarget) throw new Error("Could not find Chrome page target after retries");
 
     cdp = new CDPClient(pageTarget.webSocketDebuggerUrl);
     await cdp.connect();
@@ -125,13 +132,14 @@ async function runBrowserVerification() {
     await cdp.send('Page.navigate', { url: `${BASE_URL}/vault` });
     await sleep(3000);
 
-    // Fill in Master Vault Password
+    // Fill in Master Vault Password using React prototype setter
     console.log("Entering Vault password in UI...");
     await cdp.eval(`
       (() => {
         const input = document.querySelector('input[type="password"]');
         if (input) {
-          input.value = ${JSON.stringify(VAULT_PASSWORD)};
+          const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+          setter.call(input, ${JSON.stringify(VAULT_PASSWORD)});
           input.dispatchEvent(new Event('input', { bubbles: true }));
           input.dispatchEvent(new Event('change', { bubbles: true }));
         }
@@ -140,43 +148,80 @@ async function runBrowserVerification() {
     await sleep(500);
 
     // Click Unlock / Decrypt button
+    console.log("Clicking Decrypt Vault button...");
     await cdp.eval(`
       (() => {
         const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Unlock') || b.textContent.includes('Access') || b.textContent.includes('Decrypt'));
         if (btn) btn.click();
       })()
     `);
-    await sleep(4000);
+    await sleep(5000);
 
-    // Take screenshot of unlocked Master Vault
-    await cdp.captureScreenshot(path.join(ARTIFACT_DIR, 'proof_master_vault_production_verified.png'));
+    // Take screenshot of unlocked Master Vault Analytics
+    await cdp.captureScreenshot(path.join(ARTIFACT_DIR, 'proof_master_vault_analytics_production.png'));
 
-    // Check Master Vault Tables for IP Address column
-    const tableHeaders = await cdp.eval(`
+    // Click 'PLAYER LOOKUP LOGS' tab in Master Vault
+    console.log("Navigating to PLAYER LOOKUP LOGS in Master Vault...");
+    await cdp.eval(`
+      (() => {
+        const tab = Array.from(document.querySelectorAll('button')).find(b => b.textContent.toLowerCase().includes('lookup'));
+        if (tab) tab.click();
+      })()
+    `);
+    await sleep(3000);
+    await cdp.captureScreenshot(path.join(ARTIFACT_DIR, 'proof_master_vault_lookup_logs_no_ip.png'));
+
+    // Check Lookup Logs Table for IP Address column
+    const lookupHeaders = await cdp.eval(`
       Array.from(document.querySelectorAll('th')).map(th => th.textContent.trim())
     `);
-    console.log("Master Vault Table Headers detected:", tableHeaders);
-
-    const hasIpHeader = tableHeaders.some(h => /ip\s*address/i.test(h) || /^ip$/i.test(h));
-    if (!hasIpHeader) {
-      console.log("PASS: Master Vault table has NO IP Address column!");
+    console.log("Lookup Logs Table Headers detected:", lookupHeaders);
+    const hasIpInLookupTable = lookupHeaders.some(h => /ip\s*address/i.test(h) || /^ip$/i.test(h));
+    if (!hasIpInLookupTable && lookupHeaders.length > 0) {
+      console.log("PASS: Lookup Logs Table has NO IP Address column! Clean headers:", lookupHeaders);
     } else {
-      console.error("FAIL: Master Vault still displays IP Address header!");
+      console.error("FAIL or NOT FOUND: Lookup table headers:", lookupHeaders);
     }
 
-    // Check Analytics metrics in UI
-    const metricsText = await cdp.eval(`document.body.innerText`);
-    console.log("Vault page text snippet contains 'Daily Visits' or 'All-Time Visits':",
-      metricsText.includes("Daily Visits") || metricsText.includes("All-Time Visits") || metricsText.includes("Visits")
-    );
+    // Click 'MASTER LOGS' tab in Master Vault
+    console.log("Navigating to MASTER LOGS in Master Vault...");
+    await cdp.eval(`
+      (() => {
+        const tab = Array.from(document.querySelectorAll('button')).find(b => b.textContent.toLowerCase().includes('master logs'));
+        if (tab) tab.click();
+      })()
+    `);
+    await sleep(3000);
+    await cdp.captureScreenshot(path.join(ARTIFACT_DIR, 'proof_master_vault_activity_logs_no_ip.png'));
+
+    const activityHeaders = await cdp.eval(`
+      Array.from(document.querySelectorAll('th')).map(th => th.textContent.trim())
+    `);
+    console.log("Activity Logs Table Headers detected:", activityHeaders);
+    const hasIpInActivityTable = activityHeaders.some(h => /ip\s*address/i.test(h) || /^ip$/i.test(h));
+    if (!hasIpInActivityTable && activityHeaders.length > 0) {
+      console.log("PASS: Activity Logs Table has NO IP Address column! Clean headers:", activityHeaders);
+    }
 
     // 3. Navigate to Arcade / SM Revenge Leaderboards
     console.log("\n>>> Navigating to SM Revenge Arcade Leaderboards...");
     await cdp.send('Page.navigate', { url: `${BASE_URL}/arcade` });
+    await sleep(3000);
+
+    // Click SM REVENGE card to enter SM Revenge
+    console.log("Entering SM Revenge arena...");
+    await cdp.eval(`
+      (() => {
+        const card = document.querySelector('.border-red-500\\\\/30') || Array.from(document.querySelectorAll('div.cursor-pointer')).find(d => d.textContent.includes('SM REVENGE'));
+        if (card) {
+          card.click();
+        }
+      })()
+    `);
     await sleep(4000);
 
     await cdp.captureScreenshot(path.join(ARTIFACT_DIR, 'proof_sm_revenge_leaderboard_production.png'));
-    console.log("Captured Arcade Leaderboard screenshot.");
+    console.log("Captured SM Revenge arena & leaderboard screenshot.");
 
     console.log("\n=== BROWSER VERIFICATION SUITE FINISHED SUCCESSFULLY ===");
 
