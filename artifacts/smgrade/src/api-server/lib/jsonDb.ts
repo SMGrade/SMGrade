@@ -81,7 +81,7 @@ export interface LookupLog {
   id: string;
   timestamp: string;
   usernameSearched: string;
-  ipAddress: string;
+  ipAddress?: string;
   sessionId: string;
   userAccount: string | null;
   userType: "Guest" | "Registered";
@@ -126,6 +126,7 @@ export interface SiteVisit {
   timestamp: string;
   date: string; // YYYY-MM-DD
   path: string;
+  visitorId?: string;
   ip?: string;
   userAgent?: string;
 }
@@ -217,6 +218,7 @@ export class JsonDatabase {
   private consecutiveFailures = 0;
   private queue: Promise<any> = Promise.resolve();
   private cacheUpdatedAt: Date | null = null;
+  private lastSyncCheck: number = 0;
 
   constructor() {
     this.data = this.loadFromFile();
@@ -331,6 +333,11 @@ export class JsonDatabase {
     if (!this.pool || this.dbDisabled) {
       return;
     }
+    const now = Date.now();
+    if (this.cacheUpdatedAt && now - this.lastSyncCheck < 5000) {
+      return;
+    }
+    this.lastSyncCheck = now;
     try {
       // 1. Get the updated_at timestamp from the DB
       const timeRes: any = await Promise.race([
@@ -631,16 +638,24 @@ export class JsonDatabase {
 
   // Lookup Logs
   public getLookupLogs(): LookupLog[] {
-    return this.data.lookupLogs || [];
+    const raw = this.data.lookupLogs || [];
+    return raw.map((l) => {
+      const copy: any = { ...l };
+      delete copy.ipAddress;
+      delete copy.ip;
+      return copy;
+    });
   }
 
   public async addLookupLog(log: Omit<LookupLog, "id" | "timestamp">): Promise<LookupLog> {
     return this.executeAtomic(async () => {
-      const entry: LookupLog = {
+      const entry: any = {
         id: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
         ...log
       };
+      delete entry.ipAddress;
+      delete entry.ip;
       if (!this.data.lookupLogs) {
         this.data.lookupLogs = [];
       }
@@ -655,7 +670,16 @@ export class JsonDatabase {
 
   // Activity Logs
   public getActivityLogs(): ActivityLog[] {
-    return this.data.activityLogs || [];
+    const raw = this.data.activityLogs || [];
+    return raw.map((l) => {
+      const copy: any = { ...l };
+      delete copy.ipAddress;
+      delete copy.ip;
+      if (typeof copy.details === "string" && copy.details.includes("IP: ")) {
+        copy.details = copy.details.replace(/from IP: [^\s]+|IP: [^\s]+/g, "authenticated");
+      }
+      return copy;
+    });
   }
 
   public async addActivityLog(username: string, action: string, details: string, status?: string, responseTimeMs?: number): Promise<ActivityLog> {
@@ -713,24 +737,28 @@ export class JsonDatabase {
 
   // Arcade leaderboards
   public async getArcadeScores(): Promise<ArcadeScore[]> {
+    if (this.data.arcadeScores && this.data.arcadeScores.length > 0) {
+      return this.data.arcadeScores;
+    }
     if (this.pool && !this.dbDisabled) {
       try {
         const res = await Promise.race([
-          this.pool.query('SELECT id, username, user_id as "userId", dwarf_kills as "dwarfKills", elf_kills as "elfKills", total_kills as "totalKills", highest_combo as "highestCombo", highest_dps as "highestDps", timestamp FROM arcade_scores'),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Arcade scores query timeout")), 5000))
+          this.pool.query('SELECT id, username, user_id as "userId", dwarf_kills as "dwarfKills", elf_kills as "elfKills", total_kills as "totalKills", highest_combo as "highestCombo", highest_dps as "highestDps", timestamp FROM arcade_scores ORDER BY timestamp DESC LIMIT 5000'),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Arcade scores query timeout")), 10000))
         ]);
-        if (res.rows && res.rows.length > 0) return res.rows;
+        if (res.rows && res.rows.length > 0) {
+          this.data.arcadeScores = res.rows;
+          return res.rows;
+        }
       } catch (err) {
         console.warn("[SMGrade DB] Failed to fetch arcade scores from database, falling back to local file:", err);
       }
     }
-    if (!this.data.arcadeScores || this.data.arcadeScores.length === 0) {
-      const arcadeFile = path.join(process.cwd(), "data", "arcade_scores.json");
-      if (fs.existsSync(arcadeFile)) {
-        try {
-          this.data.arcadeScores = JSON.parse(fs.readFileSync(arcadeFile, "utf8"));
-        } catch (e) {}
-      }
+    const arcadeFile = path.join(process.cwd(), "data", "arcade_scores.json");
+    if (fs.existsSync(arcadeFile)) {
+      try {
+        this.data.arcadeScores = JSON.parse(fs.readFileSync(arcadeFile, "utf8"));
+      } catch (e) {}
     }
     return this.data.arcadeScores || [];
   }
@@ -778,7 +806,13 @@ export class JsonDatabase {
       highestDps
     };
 
-    // 1. Persist directly to authoritative PostgreSQL arcade_scores table
+    // 1. Keep in-memory cache and state updated immediately
+    if (!this.data.arcadeScores) {
+      this.data.arcadeScores = [];
+    }
+    this.data.arcadeScores.push(entry);
+
+    // 2. Persist directly to authoritative PostgreSQL arcade_scores table
     if (this.pool && !this.dbDisabled) {
       try {
         await Promise.race([
@@ -805,30 +839,14 @@ export class JsonDatabase {
       }
     }
 
-    // 2. Keep in-memory cache and local file updated for offline fallback
-    if (!this.data.arcadeScores) {
-      this.data.arcadeScores = [];
-    }
-    this.data.arcadeScores.push(entry);
-
-    if (!this.pool || this.dbDisabled) {
-      try {
-        const arcadeDir = path.join(process.cwd(), "data");
-        const arcadeFile = path.join(arcadeDir, "arcade_scores.json");
-        if (!fs.existsSync(arcadeDir)) {
-          fs.mkdirSync(arcadeDir, { recursive: true });
-        }
-        fs.writeFileSync(arcadeFile, JSON.stringify(this.data.arcadeScores, null, 2), "utf8");
-      } catch (e) {
-        console.warn("[SMGrade DB] Failed to write local arcade scores cache:", e);
-      }
-    }
+    // Also persist into master_vault_state so it is preserved across all syncs & isolates
+    await this.save(this.data).catch(() => {});
 
     return entry;
   }
 
-  // --- SITE VISITS (Persistent Website Entry Tracking - Requirement 10) ---
-  public async recordSiteVisit(pathStr: string, ip?: string, userAgent?: string): Promise<SiteVisit> {
+  // --- SITE VISITS (Persistent Website Entry Tracking) ---
+  public async recordSiteVisit(pathStr: string, _ip?: string, userAgent?: string, visitorId?: string): Promise<SiteVisit> {
     const id = crypto.randomUUID();
     const now = new Date();
     const timestamp = now.toISOString();
@@ -839,13 +857,16 @@ export class JsonDatabase {
       timestamp,
       date,
       path: pathStr || "/",
-      ip,
+      visitorId: visitorId || id,
       userAgent
     };
 
     await this.executeAtomic(async () => {
       if (!this.data.siteVisits) this.data.siteVisits = [];
       this.data.siteVisits.push(visit);
+      if (this.data.siteVisits.length > 10000) {
+        this.data.siteVisits = this.data.siteVisits.slice(-10000);
+      }
       await this.save(this.data);
     });
 
@@ -853,7 +874,12 @@ export class JsonDatabase {
   }
 
   public getSiteVisits(): SiteVisit[] {
-    return this.data.siteVisits || [];
+    const raw = this.data.siteVisits || [];
+    return raw.map((v) => {
+      const copy: any = { ...v };
+      delete copy.ip;
+      return copy;
+    });
   }
 
   // --- ARCADE PLAYER IDENTITY & LEADERBOARDS (Requirements 7, 8, 9, 11) ---

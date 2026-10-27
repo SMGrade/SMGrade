@@ -87,17 +87,18 @@ function Router() {
   const [location] = useLocation();
 
   useEffect(() => {
-    // Background website visit recording (Requirement 10)
+    // Background website visit recording
     try {
-      const visitKey = `smg_visit_${location}_${Math.floor(Date.now() / 60000)}`;
-      if (!sessionStorage.getItem(visitKey)) {
-        sessionStorage.setItem(visitKey, "1");
-        fetch("/api/master/record-visit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: location })
-        }).catch(() => {});
+      let visitorId = localStorage.getItem("smg_visitor_id");
+      if (!visitorId) {
+        visitorId = "vis_" + Math.random().toString(36).substring(2, 11) + "_" + Date.now().toString(36);
+        localStorage.setItem("smg_visitor_id", visitorId);
       }
+      fetch("/api/master/record-visit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: location, visitorId })
+      }).catch(() => {});
     } catch (_) {}
 
     // Background sync on route changes to ensure fresh local cache

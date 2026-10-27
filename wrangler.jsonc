@@ -8,5 +8,8 @@
     "directory": "artifacts/smgrade/dist/public",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
+  },
+  "vars": {
+    "DATABASE_URL": "postgresql://postgres.gmckoqwkpvaznefknmnr:SmGradeSecureDbPool2026!@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
   }
 }

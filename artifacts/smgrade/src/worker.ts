@@ -186,9 +186,13 @@ function verifyMasterToken(req: Request): boolean {
   return jsonDb.hasMasterSession(token);
 }
 
+const SUPABASE_DATABASE_URL = "postgresql://postgres.gmckoqwkpvaznefknmnr:SmGradeSecureDbPool2026!@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres";
+
 async function syncDatabaseOverrides(env: Env): Promise<void> {
-  const dbUrl = env.DATABASE_URL || (typeof process !== "undefined" ? process.env?.DATABASE_URL : undefined);
-  await jsonDb.init(dbUrl && dbUrl !== "[SENSITIVE]" ? dbUrl : undefined);
+  const dbUrl = (env.DATABASE_URL && env.DATABASE_URL !== "[SENSITIVE]")
+    ? env.DATABASE_URL
+    : (typeof process !== "undefined" && process.env?.DATABASE_URL && process.env.DATABASE_URL !== "[SENSITIVE]" ? process.env.DATABASE_URL : SUPABASE_DATABASE_URL);
+  await jsonDb.init(dbUrl);
 
   const customItems = jsonDb.getCustomItems();
   setOverrideItems(customItems && customItems.length > 0 ? customItems : null);
@@ -217,16 +221,16 @@ export async function handleApiRequest(req: Request, env: Env, ctx?: any): Promi
   const method = req.method.toUpperCase();
   const clientIp = getClientIp(req);
 
+  // 1. Instant Health Check (no DB wait)
+  if (path === "/api/healthz" || path === "/api/health") {
+    return jsonResponse({ status: "ok", timestamp: new Date().toISOString() });
+  }
+
   // Initialize DB overrides
   try {
     await syncDatabaseOverrides(env);
   } catch (err) {
     console.error("[SMGrade Worker] DB init error:", err);
-  }
-
-  // 1. Health Check
-  if (path === "/api/healthz" || path === "/api/health") {
-    return jsonResponse({ status: "ok", timestamp: new Date().toISOString() });
   }
 
   // 2. Auth Endpoints (/api/auth/*)
@@ -600,7 +604,6 @@ Respond in JSON with exactly this structure:
       const userSession = getUserSession(req);
       await jsonDb.addLookupLog({
         usernameSearched: normalized.username || username,
-        ipAddress: clientIp,
         sessionId: "live-lookup",
         userAccount: userSession?.username || null,
         userType: userSession ? "Registered" : "Guest",
@@ -626,6 +629,29 @@ Respond in JSON with exactly this structure:
       return jsonResponse({ success: true, playerInfo, scores });
     } catch (err: any) {
       const duration = Date.now() - startTime;
+      const userSession = getUserSession(req);
+      await jsonDb.addLookupLog({
+        usernameSearched: username,
+        sessionId: "live-lookup",
+        userAccount: userSession?.username || null,
+        userType: userSession ? "Registered" : "Guest",
+        status: "Failed",
+        responseTimeMs: duration,
+        grade: "—",
+        overallScore: 0,
+        powerScore: 0,
+        wealthScore: 0,
+        gearScore: 0,
+        progressionScore: 0,
+        levelTier: "—",
+        recommendedUpgrade: "None",
+        playerLevel: 0,
+        playerPower: 0,
+        playerGold: 0,
+        equippedSword: "None",
+        equippedShield: "None",
+        worldNumber: 1,
+      });
       await jsonDb.addActivityLog(username, "Live Lookup", `Lookup failed for ${username}: ${err.message}`, "Failed", duration);
 
       // Return clean JSON error with anti-cheat / code 4000 guidance
@@ -804,6 +830,9 @@ Respond in JSON with exactly this structure:
     const todayStr = new Date().toISOString().slice(0, 10);
     const todayVisits = visits.filter((v) => (v.date || v.timestamp?.slice(0, 10)) === todayStr).length;
 
+    const visitorIds = new Set(visits.map((v) => (v as any).visitorId).filter(Boolean));
+    const uniqueVisitors = visitorIds.size > 0 ? visitorIds.size : visits.length;
+
     // Build historical daily activity map
     const dailyMap: Record<string, number> = {};
     const rawData = jsonDb.getRawData() as any;
@@ -821,6 +850,10 @@ Respond in JSON with exactly this structure:
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => b.date.localeCompare(a.date));
 
+    const totalAllTimeVisits = Math.max(visits.length, Object.values(dailyMap).reduce((a, b) => a + b, 0));
+    const dwarfHubVisits = visits.filter((v) => (v.path || "").includes("dwarf") || (v.path || "").includes("arcade") || (v.path || "").includes("hub")).length;
+    const returningVisitors = Math.max(0, visits.length - uniqueVisitors);
+
     return jsonResponse({
       totalLookups: lookups.length,
       successfulLookups,
@@ -830,15 +863,17 @@ Respond in JSON with exactly this structure:
       totalActivityLogs: activity.length,
       totalAuditLogs: audits.length,
       totalSiteVisits: visits.length,
-      allTimeVisits: visits.length > 0 ? visits.length : (activity.length + lookups.length),
-      dailyWebsiteVisits: todayVisits || 1,
-      uniqueVisitors: uniqueIps || Math.max(18, Math.round(visits.length * 0.6)),
+      allTimeVisits: totalAllTimeVisits,
+      dailyWebsiteVisits: todayVisits,
+      uniqueVisitors: uniqueVisitors,
+      dwarfHubVisits,
+      returningVisitors,
       dailyVisitsHistory,
       totalScores: scores.length,
-      databaseType: env.DATABASE_URL ? "PostgreSQL (Supabase)" : "Authoritative Persistent DB",
+      databaseType: "PostgreSQL (Supabase)",
       isPersistent: true,
       persistenceInfo: {
-        type: env.DATABASE_URL ? "PostgreSQL Database" : "Authoritative Persistent Database",
+        type: "PostgreSQL Database",
         note: "All historical records, leaderboards, and logs persist authoritatively across sessions and deployments.",
       },
     });
@@ -847,6 +882,9 @@ Respond in JSON with exactly this structure:
   if (path === "/api/master/lookups" || path === "/api/master/lookup-logs" || path === "/api/lookup-logs") {
     if (!verifyMasterToken(req)) return errorResponse("Unauthorized", 401);
     let logs = jsonDb.getLookupLogs();
+    // Requirement 3: Newest first
+    logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
     const q = (url.searchParams.get("q") || url.searchParams.get("search") || "").toLowerCase();
     const username = (url.searchParams.get("username") || "").toLowerCase();
     const grade = url.searchParams.get("grade") || "";
@@ -856,7 +894,6 @@ Respond in JSON with exactly this structure:
     if (q) {
       logs = logs.filter((l) =>
         (l.usernameSearched || "").toLowerCase().includes(q) ||
-        (l.ipAddress || "").includes(q) ||
         (l.grade || "").toLowerCase().includes(q)
       );
     }
@@ -888,6 +925,9 @@ Respond in JSON with exactly this structure:
   if (path === "/api/master/activity" || path === "/api/master/activity-logs" || path === "/api/activity-logs") {
     if (!verifyMasterToken(req)) return errorResponse("Unauthorized", 401);
     let logs = jsonDb.getActivityLogs();
+    // Requirement 3: Newest first
+    logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
     const q = (url.searchParams.get("q") || url.searchParams.get("search") || "").toLowerCase();
     if (q) {
       logs = logs.filter((l) => (l.username || "").toLowerCase().includes(q) || (l.action || "").toLowerCase().includes(q));
@@ -1005,7 +1045,13 @@ Respond in JSON with exactly this structure:
     const format = url.searchParams.get("format") || "csv";
     const logs = jsonDb.getLookupLogs();
     if (format === "json") {
-      return new Response(JSON.stringify(logs, null, 2), {
+      const sanitizedLogs = logs.map((l: any) => {
+        const copy = { ...l };
+        delete copy.ipAddress;
+        delete copy.ip;
+        return copy;
+      });
+      return new Response(JSON.stringify(sanitizedLogs, null, 2), {
         status: 200,
         headers: {
           "Content-Type": "application/json",
@@ -1013,14 +1059,13 @@ Respond in JSON with exactly this structure:
         },
       });
     }
-    const csvHeaders = ["ID", "Timestamp", "Username Searched", "IP Address", "Status", "Grade", "Level", "Power", "Gold", "Sword", "Shield"];
+    const csvHeaders = ["ID", "Timestamp", "Username Searched", "Status", "Grade", "Level", "Power", "Gold", "Sword", "Shield"];
     let csv = csvHeaders.join(",") + "\n";
     logs.forEach((l) => {
       csv += [
         l.id,
         l.timestamp,
         `"${(l.usernameSearched || "").replace(/"/g, '""')}"`,
-        l.ipAddress,
         l.status,
         l.grade,
         l.playerLevel,
@@ -1048,7 +1093,7 @@ Respond in JSON with exactly this structure:
     const restorePayload = body.data || body;
     await jsonDb.restoreRawData(restorePayload);
     await syncDatabaseOverrides(env);
-    await jsonDb.addAuditLog("Master Admin", "Database Restored", `Restored backup from IP: ${clientIp}`);
+    await jsonDb.addAuditLog("Master Admin", "Database Restored", `Restored backup payload`);
     return jsonResponse({ success: true, message: "Database restored successfully" });
   }
 
@@ -1056,7 +1101,7 @@ Respond in JSON with exactly this structure:
     return jsonResponse({
       status: "healthy",
       timestamp: new Date().toISOString(),
-      databaseType: env.DATABASE_URL ? "PostgreSQL" : "In-Memory JSON",
+      databaseType: "PostgreSQL (Supabase)",
       totalUsers: jsonDb.getUsers().length,
       totalScores: (await jsonDb.getArcadeScores()).length,
       uptime: process.uptime ? process.uptime() : 0,
@@ -1066,8 +1111,9 @@ Respond in JSON with exactly this structure:
   if (path === "/api/master/record-visit" && method === "POST") {
     const body: any = await req.json().catch(() => ({}));
     const pathStr = String(body.path || "/");
+    const visitorId = String(body.visitorId || "");
     const userAgent = req.headers.get("user-agent") || "Unknown";
-    await jsonDb.recordSiteVisit(pathStr, clientIp, userAgent);
+    await jsonDb.recordSiteVisit(pathStr, undefined, userAgent, visitorId);
     return jsonResponse({ success: true });
   }
 
@@ -1075,7 +1121,6 @@ Respond in JSON with exactly this structure:
     const body: any = await req.json().catch(() => ({}));
     await jsonDb.addLookupLog({
       usernameSearched: body.usernameSearched || "Unknown",
-      ipAddress: clientIp,
       sessionId: body.sessionId || "anonymous",
       userAccount: body.userAccount || null,
       userType: body.userType || "Guest",
@@ -1190,10 +1235,16 @@ Respond in JSON with exactly this structure:
     const scores = await jsonDb.getArcadeScores();
     const now = Date.now();
 
+    const todayIso = new Date(now).toISOString().slice(0, 10);
     const filtered = scores.filter((s) => {
       const time = new Date(s.timestamp).getTime();
-      if (windowStr === "daily") return now - time <= 24 * 60 * 60 * 1000;
-      if (windowStr === "weekly") return now - time <= 7 * 24 * 60 * 60 * 1000;
+      if (isNaN(time)) return false;
+      if (windowStr === "daily") {
+        return now - time <= 24 * 60 * 60 * 1000 || new Date(time).toISOString().slice(0, 10) === todayIso;
+      }
+      if (windowStr === "weekly") {
+        return now - time <= 7 * 24 * 60 * 60 * 1000;
+      }
       return true;
     });
 

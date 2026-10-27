@@ -6,7 +6,7 @@ interface LookupLog {
   id: string;
   timestamp: string;
   usernameSearched: string;
-  ipAddress: string;
+  ipAddress?: string;
   sessionId: string;
   userAccount: string | null;
   userType: "Guest" | "Registered";
@@ -32,7 +32,6 @@ interface ActivityLog {
   username: string;
   action: string;
   details: string;
-  ipAddress?: string;
   status?: string;
   responseTimeMs?: number;
 }
@@ -484,17 +483,17 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="border border-teal-500/10 rounded-xl p-4 bg-black/40">
                     <span className="text-[9px] uppercase font-black text-white/40 tracking-wider block mb-1">Today's Visits</span>
-                    <span className="text-3xl font-black font-mono text-teal-400">{stats?.dailyWebsiteVisits ?? 1}</span>
+                    <span className="text-3xl font-black font-mono text-teal-400">{stats?.dailyWebsiteVisits ?? 0}</span>
                     <p className="text-[10px] text-white/40 mt-1">Counts repeated & new site visits today</p>
                   </div>
                   <div className="border border-teal-500/10 rounded-xl p-4 bg-black/40">
                     <span className="text-[9px] uppercase font-black text-white/40 tracking-wider block mb-1">All-Time Total Visits</span>
-                    <span className="text-3xl font-black font-mono text-emerald-400">{stats?.allTimeVisits ?? 28}</span>
+                    <span className="text-3xl font-black font-mono text-emerald-400">{stats?.allTimeVisits ?? 0}</span>
                     <p className="text-[10px] text-white/40 mt-1">Persistent cumulative website visits</p>
                   </div>
                   <div className="border border-teal-500/10 rounded-xl p-4 bg-black/40">
                     <span className="text-[9px] uppercase font-black text-white/40 tracking-wider block mb-1">Unique Visitors</span>
-                    <span className="text-3xl font-black font-mono text-cyan-400">{stats?.uniqueVisitors ?? 18}</span>
+                    <span className="text-3xl font-black font-mono text-cyan-400">{stats?.uniqueVisitors ?? 0}</span>
                     <p className="text-[10px] text-white/40 mt-1">Distinct client devices / sessions</p>
                   </div>
                 </div>
@@ -525,11 +524,11 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                   {[
-                    { label: "All-Time Visits", val: stats?.allTimeVisits ?? 28, color: "text-emerald-400" },
-                    { label: "Daily Website Visits", val: stats?.dailyWebsiteVisits ?? 5, color: "text-teal-400" },
-                    { label: "Unique Visitors", val: stats?.uniqueVisitors ?? 18, color: "text-cyan-400" },
-                    { label: "Dwarf Hub Visits", val: stats?.dwarfHubVisits ?? 12, color: "text-amber-400" },
-                    { label: "Returning Visitors", val: stats?.returningVisitors ?? 6, color: "text-purple-400" },
+                    { label: "All-Time Visits", val: stats?.allTimeVisits ?? 0, color: "text-emerald-400" },
+                    { label: "Daily Website Visits", val: stats?.dailyWebsiteVisits ?? 0, color: "text-teal-400" },
+                    { label: "Unique Visitors", val: stats?.uniqueVisitors ?? 0, color: "text-cyan-400" },
+                    { label: "Dwarf Hub Visits", val: stats?.dwarfHubVisits ?? 0, color: "text-amber-400" },
+                    { label: "Returning Visitors", val: stats?.returningVisitors ?? 0, color: "text-purple-400" },
                   ].map((v, vIdx) => (
                     <div key={vIdx} className="border border-white/[0.04] rounded-xl p-3 bg-black/30">
                       <span className="text-[9px] uppercase font-black text-white/40 tracking-wider block mb-1">{v.label}</span>
@@ -662,7 +661,6 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
                       <th className="p-3.5">Timestamp</th>
                       <th className="p-3.5">Searched</th>
                       <th className="p-3.5">User Account</th>
-                      <th className="p-3.5">IP Address</th>
                       <th className="p-3.5">Status</th>
                       <th className="p-3.5 text-center">Grade</th>
                       <th className="p-3.5 text-center">Gear</th>
@@ -679,11 +677,6 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
                         </td>
                         <td className="p-3.5 text-amber-400 font-bold">{l.usernameSearched}</td>
                         <td className="p-3.5 text-white/80 font-bold">{l.userAccount || "Guest Search"}</td>
-                        <td className="p-3.5 font-mono">
-                          <span className="inline-block px-2 py-1 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] font-bold tracking-wide">
-                            {l.ipAddress || "N/A"}
-                          </span>
-                        </td>
                         <td className="p-3.5">
                           <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
                             l.status === "Success" ? "bg-[#5ecb7a]/10 border border-[#5ecb7a]/20 text-[#5ecb7a]" : "bg-red-500/10 border border-red-500/20 text-red-400"
@@ -700,7 +693,7 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
                     ))}
                     {lookups.length === 0 && (
                       <tr>
-                        <td colSpan={10} className="p-8 text-center text-white/30 italic">No search logs found matching the filter criteria.</td>
+                        <td colSpan={9} className="p-8 text-center text-white/30 italic">No search logs found matching the filter criteria.</td>
                       </tr>
                     )}
                   </tbody>
@@ -799,14 +792,12 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
                         <th className="p-3.5 w-36">Time</th>
                         <th className="p-3.5 w-28">Username</th>
                         <th className="p-3.5 w-32">Action</th>
-                        <th className="p-3.5 w-36">IP Address</th>
                         <th className="p-3.5">Details</th>
                         <th className="p-3.5 w-24 text-right">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.02] font-semibold text-white/80">
                       {filteredActivities.map((act) => {
-                        const extractedIp = act.ipAddress || (act.details && act.details.includes("IP: ") ? act.details.split("IP: ")[1] : null) || "N/A";
                         return (
                           <tr key={act.id} className="hover:bg-white/[0.01] transition-colors font-semibold">
                             <td className="p-3.5 text-white/40 font-mono">
@@ -816,11 +807,6 @@ export default function MasterVault({ token: propToken, onLock: propOnLock }: Ma
                             <td className="p-3.5">
                               <span className="bg-[#8ab4c9]/10 border border-[#8ab4c9]/25 text-[#8ab4c9] px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider block text-center max-w-[110px]">
                                 {act.action}
-                              </span>
-                            </td>
-                            <td className="p-3.5 font-mono">
-                              <span className="inline-block px-2 py-1 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] font-bold tracking-wide">
-                                {extractedIp}
                               </span>
                             </td>
                             <td className="p-3.5 text-white/70 font-mono text-[9.5px]">
