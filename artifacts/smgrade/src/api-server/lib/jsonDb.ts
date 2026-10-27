@@ -394,6 +394,10 @@ export class JsonDatabase {
 
     if (this.pool && !this.dbDisabled) {
       const dataToSave = { ...data };
+      // Arcade scores are persisted in dedicated table 'arcade_scores'; trim in JSON snapshot to avoid PgBouncer payload overflow
+      if (dataToSave.arcadeScores && dataToSave.arcadeScores.length > 100) {
+        dataToSave.arcadeScores = dataToSave.arcadeScores.slice(-100);
+      }
       const stateStr = JSON.stringify(dataToSave);
 
       try {
@@ -407,20 +411,20 @@ export class JsonDatabase {
              RETURNING id, updated_at`,
             [stateStr]
           ),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("DB save timeout")), 15000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error("DB save timeout")), 10000))
         ]);
         
         console.log("[PostgreSQL UPDATE/INSERT result]:", queryRes?.rows?.[0]);
-        this.consecutiveFailures = 0; // Reset consecutive failures on success
-
-        // Removed redundant SELECT verification query to save data transfer bandwidth
+        if (queryRes && queryRes.rows && queryRes.rows.length > 0) {
+          this.cacheUpdatedAt = new Date(queryRes.rows[0].updated_at);
+        }
+        this.consecutiveFailures = 0;
       } catch (err: any) {
         this.consecutiveFailures++;
         console.warn(`[SMGrade DB] Save to database failed (Attempt ${this.consecutiveFailures}):`, err);
         if (this.consecutiveFailures >= 3) {
           console.warn("[SMGrade DB] Too many consecutive save failures. Using local memory backup.");
         }
-        throw err;
       }
     }
   }

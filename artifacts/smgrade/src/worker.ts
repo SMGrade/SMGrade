@@ -1533,7 +1533,18 @@ export default {
 
     // If request is directed to /api/*, route directly to API handler
     if (url.pathname.startsWith("/api/") || url.pathname === "/api") {
-      return handleApiRequest(req, env, ctx);
+      try {
+        return await handleApiRequest(req, env, ctx);
+      } catch (err: any) {
+        console.error("[SMGrade Worker API Exception]", err);
+        return new Response(JSON.stringify({ error: err?.message || String(err), stack: err?.stack }), {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        });
+      }
     }
 
     // For static assets, delegate to Cloudflare Workers Static Assets binding
