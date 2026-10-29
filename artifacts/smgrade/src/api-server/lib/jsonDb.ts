@@ -8,6 +8,7 @@ import initialArcadeScoresSeed from "../../../data/arcade_scores.json";
 const { Client, Pool } = pg;
 
 export class CloudflareEdgeSocket extends EventEmitter {
+  public static logs: string[] = [];
   private ssl: any;
   private host: string;
   public writable = false;
@@ -21,6 +22,7 @@ export class CloudflareEdgeSocket extends EventEmitter {
     super();
     this.ssl = ssl;
     this.host = host;
+    CloudflareEdgeSocket.logs.push(`[Socket] created ssl=${!!ssl} host=${host}`);
   }
   setNoDelay() { return this; }
   setKeepAlive() { return this; }
@@ -29,6 +31,7 @@ export class CloudflareEdgeSocket extends EventEmitter {
 
   async connect(port: number, host: string, connectListener?: () => void) {
     try {
+      CloudflareEdgeSocket.logs.push(`[Socket.connect] port=${port} host=${host}`);
       if (connectListener) this.once("connect", connectListener);
       this.host = host || this.host;
       // @ts-ignore
@@ -40,17 +43,21 @@ export class CloudflareEdgeSocket extends EventEmitter {
 
       const initialSocket = this._cfSocket;
       initialSocket.closed.then(() => {
+        CloudflareEdgeSocket.logs.push(`[Socket.rawClosed] upgraded=${this._upgraded}`);
         if (this._cfSocket === initialSocket && !this._upgraded) {
           this.emit("close");
         }
       }).catch((e: any) => {
+        CloudflareEdgeSocket.logs.push(`[Socket.rawError] err=${e?.message}`);
         if (this._cfSocket === initialSocket && !this._upgraded) {
           this.emit("error", e);
         }
       });
 
       if (this.ssl) {
+        CloudflareEdgeSocket.logs.push(`[Socket] calling _listenOnce`);
         this._listenOnce().catch((e: any) => {
+          CloudflareEdgeSocket.logs.push(`[Socket._listenOnce.catch] err=${e?.message}`);
           if (!this.destroyed && !this._upgraded) this.emit("error", e);
         });
       } else {
@@ -59,9 +66,11 @@ export class CloudflareEdgeSocket extends EventEmitter {
 
       await this._cfWriter.ready;
       this.writable = true;
+      CloudflareEdgeSocket.logs.push(`[Socket] emitting connect`);
       this.emit("connect");
       return this;
-    } catch (e) {
+    } catch (e: any) {
+      CloudflareEdgeSocket.logs.push(`[Socket.connect.catch] err=${e?.message}`);
       this.emit("error", e);
       return this;
     }
@@ -69,23 +78,32 @@ export class CloudflareEdgeSocket extends EventEmitter {
 
   async _listenOnce() {
     try {
+      CloudflareEdgeSocket.logs.push(`[Socket._listenOnce] awaiting read`);
       const { done, value } = await this._cfReader.read();
+      CloudflareEdgeSocket.logs.push(`[Socket._listenOnce] read done=${done} len=${value?.length} char=${value ? String.fromCharCode(value[0]) : ''}`);
       if (!done && value) {
         this.emit("data", Buffer.from(value));
       }
-    } catch (e) {
+    } catch (e: any) {
+      CloudflareEdgeSocket.logs.push(`[Socket._listenOnce.error] err=${e?.message}`);
       if (!this.destroyed && !this._upgraded) this.emit("error", e);
     }
   }
 
   async _startListen(reader: any) {
     try {
+      CloudflareEdgeSocket.logs.push(`[Socket._startListen] started`);
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          CloudflareEdgeSocket.logs.push(`[Socket._startListen] stream done`);
+          break;
+        }
+        CloudflareEdgeSocket.logs.push(`[Socket._startListen] received len=${value?.length}`);
         this.emit("data", Buffer.from(value));
       }
-    } catch (e) {
+    } catch (e: any) {
+      CloudflareEdgeSocket.logs.push(`[Socket._startListen.error] err=${e?.message}`);
       if (!this.destroyed) this.emit("error", e);
     }
   }
@@ -96,7 +114,14 @@ export class CloudflareEdgeSocket extends EventEmitter {
       return true;
     }
     if (typeof data === "string") data = Buffer.from(data, encoding as BufferEncoding);
-    this._cfWriter.write(data).then(() => callback(), (err: any) => callback(err));
+    CloudflareEdgeSocket.logs.push(`[Socket.write] len=${data.length}`);
+    this._cfWriter.write(data).then(() => {
+      CloudflareEdgeSocket.logs.push(`[Socket.write] success`);
+      callback();
+    }, (err: any) => {
+      CloudflareEdgeSocket.logs.push(`[Socket.write] error=${err?.message}`);
+      callback(err);
+    });
     return true;
   }
 
@@ -116,6 +141,7 @@ export class CloudflareEdgeSocket extends EventEmitter {
   }
 
   startTls(options: any) {
+    CloudflareEdgeSocket.logs.push(`[Socket.startTls] upgraded=${this._upgraded} opts=${JSON.stringify(options)}`);
     if (this._upgraded) return;
     this._upgraded = true;
     this._cfWriter.releaseLock();
@@ -132,12 +158,15 @@ export class CloudflareEdgeSocket extends EventEmitter {
     this._cfSocket = tlsSocket;
     this._cfWriter = tlsSocket.writable.getWriter();
     this._cfReader = tlsSocket.readable.getReader();
+    CloudflareEdgeSocket.logs.push(`[Socket.startTls] tlsSocket created`);
 
     tlsSocket.closed.then(() => {
+      CloudflareEdgeSocket.logs.push(`[Socket.tlsClosed]`);
       if (this._cfSocket === tlsSocket) {
         this.emit("close");
       }
     }).catch((e: any) => {
+      CloudflareEdgeSocket.logs.push(`[Socket.tlsError] err=${e?.message}`);
       if (this._cfSocket === tlsSocket && !this.destroyed) {
         this.emit("error", e);
       }
@@ -581,17 +610,18 @@ export class JsonDatabase {
     return this.data;
   }
 
-  public async testConnection(): Promise<{ connected: boolean; error?: string; row?: any; poolExists: boolean; connUrl?: string; stack?: string }> {
+  public async testConnection(): Promise<{ connected: boolean; error?: string; row?: any; poolExists: boolean; connUrl?: string; stack?: string; socketLogs?: string[] }> {
     const connStr = this.databaseUrl || process.env.DATABASE_URL || "";
     const sanitizedUrl = connStr.replace(/:[^:]+@/, ":***@");
     if (!connStr) {
       return { connected: false, poolExists: false, error: "No databaseUrl configured" };
     }
+    CloudflareEdgeSocket.logs = [];
     try {
       const res = await this.query("SELECT NOW() as now, count(*) as count FROM master_vault_state");
-      return { connected: true, poolExists: true, row: res.rows?.[0], connUrl: sanitizedUrl };
+      return { connected: true, poolExists: true, row: res.rows?.[0], connUrl: sanitizedUrl, socketLogs: CloudflareEdgeSocket.logs };
     } catch (err: any) {
-      return { connected: false, poolExists: true, error: err.message || String(err), connUrl: sanitizedUrl, stack: err.stack };
+      return { connected: false, poolExists: true, error: err.message || String(err), connUrl: sanitizedUrl, stack: err.stack, socketLogs: CloudflareEdgeSocket.logs };
     }
   }
 

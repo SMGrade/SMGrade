@@ -1130,7 +1130,8 @@ Respond in JSON with exactly this structure:
       cfSocketDiag = { error: e.message, stack: e.stack };
     }
     const diag = await jsonDb.testConnection();
-    return jsonResponse({ ...diag, cfSocketDiag });
+    const workerEnv = { userAgent: typeof navigator !== "undefined" ? (navigator as any).userAgent : "undefined" };
+    return jsonResponse({ ...diag, cfSocketDiag, workerEnv });
   }
 
   if (path === "/api/master/record-visit" && method === "POST") {
