@@ -2523,18 +2523,18 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "name": "X Piggie",
     "type": "pet",
     "rarity": "Legendary",
-    "baseValue": 12,
+    "baseValue": 55,
     "maxLevel": 10,
-    "passive": "+12x Gold, +11x Power, +0.5x Speed",
+    "passive": "+55x Gold, +55x Power, +2.7x Speed",
     "image": "🐷",
-    "recommendationScore": 210,
+    "recommendationScore": 700,
     "prices": {},
     "tierRank": 36,
     "typeId": 36,
     "metadata": {
-      "goldMulti": 12,
-      "powerMulti": 11,
-      "speedBoost": 0.5
+      "goldMulti": 55,
+      "powerMulti": 55,
+      "speedBoost": 2.7
     },
     "minLevel": 0
   }

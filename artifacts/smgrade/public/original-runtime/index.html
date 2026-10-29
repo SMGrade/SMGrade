@@ -58,10 +58,30 @@
         if (this.type === 'script') {
           return '/original-runtime/__game-scripts.js';
         }
+        if (this.id === 300000036 || this.name === 'pet36.png' || this.name === 'xpiggie.png') {
+          return '/images/pets/xpiggie.png';
+        }
         return _origGetFileUrl.call(this);
       };
-      console.log('[SMGrade Standalone Offline] Script asset routing patched to local __game-scripts.js');
+      console.log('[SMGrade Standalone Offline] Script and X Piggie asset routing patched');
     }
+
+    // Defensive asset registration for X Piggie (Asset 300000036)
+    window.addEventListener('DOMContentLoaded', () => {
+      const checkApp = setInterval(() => {
+        if (window.pc && pc.app && pc.app.assets) {
+          clearInterval(checkApp);
+          if (!pc.app.assets.get(300000036)) {
+            const asset = new pc.Asset('pet36.png', 'texture', { url: '/images/pets/xpiggie.png' });
+            asset.id = 300000036;
+            asset.preload = true;
+            pc.app.assets.add(asset);
+            pc.app.assets.load(asset);
+            console.log('[SMGrade] Registered texture asset 300000036 for X Piggie');
+          }
+        }
+      }, 50);
+    });
   </script>
   <script src="colyseus.js"></script>
   <script src="Data.js"></script>
