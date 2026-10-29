@@ -660,12 +660,16 @@
         }
         const pCtrl = this.networkManager.currentPlayerEntity?.script?.playerController;
         if (pCtrl) {
-          if (!isSwordEquipped) {
+          if (isSwordEquipped) {
+            pCtrl.setActiveSword(this.profile.activeSwordType || 1, this.profile.activeSwordEnchants || []);
+          } else {
             pCtrl.setActiveSword(0, []);
             pCtrl.activeSwordType = 0;
             if (pCtrl.activeSword) pCtrl.activeSword.enabled = false;
           }
-          if (!isShieldEquipped) {
+          if (isShieldEquipped) {
+            pCtrl.setActiveShield(this.profile.activeShieldType || 1, this.profile.activeShieldEnchants || []);
+          } else {
             pCtrl.setActiveShield(0, []);
             pCtrl.activeShieldType = 0;
             if (pCtrl.activeShield) pCtrl.activeShield.enabled = false;
@@ -1443,7 +1447,14 @@
         console.log('[Enhance Debug] targetPet.type:', targetPet.type, 'petData:', petData);
         if (!petData || petData.enhancedPet === undefined) {
           console.log('[Enhance Debug] petData or enhancedPet undefined');
-          this.networkManager.app?.fire("WarningTextController:setWarning", "Machine only accepts 10x epic pets!", 5, new pc.Color(1, 0, 0, 1));
+          this.networkManager.app?.fire("WarningTextController:setWarning", "Machine only accepts 10x epic pets or Piggie!", 5, new pc.Color(1, 0, 0, 1));
+          this.dispatchMessage("Server:PetEnhancerController:enhanceFailed");
+          return;
+        }
+
+        // Hard constraint: X Piggie is the only common pet that can be enhanced
+        if (petData.rarity === 'Common' && targetPet.type !== 0) {
+          this.networkManager.app?.fire("WarningTextController:setWarning", "Other common pets cannot be enhanced!", 5, new pc.Color(1, 0, 0, 1));
           this.dispatchMessage("Server:PetEnhancerController:enhanceFailed");
           return;
         }
@@ -1458,7 +1469,7 @@
         }
 
         // Handle luck boost price
-        let boostPrice = targetPet.type === 34 ? 5e15 : 1e15;
+        let boostPrice = targetPet.type === 0 ? 5e10 : (targetPet.type === 34 ? 5e15 : 1e15);
         if (luckBoost) {
           if ((inv.gold || 0) < boostPrice) {
             this.networkManager.app?.fire("WarningTextController:setWarning", "Insufficient gold for luck boost!", 5, new pc.Color(1, 0, 0, 1));
@@ -1476,7 +1487,8 @@
         const pLevel = inv.level || 1;
         let baseLuck = pLevel > 1e4 ? 0.33 : pLevel > 9e3 ? 0.3 : pLevel > 8e3 ? 0.25 : pLevel > 7e3 ? 0.2 : pLevel > 6e3 ? 0.15 : pLevel > 5e3 ? 0.1 : pLevel > 4e3 ? 0.07 : pLevel > 3e3 ? 0.05 : pLevel > 2e3 ? 0.03 : 0.01;
         const enhancedType = petData.enhancedPet;
-        if (enhancedType === 35) baseLuck *= 1/19;
+        if (enhancedType === 36) baseLuck *= 1.0;
+        else if (enhancedType === 35) baseLuck *= 1/19;
         else if (enhancedType === 31) baseLuck *= 1/8;
         else if (enhancedType === 27) baseLuck *= 1/7;
         else if (enhancedType === 26) baseLuck *= 1/6;
@@ -2349,17 +2361,81 @@
       if (!app || !app.root) return;
 
       // 0. Patch playerController prototype so unequipped items (type 0) immediately disable visual meshes
+      // and enchanted weapons/shields receive authentic purple glint shader effects
       try {
         const pcScripts = app?.scripts || window.pc?.app?.scripts || window.pc?.Application?.getApplication?.()?.scripts;
         const pCtrlProto = pcScripts?.get?.('playerController')?.prototype || this.networkManager?.currentPlayerEntity?.script?.playerController?.constructor?.prototype;
         if (pCtrlProto && !pCtrlProto._smgradeUnequipPatched) {
           pCtrlProto._smgradeUnequipPatched = true;
+
+          const applyEquipmentGlow = function (entity, enchants) {
+            if (!entity) return;
+            const hasEnchants = Array.isArray(enchants) && enchants.length > 0;
+            const renderEntities = [];
+            if (entity.render) renderEntities.push(entity);
+            if (typeof entity.findComponents === 'function') {
+              try {
+                const rComps = entity.findComponents('render');
+                rComps.forEach(rc => {
+                  if (rc.entity && !renderEntities.includes(rc.entity)) {
+                    renderEntities.push(rc.entity);
+                  }
+                });
+              } catch (_) {}
+            }
+            if (renderEntities.length === 0 && entity.children) {
+              const findR = (node) => {
+                if (node.render && !renderEntities.includes(node)) renderEntities.push(node);
+                if (node.children) node.children.forEach(findR);
+              };
+              entity.children.forEach(findR);
+            }
+
+            renderEntities.forEach(rent => {
+              if (hasEnchants) {
+                const maxLvl = Math.max(...enchants.map(en => parseInt(en.level, 10) || 1), 1);
+                const glintStrength = Math.min(1.0, 0.35 + 0.15 * maxLvl);
+                if (!rent.script) rent.addComponent("script");
+                if (!rent.script.enchant) {
+                  rent.script.create("enchant", {
+                    attributes: {
+                      glintColor: [0.65, 0.2, 1.0],
+                      glintStrength: glintStrength,
+                      glintSpeed: 0.3,
+                      glintScale: 5
+                    }
+                  });
+                  if (rent.script.enchant && typeof rent.script.enchant.init === 'function') {
+                    rent.script.enchant.init(0, 10);
+                  }
+                } else {
+                  rent.script.enchant.glintStrength = glintStrength;
+                  if (typeof rent.script.enchant.applyParams === 'function') {
+                    rent.script.enchant.applyParams();
+                  }
+                }
+              } else {
+                if (rent.script && rent.script.enchant) {
+                  if (typeof rent.script.enchant.unapplyMat === 'function') {
+                    rent.script.enchant.unapplyMat();
+                  }
+                  rent.script.destroy("enchant");
+                }
+              }
+            });
+          };
+
           const origSetSword = pCtrlProto.setActiveSword;
           pCtrlProto.setActiveSword = function (t, e = []) {
             origSetSword.call(this, t, e);
             if (t === 0 || !t) {
               this.activeSwordType = 0;
-              if (this.activeSword) this.activeSword.enabled = false;
+              if (this.activeSword) {
+                applyEquipmentGlow(this.activeSword, []);
+                this.activeSword.enabled = false;
+              }
+            } else if (this.activeSword) {
+              applyEquipmentGlow(this.activeSword, e);
             }
           };
           const origSetShield = pCtrlProto.setActiveShield;
@@ -2367,7 +2443,12 @@
             origSetShield.call(this, t, e);
             if (t === 0 || !t) {
               this.activeShieldType = 0;
-              if (this.activeShield) this.activeShield.enabled = false;
+              if (this.activeShield) {
+                applyEquipmentGlow(this.activeShield, []);
+                this.activeShield.enabled = false;
+              }
+            } else if (this.activeShield) {
+              applyEquipmentGlow(this.activeShield, e);
             }
           };
         }

@@ -186,7 +186,7 @@ function verifyMasterToken(req: Request): boolean {
   return jsonDb.hasMasterSession(token);
 }
 
-const DEFAULT_DATABASE_URL = "postgresql://neondb_owner:npg_HKs3fJjWVe5O@ep-fancy-bird-azb1az4j.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
+const DEFAULT_DATABASE_URL = "postgresql://postgres.gmckoqwkpvaznefknmnr:SmGradeSecureDbPool2026!@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres";
 
 async function syncDatabaseOverrides(env: Env): Promise<void> {
   const dbUrl = (env.DATABASE_URL && env.DATABASE_URL !== "[SENSITIVE]")

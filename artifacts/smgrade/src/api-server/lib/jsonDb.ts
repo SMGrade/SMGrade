@@ -212,7 +212,7 @@ const DEFAULT_DB: DbSchema = {
 
 export class JsonDatabase {
   private data: DbSchema;
-  private databaseUrl: string = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_HKs3fJjWVe5O@ep-fancy-bird-azb1az4j.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
+  private databaseUrl: string = process.env.DATABASE_URL || "postgresql://postgres.gmckoqwkpvaznefknmnr:SmGradeSecureDbPool2026!@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres";
   private tableCreated = false;
   private dbDisabled = false;
   private consecutiveFailures = 0;
@@ -233,34 +233,16 @@ export class JsonDatabase {
       throw new Error("No database configured or DB disabled");
     }
 
-    // Direct HTTP SQL query for Neon databases (bulletproof on Cloudflare Workers edge runtime)
-    if (connStr.includes("neon.tech")) {
-      const hostMatch = connStr.match(/@([^/:]+)/);
-      if (hostMatch && hostMatch[1]) {
-        const host = hostMatch[1];
-        const res: any = await Promise.race([
-          fetch(`https://${host}/sql`, {
-            method: "POST",
-            headers: {
-              "Neon-Connection-String": connStr,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ query: text, params }),
-          }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Neon HTTP timeout")), 10000))
-        ]);
-
-        if (!res.ok) {
-          const errText = await res.text().catch(() => "");
-          throw new Error(`Neon HTTP ${res.status}: ${errText}`);
-        }
-        return await res.json();
-      }
-    }
+    const hostMatch = connStr.match(/@([^/:]+)/);
+    const host = hostMatch ? hostMatch[1] : undefined;
 
     const client = new Client({
       connectionString: connStr,
-      ssl: { rejectUnauthorized: false },
+      ssl: {
+        rejectUnauthorized: false,
+        servername: host,
+        expectedServerHostname: host,
+      } as any,
       connectionTimeoutMillis: 5000,
       statement_timeout: 10000,
       query_timeout: 10000,

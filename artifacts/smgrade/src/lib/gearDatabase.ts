@@ -25,6 +25,7 @@ export interface GameItem {
 
   metadata?: {
     goldMulti?: number;
+    powerMulti?: number;
     speedBoost?: number;
   };
 }
@@ -193,7 +194,8 @@ export const PET_TYPE_MAP: Record<number, string> = {
   "32": "Ponyo",
   "33": "Chandy",
   "34": "Runix",
-  "35": "XRunix"
+  "35": "XRunix",
+  "36": "X Piggie"
 };
 
 export const DEFAULT_ITEMS: GameItem[] = [
@@ -2514,6 +2516,25 @@ export const DEFAULT_ITEMS: GameItem[] = [
     "metadata": {
       "goldMulti": 27.5,
       "speedBoost": 1.35
+    },
+    "minLevel": 0
+  },
+  {
+    "name": "X Piggie",
+    "type": "pet",
+    "rarity": "Legendary",
+    "baseValue": 12,
+    "maxLevel": 10,
+    "passive": "+12x Gold, +11x Power, +0.5x Speed",
+    "image": "🐷",
+    "recommendationScore": 210,
+    "prices": {},
+    "tierRank": 36,
+    "typeId": 36,
+    "metadata": {
+      "goldMulti": 12,
+      "powerMulti": 11,
+      "speedBoost": 0.5
     },
     "minLevel": 0
   }

@@ -4231,6 +4231,18 @@
         "hash": "11dfb0e293e1bd482f56d8719c1567ab",
         "filename": "xxen.png"
       },
+      "XPiggie": {
+        "asset_id": 999999036,
+        "url": "/images/pets/xpiggie.png",
+        "hash": "xpiggie2026hash",
+        "filename": "xpiggie.png"
+      },
+      "X Piggie": {
+        "asset_id": 999999036,
+        "url": "/images/pets/xpiggie.png",
+        "hash": "xpiggie2026hash",
+        "filename": "xpiggie.png"
+      },
       "Mimic": {
         "asset_id": 257155742,
         "url": "https://swordmasters.io/files/assets/257155742/1/pet28.png",
