@@ -212,7 +212,7 @@ const DEFAULT_DB: DbSchema = {
 
 export class JsonDatabase {
   private data: DbSchema;
-  private databaseUrl: string = process.env.DATABASE_URL || "postgresql://postgres.gmckoqwkpvaznefknmnr:SmGradeSecureDbPool2026!@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres";
+  private databaseUrl: string = process.env.DATABASE_URL || "postgresql://postgres:SmGradeSecureDbPool2026!@db.gmckoqwkpvaznefknmnr.supabase.co:5432/postgres";
   private tableCreated = false;
   private dbDisabled = false;
   private consecutiveFailures = 0;
