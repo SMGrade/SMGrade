@@ -1,30 +1,141 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { EventEmitter } from "events";
 import pg from "pg";
 import initialDbSeed from "../../../data/db.json";
 import initialArcadeScoresSeed from "../../../data/arcade_scores.json";
 const { Client, Pool } = pg;
 
-try {
-  // @ts-ignore
-  const pgCf = require("pg-cloudflare");
-  const CloudflareSocket = pgCf?.CloudflareSocket;
-  if (CloudflareSocket && CloudflareSocket.prototype && !CloudflareSocket.prototype._patchedSni) {
-    CloudflareSocket.prototype._patchedSni = true;
-    const origStartTls = CloudflareSocket.prototype.startTls;
-    CloudflareSocket.prototype.startTls = function(options: any) {
-      const opts = options || {};
-      if (!opts.expectedServerHostname && opts.servername) {
-        opts.expectedServerHostname = opts.servername;
-      }
-      if (!opts.expectedServerHostname) {
-        opts.expectedServerHostname = "aws-0-ap-southeast-1.pooler.supabase.com";
-      }
-      return origStartTls.call(this, opts);
-    };
+export class CloudflareEdgeSocket extends EventEmitter {
+  private ssl: any;
+  private host: string;
+  public writable = false;
+  public destroyed = false;
+  private _upgraded = false;
+  private _cfSocket: any = null;
+  private _cfWriter: any = null;
+  private _cfReader: any = null;
+
+  constructor(ssl: any, host: string) {
+    super();
+    this.ssl = ssl;
+    this.host = host;
   }
-} catch (_) {}
+  setNoDelay() { return this; }
+  setKeepAlive() { return this; }
+  ref() { return this; }
+  unref() { return this; }
+
+  async connect(port: number, host: string, connectListener?: () => void) {
+    try {
+      if (connectListener) this.once("connect", connectListener);
+      this.host = host || this.host;
+      // @ts-ignore
+      const { connect } = await import("cloudflare:sockets");
+      const options = this.ssl ? { secureTransport: "starttls" } : {};
+      this._cfSocket = connect(`${host}:${port}`, options);
+      this._cfWriter = this._cfSocket.writable.getWriter();
+      this._cfReader = this._cfSocket.readable.getReader();
+
+      const initialSocket = this._cfSocket;
+      initialSocket.closed.then(() => {
+        if (this._cfSocket === initialSocket && !this._upgraded) {
+          this.emit("close");
+        }
+      }).catch((e: any) => {
+        if (this._cfSocket === initialSocket && !this._upgraded) {
+          this.emit("error", e);
+        }
+      });
+
+      if (this.ssl) {
+        const { done, value } = await this._cfReader.read();
+        if (!done && value) {
+          this.emit("data", Buffer.from(value));
+        }
+      } else {
+        this._startListen(this._cfReader);
+      }
+
+      await this._cfWriter.ready;
+      this.writable = true;
+      this.emit("connect");
+      return this;
+    } catch (e) {
+      this.emit("error", e);
+      return this;
+    }
+  }
+
+  async _startListen(reader: any) {
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        this.emit("data", Buffer.from(value));
+      }
+    } catch (e) {
+      if (!this.destroyed) this.emit("error", e);
+    }
+  }
+
+  write(data: any, encoding = "utf8", callback: (err?: any) => void = () => {}) {
+    if (!data || data.length === 0) {
+      callback();
+      return true;
+    }
+    if (typeof data === "string") data = Buffer.from(data, encoding as BufferEncoding);
+    this._cfWriter.write(data).then(() => callback(), (err: any) => callback(err));
+    return true;
+  }
+
+  end(data = Buffer.alloc(0), encoding = "utf8", callback: (err?: any) => void = () => {}) {
+    this.write(data, encoding, (err: any) => {
+      this.destroyed = true;
+      if (this._cfSocket) this._cfSocket.close().catch(() => {});
+      callback(err);
+    });
+    return this;
+  }
+
+  destroy() {
+    this.destroyed = true;
+    if (this._cfSocket) this._cfSocket.close().catch(() => {});
+    return this;
+  }
+
+  startTls(options: any) {
+    if (this._upgraded) return;
+    this._upgraded = true;
+    this._cfWriter.releaseLock();
+    this._cfReader.releaseLock();
+
+    const host = this.host || "aws-0-ap-southeast-1.pooler.supabase.com";
+    const tlsOpts = {
+      ...options,
+      expectedServerHostname: host,
+      servername: host,
+    };
+
+    const tlsSocket = this._cfSocket.startTls(tlsOpts);
+    this._cfSocket = tlsSocket;
+    this._cfWriter = tlsSocket.writable.getWriter();
+    this._cfReader = tlsSocket.readable.getReader();
+
+    tlsSocket.closed.then(() => {
+      if (this._cfSocket === tlsSocket) {
+        this.emit("close");
+      }
+    }).catch((e: any) => {
+      if (this._cfSocket === tlsSocket && !this.destroyed) {
+        this.emit("error", e);
+      }
+    });
+
+    this._startListen(this._cfReader);
+  }
+}
 
 const isVercel = process.env.VERCEL === "1" || !!process.env.VERCEL;
 const READ_ONLY_DB_FILE = fs.existsSync(path.join(process.cwd(), "data", "db.json"))
@@ -256,6 +367,8 @@ export class JsonDatabase {
     const hostMatch = connStr.match(/@([^/:]+)/);
     const host = hostMatch ? hostMatch[1] : undefined;
 
+    const isCloudflare = typeof (globalThis as any).WebSocketPair !== "undefined" || (typeof navigator !== "undefined" && (navigator as any).userAgent === "Cloudflare-Workers");
+
     const client = new Client({
       connectionString: connStr,
       ssl: {
@@ -263,7 +376,8 @@ export class JsonDatabase {
         servername: host,
         expectedServerHostname: host,
       } as any,
-      connectionTimeoutMillis: 5000,
+      stream: isCloudflare ? (() => new CloudflareEdgeSocket(true, host || "aws-0-ap-southeast-1.pooler.supabase.com") as any) : undefined,
+      connectionTimeoutMillis: 8000,
       statement_timeout: 10000,
       query_timeout: 10000,
     });
