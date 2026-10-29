@@ -58,15 +58,6 @@ function errorResponse(error: string, status = 400, extra: Record<string, any> =
   return jsonResponse({ success: false, error, ...extra }, status);
 }
 
-function getClientIp(req: Request): string {
-  return (
-    req.headers.get("cf-connecting-ip") ||
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") ||
-    "127.0.0.1"
-  );
-}
-
 const ADMIN_HASH = "208ca5c3458cd1ef8770b06f46e7bf6f90777149408d06618dbe8ffb5d1f597e";
 const VAULT_HASH = "9ddfee9a33d701c3dcf8ba65a3cf6b84570956e436260c0bff5a2416f17958c3";
 const ADMIN_SALT = "smg_admin_salt_2026_v1";
@@ -219,7 +210,6 @@ export async function handleApiRequest(req: Request, env: Env, ctx?: any): Promi
   const url = new URL(req.url);
   const path = url.pathname;
   const method = req.method.toUpperCase();
-  const clientIp = getClientIp(req);
 
   // 1. Instant Health Check (no DB wait)
   if (path === "/api/healthz" || path === "/api/health") {
@@ -289,9 +279,9 @@ export async function handleApiRequest(req: Request, env: Env, ctx?: any): Promi
     await jsonDb.updateUser(user);
 
     const userAgent = req.headers.get("user-agent") || "Unknown";
-    await jsonDb.addLoginHistory(user.id, user.username, clientIp, userAgent);
-    await jsonDb.addAuditLog(user.username, "User Logged In", `Logged in from IP: ${clientIp}`);
-    await jsonDb.addActivityLog(user.username, "Login", `Logged in from IP: ${clientIp}`);
+    await jsonDb.addLoginHistory(user.id, user.username, "", userAgent);
+    await jsonDb.addAuditLog(user.username, "User Logged In", "User authenticated successfully");
+    await jsonDb.addActivityLog(user.username, "Login", "User session established");
 
     return jsonResponse({
       success: true,
@@ -406,7 +396,6 @@ export async function handleApiRequest(req: Request, env: Env, ctx?: any): Promi
         const userSession = getUserSession(req);
         await jsonDb.addLookupLog({
           usernameSearched: String(player.username).trim(),
-          ipAddress: clientIp,
           sessionId: "grade-calc",
           userAccount: userSession?.username || null,
           userType: userSession ? "Registered" : "Guest",
@@ -672,7 +661,7 @@ Respond in JSON with exactly this structure:
     if (isAdminPasswordValid(password, env)) {
       const token = createMasterToken("admin");
       await jsonDb.addMasterSession(token);
-      await jsonDb.addAuditLog("Admin Panel", "Admin Authenticated", `Login successful from IP: ${clientIp}`);
+      await jsonDb.addAuditLog("Admin Panel", "Admin Authenticated", "Login successful");
       return jsonResponse({
         success: true,
         message: "Admin authenticated.",
@@ -688,7 +677,7 @@ Respond in JSON with exactly this structure:
     const body: any = await req.json().catch(() => ({}));
     const password = String(body.password || "").trim();
 
-    const lockout = jsonDb.checkUnlockLockout(clientIp);
+    const lockout = jsonDb.checkUnlockLockout("vault_session");
     if (lockout.isLocked) {
       return errorResponse(`Too many failed attempts. Locked out for ${lockout.remainingSec}s.`, 429, {
         lockoutUntil: lockout.remainingSec,
@@ -696,10 +685,10 @@ Respond in JSON with exactly this structure:
     }
 
     if (isVaultPasswordValid(password, env)) {
-      jsonDb.resetFailedUnlockAttempt(clientIp);
+      jsonDb.resetFailedUnlockAttempt("vault_session");
       const token = createMasterToken("master_admin");
       await jsonDb.addMasterSession(token);
-      await jsonDb.addAuditLog("Master Admin", "Master Vault Unlocked", `Decryption successful from IP: ${clientIp}`);
+      await jsonDb.addAuditLog("Master Admin", "Master Vault Unlocked", "Decryption successful");
 
       return jsonResponse({
         success: true,
@@ -709,8 +698,8 @@ Respond in JSON with exactly this structure:
       });
     }
 
-    const failed = jsonDb.recordFailedUnlockAttempt(clientIp);
-    await jsonDb.addAuditLog("System", "Failed Master Vault Unlock", `Attempt from IP: ${clientIp} (Count: ${failed.attempts})`);
+    const failed = jsonDb.recordFailedUnlockAttempt("vault_session");
+    await jsonDb.addAuditLog("System", "Failed Master Vault Unlock", `Attempt failed (Count: ${failed.attempts})`);
 
     return errorResponse("Invalid master decryption credentials.", 401, {
       remainingAttempts: Math.max(0, 5 - failed.attempts),
@@ -1393,7 +1382,7 @@ Respond in JSON with exactly this structure:
   if ((path === "/api/master/arcade/reset" || path === "/api/arcade/reset") && method === "POST") {
     if (!verifyMasterToken(req)) return errorResponse("Unauthorized", 401);
     await jsonDb.resetArcadeScores();
-    await jsonDb.addAuditLog("Master Admin", "Arcade Reset", `SM Revenge leaderboard reset executed from IP: ${clientIp}`);
+    await jsonDb.addAuditLog("Master Admin", "Arcade Reset", "SM Revenge leaderboard reset executed");
     return jsonResponse({ success: true, message: "Arcade leaderboard reset successfully." });
   }
 

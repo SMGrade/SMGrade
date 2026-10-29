@@ -394,7 +394,7 @@ const DEFAULT_DB: DbSchema = {
 
 export class JsonDatabase {
   private data: DbSchema;
-  private databaseUrl: string = process.env.DATABASE_URL || "postgresql://postgres.gmckoqwkpvaznefknmnr:SmGradeSecureDbPool2026!@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres";
+  private databaseUrl: string = process.env.DATABASE_URL || "postgresql://postgres.gmckoqwkpvaznefknmnr:SmGradeSecureDbPool2026!@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres";
   private tableCreated = false;
   private dbDisabled = false;
   private consecutiveFailures = 0;
@@ -827,14 +827,14 @@ export class JsonDatabase {
     return this.data.loginHistory;
   }
 
-  public async addLoginHistory(userId: string, username: string, ip: string, userAgent: string): Promise<void> {
+  public async addLoginHistory(userId: string, username: string, _ip: string, userAgent: string): Promise<void> {
     await this.executeAtomic(async () => {
       this.data.loginHistory.unshift({
         id: crypto.randomUUID(),
         userId,
         username,
         timestamp: new Date().toISOString(),
-        ip,
+        ip: "",
         userAgent,
       });
       if (this.data.loginHistory.length > 200) {

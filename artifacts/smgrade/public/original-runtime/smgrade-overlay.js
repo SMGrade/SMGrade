@@ -527,7 +527,7 @@
       const card = document.createElement('div');
       card.className = `smgrade-card ${selectedPet && selectedPet.type === pet.type ? 'selected' : ''}`;
       
-      const cleanName = pet.name.trim().toLowerCase().replace(/ /g, '_');
+      const cleanName = pet.name.trim().toLowerCase().replace(/[\s_]+/g, '');
       const localImg = `/images/pets/${cleanName}.png`;
 
       card.innerHTML = `
