@@ -50,10 +50,9 @@ export class CloudflareEdgeSocket extends EventEmitter {
       });
 
       if (this.ssl) {
-        const { done, value } = await this._cfReader.read();
-        if (!done && value) {
-          this.emit("data", Buffer.from(value));
-        }
+        this._listenOnce().catch((e: any) => {
+          if (!this.destroyed && !this._upgraded) this.emit("error", e);
+        });
       } else {
         this._startListen(this._cfReader);
       }
@@ -65,6 +64,17 @@ export class CloudflareEdgeSocket extends EventEmitter {
     } catch (e) {
       this.emit("error", e);
       return this;
+    }
+  }
+
+  async _listenOnce() {
+    try {
+      const { done, value } = await this._cfReader.read();
+      if (!done && value) {
+        this.emit("data", Buffer.from(value));
+      }
+    } catch (e) {
+      if (!this.destroyed && !this._upgraded) this.emit("error", e);
     }
   }
 
@@ -385,7 +395,7 @@ export class JsonDatabase {
     try {
       await Promise.race([
         client.connect(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("DB connect timeout")), 5000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error("DB connect timeout")), 10000))
       ]);
       const res = await Promise.race([
         client.query(text, params),
