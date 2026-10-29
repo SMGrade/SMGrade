@@ -1109,8 +1109,28 @@ Respond in JSON with exactly this structure:
   }
 
   if (path === "/api/master/db-test") {
+    let cfSocketDiag: any = null;
+    try {
+      // @ts-ignore
+      const { connect } = await import("cloudflare:sockets");
+      const host = "aws-0-ap-southeast-1.pooler.supabase.com";
+      const sock = connect(`${host}:5432`);
+      const writer = sock.writable.getWriter();
+      const reader = sock.readable.getReader();
+      const sslReq = new Uint8Array([0, 0, 0, 8, 4, 210, 22, 47]);
+      await writer.write(sslReq);
+      const first = await reader.read();
+      const respChar = String.fromCharCode(first.value?.[0] || 0);
+      writer.releaseLock();
+      reader.releaseLock();
+      const tlsSock = sock.startTls({ expectedServerHostname: host });
+      cfSocketDiag = { connectedRaw: true, respChar, tlsCreated: true };
+      await tlsSock.close().catch(() => {});
+    } catch (e: any) {
+      cfSocketDiag = { error: e.message, stack: e.stack };
+    }
     const diag = await jsonDb.testConnection();
-    return jsonResponse(diag);
+    return jsonResponse({ ...diag, cfSocketDiag });
   }
 
   if (path === "/api/master/record-visit" && method === "POST") {
