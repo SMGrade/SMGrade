@@ -6,6 +6,26 @@ import initialDbSeed from "../../../data/db.json";
 import initialArcadeScoresSeed from "../../../data/arcade_scores.json";
 const { Client, Pool } = pg;
 
+try {
+  // @ts-ignore
+  const pgCf = require("pg-cloudflare");
+  const CloudflareSocket = pgCf?.CloudflareSocket;
+  if (CloudflareSocket && CloudflareSocket.prototype && !CloudflareSocket.prototype._patchedSni) {
+    CloudflareSocket.prototype._patchedSni = true;
+    const origStartTls = CloudflareSocket.prototype.startTls;
+    CloudflareSocket.prototype.startTls = function(options: any) {
+      const opts = options || {};
+      if (!opts.expectedServerHostname && opts.servername) {
+        opts.expectedServerHostname = opts.servername;
+      }
+      if (!opts.expectedServerHostname) {
+        opts.expectedServerHostname = "aws-0-ap-southeast-1.pooler.supabase.com";
+      }
+      return origStartTls.call(this, opts);
+    };
+  }
+} catch (_) {}
+
 const isVercel = process.env.VERCEL === "1" || !!process.env.VERCEL;
 const READ_ONLY_DB_FILE = fs.existsSync(path.join(process.cwd(), "data", "db.json"))
   ? path.join(process.cwd(), "data", "db.json")
@@ -212,7 +232,7 @@ const DEFAULT_DB: DbSchema = {
 
 export class JsonDatabase {
   private data: DbSchema;
-  private databaseUrl: string = process.env.DATABASE_URL || "postgresql://postgres:SmGradeSecureDbPool2026!@db.gmckoqwkpvaznefknmnr.supabase.co:5432/postgres";
+  private databaseUrl: string = process.env.DATABASE_URL || "postgresql://postgres.gmckoqwkpvaznefknmnr:SmGradeSecureDbPool2026!@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres";
   private tableCreated = false;
   private dbDisabled = false;
   private consecutiveFailures = 0;
