@@ -1114,7 +1114,7 @@ Respond in JSON with exactly this structure:
       // @ts-ignore
       const { connect } = await import("cloudflare:sockets");
       const host = "aws-0-ap-southeast-1.pooler.supabase.com";
-      const sock = connect(`${host}:5432`);
+      const sock = connect(`${host}:5432`, { secureTransport: 'starttls' });
       const writer = sock.writable.getWriter();
       const reader = sock.readable.getReader();
       const sslReq = new Uint8Array([0, 0, 0, 8, 4, 210, 22, 47]);
