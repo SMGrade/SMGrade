@@ -7,6 +7,20 @@ import initialDbSeed from "../../../data/db.json";
 import initialArcadeScoresSeed from "../../../data/arcade_scores.json";
 const { Client, Pool } = pg;
 
+try {
+  // @ts-ignore
+  const pgStream = require("pg/lib/stream.js");
+  if (pgStream) {
+    pgStream.getSecureStream = function(options: any) {
+      if (options?.socket && typeof options.socket.startTls === "function") {
+        options.socket.startTls(options);
+        return options.socket;
+      }
+      return options?.socket;
+    };
+  }
+} catch (_) {}
+
 export class CloudflareEdgeSocket extends EventEmitter {
   public static logs: string[] = [];
   private ssl: any;
@@ -41,27 +55,18 @@ export class CloudflareEdgeSocket extends EventEmitter {
       this._cfWriter = this._cfSocket.writable.getWriter();
       this._cfReader = this._cfSocket.readable.getReader();
 
-      const initialSocket = this._cfSocket;
-      initialSocket.closed.then(() => {
-        CloudflareEdgeSocket.logs.push(`[Socket.rawClosed] upgraded=${this._upgraded}`);
-        if (this._cfSocket === initialSocket && !this._upgraded) {
-          this.emit("close");
-        }
-      }).catch((e: any) => {
-        CloudflareEdgeSocket.logs.push(`[Socket.rawError] err=${e?.message}`);
-        if (this._cfSocket === initialSocket && !this._upgraded) {
-          this.emit("error", e);
-        }
-      });
-
-      if (this.ssl) {
-        CloudflareEdgeSocket.logs.push(`[Socket] calling _listenOnce`);
+      if (!this.ssl) {
+        this._cfSocket.closed.then(() => {
+          if (!this.destroyed) this.emit("close");
+        }).catch((e: any) => {
+          if (!this.destroyed) this.emit("error", e);
+        });
+        this._startListen(this._cfReader);
+      } else {
         this._listenOnce().catch((e: any) => {
           CloudflareEdgeSocket.logs.push(`[Socket._listenOnce.catch] err=${e?.message}`);
           if (!this.destroyed && !this._upgraded) this.emit("error", e);
         });
-      } else {
-        this._startListen(this._cfReader);
       }
 
       await this._cfWriter.ready;
@@ -80,7 +85,7 @@ export class CloudflareEdgeSocket extends EventEmitter {
     try {
       CloudflareEdgeSocket.logs.push(`[Socket._listenOnce] awaiting read`);
       const { done, value } = await this._cfReader.read();
-      CloudflareEdgeSocket.logs.push(`[Socket._listenOnce] read done=${done} len=${value?.length} char=${value ? String.fromCharCode(value[0]) : ''}`);
+      CloudflareEdgeSocket.logs.push(`[Socket._listenOnce] read done=${done} len=${value?.length} char=${value ? String.fromCharCode(value[0]) : ""}`);
       if (!done && value) {
         this.emit("data", Buffer.from(value));
       }
@@ -97,6 +102,7 @@ export class CloudflareEdgeSocket extends EventEmitter {
         const { done, value } = await reader.read();
         if (done) {
           CloudflareEdgeSocket.logs.push(`[Socket._startListen] stream done`);
+          if (!this.destroyed) this.emit("close");
           break;
         }
         CloudflareEdgeSocket.logs.push(`[Socket._startListen] received len=${value?.length}`);
@@ -113,9 +119,11 @@ export class CloudflareEdgeSocket extends EventEmitter {
       callback();
       return true;
     }
-    if (typeof data === "string") data = Buffer.from(data, encoding as BufferEncoding);
-    CloudflareEdgeSocket.logs.push(`[Socket.write] len=${data.length}`);
-    this._cfWriter.write(data).then(() => {
+    const uint8 = data instanceof Uint8Array
+      ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+      : new Uint8Array(Buffer.from(data, encoding as BufferEncoding));
+    CloudflareEdgeSocket.logs.push(`[Socket.write] len=${uint8.length}`);
+    this._cfWriter.write(uint8).then(() => {
       CloudflareEdgeSocket.logs.push(`[Socket.write] success`);
       callback();
     }, (err: any) => {
@@ -144,8 +152,12 @@ export class CloudflareEdgeSocket extends EventEmitter {
     CloudflareEdgeSocket.logs.push(`[Socket.startTls] upgraded=${this._upgraded} opts=${JSON.stringify(options)}`);
     if (this._upgraded) return;
     this._upgraded = true;
-    this._cfWriter.releaseLock();
-    this._cfReader.releaseLock();
+    try {
+      this._cfWriter.releaseLock();
+      this._cfReader.releaseLock();
+    } catch (e: any) {
+      CloudflareEdgeSocket.logs.push(`[Socket.startTls.releaseLock.err] ${e?.message}`);
+    }
 
     const host = this.host || "aws-0-ap-southeast-1.pooler.supabase.com";
     const tlsOpts = {
@@ -161,8 +173,8 @@ export class CloudflareEdgeSocket extends EventEmitter {
     CloudflareEdgeSocket.logs.push(`[Socket.startTls] tlsSocket created`);
 
     tlsSocket.closed.then(() => {
-      CloudflareEdgeSocket.logs.push(`[Socket.tlsClosed]`);
-      if (this._cfSocket === tlsSocket) {
+      CloudflareEdgeSocket.logs.push(`[Socket.tlsClosed] destroyed=${this.destroyed}`);
+      if (this._cfSocket === tlsSocket && !this.destroyed) {
         this.emit("close");
       }
     }).catch((e: any) => {
