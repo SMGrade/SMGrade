@@ -125,6 +125,7 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
     ds: curDS,
     swordDamageMultiplier: curMS,
     power: currentPlayer.powerRaw,
+    level: currentPlayer.level,
     petPowerBonus: 0
   });
   const curDamage = curDamageStats.damagePerHit;
@@ -137,6 +138,7 @@ export default function Simulator({ currentPlayer, currentScores }: SimulatorPro
     ds: simDS,
     swordDamageMultiplier: simMS,
     power: parsedPower,
+    level: currentPlayer.level,
     petPowerBonus: 0
   });
   const simDamage = simDamageStats.damagePerHit;

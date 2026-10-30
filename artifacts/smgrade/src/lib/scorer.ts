@@ -989,25 +989,25 @@ export function scorePlayer(player: ParsedPlayer): ScoreResult {
   
   const activePets = (player as any).activePets || (player as any).rawPayload?.inv?.activePets || [];
   const speedBoost = 0;
-  const attackSpeed = 2.77;
+  const pLevel = player.level || (player as any).rawPayload?.inv?.level;
   const petPowerBonus = 0;
 
   const dmgStats = calculateDamageStats({
     ds,
     swordDamageMultiplier: ms,
     power: player.powerRaw,
+    level: pLevel,
     petPowerBonus: 0,
-    armorPowerBonus: 0,
-    attackSpeed: 2.77
+    armorPowerBonus: 0
   });
 
   const dphScore = getPiecewiseScore(dmgStats.damagePerHit, benchmark.weakDPH, benchmark.avgDPH, benchmark.strongDPH, benchmark.eliteDPH);
   const dpsScore = getPiecewiseScore(dmgStats.damagePerSecond, benchmark.weakDPS, benchmark.avgDPS, benchmark.strongDPS, benchmark.eliteDPS);
   const pphScore = getPiecewiseScore(dmgStats.powerPerHit, benchmark.weakPPH, benchmark.avgPPH, benchmark.strongPPH, benchmark.elitePPH);
 
-  const weakPPS = benchmark.weakPPH * 2.77;
-  const elitePPS = benchmark.elitePPH * 2.77;
-  const ppsScore = getPiecewiseScore(dmgStats.powerPerSecond, weakPPS, benchmark.avgPPH * 2.77, benchmark.strongPPH * 2.77, elitePPS);
+  const weakPPS = benchmark.weakPPH * dmgStats.attackSpeed;
+  const elitePPS = benchmark.elitePPH * dmgStats.attackSpeed;
+  const ppsScore = getPiecewiseScore(dmgStats.powerPerSecond, weakPPS, benchmark.avgPPH * dmgStats.attackSpeed, benchmark.strongPPH * dmgStats.attackSpeed, elitePPS);
 
   // 4. Gold Score (Dynamic log-piecewise scoring using actual benchmark/extrapolated limits)
   const weakGold = (benchmark as any).weakGold !== undefined ? (typeof (benchmark as any).weakGold === "string" ? parseNumber((benchmark as any).weakGold) : Number((benchmark as any).weakGold)) : benchmark.avgGold * 0.1;

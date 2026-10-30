@@ -97,6 +97,7 @@ export default function Compare() {
         ds: ds1,
         swordDamageMultiplier: ms1,
         power: data1.powerRaw,
+        level: data1.level,
         petPowerBonus: 0
       });
 
@@ -108,6 +109,7 @@ export default function Compare() {
         ds: ds2,
         swordDamageMultiplier: ms2,
         power: data2.powerRaw,
+        level: data2.level,
         petPowerBonus: 0
       });
 

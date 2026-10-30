@@ -14,7 +14,7 @@ import HistoryTracker from "@/components/HistoryTracker";
 import { ParticleBackground, ParallaxBackground } from "./Home";
 import { type UserProfile } from "@/lib/authStore";
 import { ensurePricesLoaded, calculateNetWorth, lookupItemPrice, type NetWorthResult } from "@/lib/priceProvider";
-import { calculateDamageStats } from "@/lib/damageCalc";
+import { calculateDamageStats, hitsPerSecondForLevel } from "@/lib/damageCalc";
 function useAnimatedCounter(targetValue: number, duration: number = 900) {
   const [count, setCount] = useState(0);
 
@@ -573,7 +573,8 @@ export default function Result() {
       const petItem = resolveItemByGameType(p.type, "pet");
       return acc + (petItem?.metadata?.speedBoost || 0);
     }, 0.0);
-    const finalAttackSpeed = 2.77 * (1 + speedBoost);
+    const baseHps = hitsPerSecondForLevel(player.level);
+    const finalAttackSpeed = baseHps * (1 + speedBoost);
     
     const goldMulti = activePets.reduce((acc: number, p: any) => {
       const petItem = resolveItemByGameType(p.type, "pet");
@@ -595,13 +596,23 @@ export default function Result() {
     const totalBaseProt = baseProt + baseShProt;
     const protection = totalBaseProt * (1 + 0.25 * (Math.max(player.swordLevel, player.shieldLevel, 1) - 1));
 
+    const activeSword = inv.activeSword || {};
+    const swordEnchants = (activeSword.enchantments || []).map((e: any) => ({
+      name: String(e.name || "").toLowerCase(),
+      type: e.type,
+      level: Number(e.level) || 0
+    }));
+    const flameRow = swordEnchants.find((e: any) => e.name === "flame" || e.type === 0);
+    const flameLevel = flameRow ? flameRow.level : 0;
+
     const damageStats = calculateDamageStats({
       ds,
       swordDamageMultiplier: ms,
       power: powerRaw,
       petPowerBonus: 0,
       armorPowerBonus: 0,
-      attackSpeed: 2.77
+      level: player.level,
+      flame: flameLevel
     });
 
     return {
@@ -1944,15 +1955,32 @@ function PowerBreakdownSection({ player, computedStats }: { player: ParsedPlayer
   const ms = computedStats?.ms ?? (shieldItem ? scaledShieldDM(shieldItem.baseDM, player.shieldLevel || 1) : 0);
   const mp = computedStats?.powerMulti ?? 0;
   const ap = 0;
-  const attackSpeed = 2.77;
+  const rawPayload = (player as any).rawPayload || {};
+  const activeSword = rawPayload.inv?.activeSword || {};
+  const swordEnchants = (activeSword.enchantments || []).map((e: any) => ({
+    name: String(e.name || "").toLowerCase(),
+    type: e.type,
+    level: Number(e.level) || 0
+  }));
+  const flameRow = swordEnchants.find((e: any) => e.name === "flame" || e.type === 0);
+  const flameLevel = flameRow ? flameRow.level : 0;
 
-  // Exact combat formulas
+  const dmgStats = calculateDamageStats({
+    ds,
+    swordDamageMultiplier: ms,
+    power: p,
+    petPowerBonus: mp,
+    armorPowerBonus: ap,
+    level: player.level,
+    flame: flameLevel
+  });
   const powerContribution = 2 * Math.sqrt(p) + 1;
   const combinedBaseDamage = ds + powerContribution;
-  const damagePerHit = combinedBaseDamage * (1 + ms);
-  const finalDps = damagePerHit * attackSpeed;
-  const powerPerHit = damagePerHit * (1 + mp + ap);
-  const powerPerSec = powerPerHit * attackSpeed;
+  const damagePerHit = dmgStats.damagePerHit;
+  const finalDps = dmgStats.damagePerSecond;
+  const powerPerHit = dmgStats.powerPerHit;
+  const powerPerSec = dmgStats.powerPerSecond;
+  const attackSpeed = dmgStats.attackSpeed.toFixed(2);
 
   // Combat Insight text
   const getCombatInsightText = () => {

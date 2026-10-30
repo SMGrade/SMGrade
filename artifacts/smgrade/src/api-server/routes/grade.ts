@@ -398,9 +398,9 @@ ${canonicalMarketTable}`;
       ds: dsVal,
       swordDamageMultiplier: msVal,
       power: playerData.powerRaw,
+      level: playerData.level,
       petPowerBonus: 0,
-      armorPowerBonus: 0,
-      attackSpeed: 2.77
+      armorPowerBonus: 0
     });
 
     const overallGrade = scores ? scores.overallGrade : "N/A";
