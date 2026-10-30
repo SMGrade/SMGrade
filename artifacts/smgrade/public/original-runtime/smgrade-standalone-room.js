@@ -2426,9 +2426,9 @@
               } else if (enchantsList.some(x => x.type === 1 || x.type === 'Thorns' || x.name === 'Thorns')) {
                 glintColor = [0.15, 0.85, 0.25]; // Thorns emerald radiant green
               } else if (enchantsList.some(x => x.type === 2 || x.type === 'Looting' || x.name === 'Looting')) {
-                glintColor = [1.0, 0.82, 0.12]; // Looting vibrant treasure gold
+                glintColor = [0.18, 0.82, 0.38]; // Looting four-leaf clover luck emerald/jade sheen
               } else if (enchantsList.some(x => x.type === 4 || x.type === 'Fortune' || x.name === 'Fortune')) {
-                glintColor = [1.0, 0.70, 0.08]; // Fortune rich golden amber
+                glintColor = [1.0, 0.72, 0.10]; // Fortune rich golden amber
               }
             }
             // Authentic controlled glint strength (0.28 - 0.38) preserving 100% of weapon specular & metallic texture readability
