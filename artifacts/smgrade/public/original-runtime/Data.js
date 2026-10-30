@@ -173,7 +173,7 @@ let StaticData = {
         293421429,
         293421430,
         293421431,
-        141930721, // 36: X Piggie (uses base Piggie mesh template)
+        293421431, // 36: X Piggie (uses preloaded template 293421431 so entity instantiates and compound 3D model renders)
     ],
 };
 

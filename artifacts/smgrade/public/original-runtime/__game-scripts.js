@@ -79,51 +79,54 @@ var NetworkManager=pc.createScript("networkManager");function getCamResult(){ret
   crackGlowMat.emissiveIntensity=2.5;
   crackGlowMat.update();
 
-  function makeBox(name,parent,pos,rot,scale,mat){
+  function makeShape(type,name,parent,pos,rot,scale,mat){
     var ent=new pc.Entity(name);
     parent.addChild(ent);
     ent.setLocalPosition(pos[0],pos[1],pos[2]);
     ent.setLocalEulerAngles(rot[0],rot[1],rot[2]);
     ent.setLocalScale(scale[0],scale[1],scale[2]);
-    ent.addComponent("render",{type:"box",material:mat});
+    ent.addComponent("render",{type:type,material:mat});
     return ent;
+  }
+  function makeBox(name,parent,pos,rot,scale,mat){
+    return makeShape("box",name,parent,pos,rot,scale,mat);
   }
 
   // 1. Chunky rounded body
   makeBox("XPiggie_Cube",root,[0,0,0],[0,0,0],[1.02,0.95,0.98],bodyMat);
 
   // 2. Snout, nostrils, smiling mouth
-  var snout=makeBox("XPiggie_Snout",root,[0,-0.10,0.51],[0,0,0],[0.40,0.22,0.14],snoutMat);
-  makeBox("Nostril_L",snout,[-0.09,0.02,0.07],[0,0,0],[0.065,0.05,0.03],nostrilMat);
-  makeBox("Nostril_R",snout,[0.09,0.02,0.07],[0,0,0],[0.065,0.05,0.03],nostrilMat);
-  makeBox("XPiggie_Mouth",root,[0,-0.24,0.51],[0,0,0],[0.26,0.05,0.04],mouthMat);
+  var snout=makeShape("box","XPiggie_Snout",root,[0,-0.10,0.51],[0,0,0],[0.40,0.22,0.14],snoutMat);
+  makeShape("sphere","Nostril_L",snout,[-0.09,0.02,0.07],[0,0,0],[0.065,0.06,0.04],nostrilMat);
+  makeShape("sphere","Nostril_R",snout,[0.09,0.02,0.07],[0,0,0],[0.065,0.06,0.04],nostrilMat);
+  makeShape("box","XPiggie_Mouth",root,[0,-0.24,0.51],[0,0,0],[0.26,0.05,0.04],mouthMat);
 
-  // 3. Stylized 3D protruding eyes (cyan iris + specular highlights)
-  makeBox("Eye_Socket_L",root,[-0.26,0.16,0.50],[0,0,0],[0.24,0.24,0.08],eyeSocketMat);
-  makeBox("Eye_Iris_L",root,[-0.26,0.16,0.54],[0,0,0],[0.17,0.17,0.04],eyeIrisMat);
-  makeBox("Eye_Pupil_L",root,[-0.24,0.18,0.56],[0,0,0],[0.08,0.08,0.03],eyePupilMat);
+  // 3. Stylized 3D protruding eyes (pill/capsule-like cyan iris + specular highlights)
+  makeShape("capsule","Eye_Socket_L",root,[-0.26,0.16,0.50],[0,0,0],[0.20,0.28,0.12],eyeSocketMat);
+  makeShape("capsule","Eye_Iris_L",root,[-0.26,0.16,0.54],[0,0,0],[0.14,0.22,0.08],eyeIrisMat);
+  makeShape("sphere","Eye_Pupil_L",root,[-0.24,0.19,0.58],[0,0,0],[0.07,0.07,0.04],eyePupilMat);
 
-  makeBox("Eye_Socket_R",root,[0.26,0.16,0.50],[0,0,0],[0.24,0.24,0.08],eyeSocketMat);
-  makeBox("Eye_Iris_R",root,[0.26,0.16,0.54],[0,0,0],[0.17,0.17,0.04],eyeIrisMat);
-  makeBox("Eye_Pupil_R",root,[0.24,0.18,0.56],[0,0,0],[0.08,0.08,0.03],eyePupilMat);
+  makeShape("capsule","Eye_Socket_R",root,[0.26,0.16,0.50],[0,0,0],[0.20,0.28,0.12],eyeSocketMat);
+  makeShape("capsule","Eye_Iris_R",root,[0.26,0.16,0.54],[0,0,0],[0.14,0.22,0.08],eyeIrisMat);
+  makeShape("sphere","Eye_Pupil_R",root,[0.24,0.19,0.58],[0,0,0],[0.07,0.07,0.04],eyePupilMat);
 
   // 4. Ears
   // Right ear (viewer right): intact pointed ear
-  var earR=makeBox("Ear_R_Base",root,[0.46,0.54,-0.05],[12,10,-28],[0.26,0.38,0.10],bodyMat);
-  makeBox("Ear_R_Inner",earR,[0,0,0.04],[0,0,0],[0.16,0.26,0.03],earInnerMat);
+  var earR=makeShape("cone","Ear_R_Base",root,[0.46,0.56,-0.05],[12,10,-28],[0.28,0.42,0.14],bodyMat);
+  makeShape("cone","Ear_R_Inner",earR,[0,-0.05,0.04],[0,0,0],[0.18,0.30,0.06],earInnerMat);
 
   // Left ear (viewer left): fractured ear split by purple lightning crevice!
-  var earL=makeBox("Ear_L_Base",root,[-0.40,0.46,-0.05],[12,-8,25],[0.24,0.22,0.10],bodyMat);
-  makeBox("Ear_L_Inner",earL,[0,0,0.04],[0,0,0],[0.15,0.16,0.03],earInnerMat);
-  var earTip=makeBox("Ear_L_Tip",root,[-0.52,0.65,-0.05],[14,-10,38],[0.20,0.22,0.09],bodyMat);
-  makeBox("Ear_L_Tip_Inner",earTip,[0,0,0.04],[0,0,0],[0.12,0.15,0.03],earInnerMat);
-  makeBox("Ear_L_Fissure",root,[-0.45,0.54,-0.04],[12,-8,48],[0.28,0.07,0.12],crackGlowMat);
+  var earL=makeShape("box","Ear_L_Base",root,[-0.40,0.46,-0.05],[12,-8,25],[0.24,0.22,0.10],bodyMat);
+  makeShape("box","Ear_L_Inner",earL,[0,0,0.04],[0,0,0],[0.15,0.16,0.03],earInnerMat);
+  var earTip=makeShape("cone","Ear_L_Tip",root,[-0.52,0.67,-0.05],[14,-10,38],[0.22,0.26,0.12],bodyMat);
+  makeShape("cone","Ear_L_Tip_Inner",earTip,[0,-0.03,0.04],[0,0,0],[0.14,0.18,0.05],earInnerMat);
+  makeShape("box","Ear_L_Fissure",root,[-0.45,0.54,-0.04],[12,-8,48],[0.28,0.07,0.12],crackGlowMat);
 
-  // 5. 4 Stubby 3D Legs angled outward at 35 degrees
-  makeBox("Leg_FL",root,[-0.38,-0.42,0.28],[25,0,35],[0.20,0.34,0.20],bodyMat);
-  makeBox("Leg_FR",root,[0.38,-0.42,0.28],[25,0,-35],[0.20,0.34,0.20],bodyMat);
-  makeBox("Leg_BL",root,[-0.38,-0.42,-0.28],[-25,0,35],[0.20,0.34,0.20],bodyMat);
-  makeBox("Leg_BR",root,[0.38,-0.42,-0.28],[-25,0,-35],[0.20,0.34,0.20],bodyMat);
+  // 5. 4 Stubby 3D Legs angled outward at 35 degrees (smooth capsules)
+  makeShape("capsule","Leg_FL",root,[-0.38,-0.42,0.28],[25,0,35],[0.22,0.38,0.22],bodyMat);
+  makeShape("capsule","Leg_FR",root,[0.38,-0.42,0.28],[25,0,-35],[0.22,0.38,0.22],bodyMat);
+  makeShape("capsule","Leg_BL",root,[-0.38,-0.42,-0.28],[-25,0,35],[0.22,0.38,0.22],bodyMat);
+  makeShape("capsule","Leg_BR",root,[0.38,-0.42,-0.28],[-25,0,-35],[0.22,0.38,0.22],bodyMat);
 
   // 6. Geometric Glowing Neon Purple Fissure Crevices
   makeBox("Fissure_1",root,[0.08,0.45,0.51],[0,0,-35],[0.05,0.22,0.06],crackGlowMat);

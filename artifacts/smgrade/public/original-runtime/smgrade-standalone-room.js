@@ -139,6 +139,9 @@
           if (prop === 'length') {
             return target.items.length;
           }
+          if (prop === 'push' || prop === 'onAdd' || prop === 'onRemove' || prop === 'onChange' || prop === 'remove') {
+            return Reflect.get(target, prop, receiver);
+          }
           if (typeof prop === 'string' && prop in Array.prototype && typeof target.items[prop] === 'function') {
             return target.items[prop].bind(target.items);
           }
