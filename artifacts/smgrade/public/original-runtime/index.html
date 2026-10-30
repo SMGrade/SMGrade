@@ -56,7 +56,7 @@
       const _origGetFileUrl = pc.Asset.prototype.getFileUrl;
       pc.Asset.prototype.getFileUrl = function() {
         if (this.type === 'script') {
-          return '/original-runtime/__game-scripts.js';
+          return '/original-runtime/__game-scripts.js?v=20261030_v3';
         }
         if (this.id === 300000036 || this.name === 'pet36.png' || this.name === 'xpiggie.png') {
           return '/images/pets/xpiggie.png';
@@ -90,7 +90,7 @@
 </head>
 <body>
   <script src="__modules__.js"></script>
-  <script src="smgrade-standalone-room.js"></script>
+  <script src="smgrade-standalone-room.js?v=20261030_v3"></script>
   <script src="__start__.js"></script>
   <script src="__loading__.js"></script>
   <script src="smgrade-overlay.js"></script>

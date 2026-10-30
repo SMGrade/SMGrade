@@ -136,6 +136,12 @@
           if (typeof prop === 'string' && !isNaN(Number(prop)) && prop !== '') {
             return target.items[Number(prop)];
           }
+          if (prop === 'length') {
+            return target.items.length;
+          }
+          if (typeof prop === 'string' && prop in Array.prototype && typeof target.items[prop] === 'function') {
+            return target.items[prop].bind(target.items);
+          }
           return Reflect.get(target, prop, receiver);
         },
         set(target, prop, value, receiver) {
@@ -2368,9 +2374,19 @@
         if (pCtrlProto && !pCtrlProto._smgradeUnequipPatched) {
           pCtrlProto._smgradeUnequipPatched = true;
 
+          const normalizeEnchants = function (enc) {
+            if (!enc) return [];
+            if (Array.isArray(enc)) return enc;
+            if (Array.isArray(enc.items)) return enc.items;
+            if (typeof enc[Symbol.iterator] === 'function') return Array.from(enc);
+            if (typeof enc.length === 'number') return Array.from(enc);
+            return [];
+          };
+
           const applyEquipmentGlow = function (entity, enchants) {
             if (!entity) return;
-            const hasEnchants = Array.isArray(enchants) && enchants.length > 0;
+            const enchantsList = normalizeEnchants(enchants);
+            const hasEnchants = enchantsList.length > 0;
             const renderEntities = [];
             if (entity.render) renderEntities.push(entity);
             if (typeof entity.findComponents === 'function') {
@@ -2391,25 +2407,44 @@
               entity.children.forEach(findR);
             }
 
+            let glintColor = [0.65, 0.25, 1.0];
+            let maxLvl = 1;
+            if (hasEnchants) {
+              enchantsList.forEach(x => {
+                const lvl = parseInt(x.level, 10) || 1;
+                if (lvl > maxLvl) maxLvl = lvl;
+              });
+              if (enchantsList.some(x => x.type === 3 || x.type === 'Freeze' || x.name === 'Freeze')) {
+                glintColor = [0.25, 0.75, 1.0]; // Freeze cyan
+              } else if (enchantsList.some(x => x.type === 0 || x.type === 'Flame' || x.name === 'Flame')) {
+                glintColor = [1.0, 0.35, 0.1]; // Flame orange
+              } else if (enchantsList.some(x => x.type === 1 || x.type === 'Thorns' || x.name === 'Thorns')) {
+                glintColor = [0.2, 0.9, 0.3]; // Thorns green
+              } else if (enchantsList.some(x => x.type === 4 || x.type === 2 || x.type === 'Fortune' || x.type === 'Looting' || x.name === 'Fortune' || x.name === 'Looting')) {
+                glintColor = [1.0, 0.85, 0.2]; // Fortune / Looting gold
+              }
+            }
+            const glintStrength = Math.min(1.0, 0.45 + 0.15 * maxLvl);
+
             renderEntities.forEach(rent => {
               if (hasEnchants) {
-                const maxLvl = Math.max(...enchants.map(en => parseInt(en.level, 10) || 1), 1);
-                const glintStrength = Math.min(1.0, 0.35 + 0.15 * maxLvl);
                 if (!rent.script) rent.addComponent("script");
                 if (!rent.script.enchant) {
                   rent.script.create("enchant", {
                     attributes: {
-                      glintColor: [0.65, 0.2, 1.0],
+                      glintColor: glintColor,
                       glintStrength: glintStrength,
                       glintSpeed: 0.3,
-                      glintScale: 5
+                      glintScale: 2.5
                     }
                   });
                   if (rent.script.enchant && typeof rent.script.enchant.init === 'function') {
                     rent.script.enchant.init(0, 10);
                   }
                 } else {
+                  rent.script.enchant.glintColor = glintColor;
                   rent.script.enchant.glintStrength = glintStrength;
+                  rent.script.enchant.enabled = true;
                   if (typeof rent.script.enchant.applyParams === 'function') {
                     rent.script.enchant.applyParams();
                   }
@@ -2427,7 +2462,8 @@
 
           const origSetSword = pCtrlProto.setActiveSword;
           pCtrlProto.setActiveSword = function (t, e = []) {
-            origSetSword.call(this, t, e);
+            const safeE = normalizeEnchants(e);
+            origSetSword.call(this, t, safeE);
             if (t === 0 || !t) {
               this.activeSwordType = 0;
               if (this.activeSword) {
@@ -2435,12 +2471,13 @@
                 this.activeSword.enabled = false;
               }
             } else if (this.activeSword) {
-              applyEquipmentGlow(this.activeSword, e);
+              applyEquipmentGlow(this.activeSword, safeE);
             }
           };
           const origSetShield = pCtrlProto.setActiveShield;
           pCtrlProto.setActiveShield = function (t, e = []) {
-            origSetShield.call(this, t, e);
+            const safeE = normalizeEnchants(e);
+            origSetShield.call(this, t, safeE);
             if (t === 0 || !t) {
               this.activeShieldType = 0;
               if (this.activeShield) {
@@ -2448,7 +2485,7 @@
                 this.activeShield.enabled = false;
               }
             } else if (this.activeShield) {
-              applyEquipmentGlow(this.activeShield, e);
+              applyEquipmentGlow(this.activeShield, safeE);
             }
           };
         }
