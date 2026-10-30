@@ -34,50 +34,58 @@ var NetworkManager=pc.createScript("networkManager");function getCamResult(){ret
   root.setLocalScale(75,75,75);
 
   var bodyMat=new pc.StandardMaterial();
-  bodyMat.diffuse=new pc.Color(0.99,0.69,0.77);
-  bodyMat.specular=new pc.Color(0.2,0.2,0.2);
-  bodyMat.shininess=30;
+  bodyMat.diffuse=new pc.Color(0.99,0.70,0.78);
+  bodyMat.specular=new pc.Color(0.20,0.20,0.20);
+  bodyMat.shininess=32;
   bodyMat.update();
 
   var snoutMat=new pc.StandardMaterial();
-  snoutMat.diffuse=new pc.Color(1.0,0.52,0.65);
-  snoutMat.specular=new pc.Color(0.28,0.20,0.24);
-  snoutMat.shininess=40;
+  snoutMat.diffuse=new pc.Color(0.98,0.48,0.62);
+  snoutMat.specular=new pc.Color(0.25,0.18,0.20);
+  snoutMat.shininess=36;
   snoutMat.update();
 
   var nostrilMat=new pc.StandardMaterial();
-  nostrilMat.diffuse=new pc.Color(0.32,0.04,0.14);
+  nostrilMat.diffuse=new pc.Color(0.24,0.03,0.10);
   nostrilMat.update();
 
-  var mouthMat=new pc.StandardMaterial();
-  mouthMat.diffuse=new pc.Color(0.85,0.12,0.42);
-  mouthMat.update();
+  var lipMat=new pc.StandardMaterial();
+  lipMat.diffuse=new pc.Color(0.92,0.18,0.46);
+  lipMat.update();
+
+  var mouthInnerMat=new pc.StandardMaterial();
+  mouthInnerMat.diffuse=new pc.Color(0.35,0.04,0.15);
+  mouthInnerMat.update();
 
   var eyeSocketMat=new pc.StandardMaterial();
-  eyeSocketMat.diffuse=new pc.Color(0.65,0.15,0.35);
+  eyeSocketMat.diffuse=new pc.Color(0.85,0.20,0.45);
   eyeSocketMat.update();
 
   var eyeIrisMat=new pc.StandardMaterial();
-  eyeIrisMat.diffuse=new pc.Color(0,0.75,1.0);
-  eyeIrisMat.emissive=new pc.Color(0,0.55,0.95);
-  eyeIrisMat.emissiveIntensity=0.8;
+  eyeIrisMat.diffuse=new pc.Color(0.0,0.85,1.0);
+  eyeIrisMat.emissive=new pc.Color(0.0,0.68,0.98);
+  eyeIrisMat.emissiveIntensity=1.1;
   eyeIrisMat.update();
 
   var eyePupilMat=new pc.StandardMaterial();
-  eyePupilMat.diffuse=new pc.Color(0.85,0.95,1.0);
-  eyePupilMat.emissive=new pc.Color(0.75,0.95,1.0);
-  eyePupilMat.emissiveIntensity=1.0;
+  eyePupilMat.diffuse=new pc.Color(0.92,0.98,1.0);
+  eyePupilMat.emissive=new pc.Color(0.85,0.98,1.0);
+  eyePupilMat.emissiveIntensity=1.4;
   eyePupilMat.update();
 
   var earInnerMat=new pc.StandardMaterial();
-  earInnerMat.diffuse=new pc.Color(0.88,0.25,0.45);
+  earInnerMat.diffuse=new pc.Color(0.88,0.30,0.48);
   earInnerMat.update();
 
-  var crackGlowMat=new pc.StandardMaterial();
-  crackGlowMat.diffuse=new pc.Color(0.85,0.15,1.0);
-  crackGlowMat.emissive=new pc.Color(0.92,0.20,1.0);
-  crackGlowMat.emissiveIntensity=2.5;
-  crackGlowMat.update();
+  var fissureBaseMat=new pc.StandardMaterial();
+  fissureBaseMat.diffuse=new pc.Color(0.36,0.04,0.42);
+  fissureBaseMat.update();
+
+  var fissureCoreMat=new pc.StandardMaterial();
+  fissureCoreMat.diffuse=new pc.Color(0.94,0.28,1.0);
+  fissureCoreMat.emissive=new pc.Color(0.95,0.35,1.0);
+  fissureCoreMat.emissiveIntensity=2.4;
+  fissureCoreMat.update();
 
   function makeShape(type,name,parent,pos,rot,scale,mat){
     var ent=new pc.Entity(name);
@@ -92,55 +100,125 @@ var NetworkManager=pc.createScript("networkManager");function getCamResult(){ret
     return makeShape("box",name,parent,pos,rot,scale,mat);
   }
 
-  // 1. Chunky rounded body
-  makeBox("XPiggie_Cube",root,[0,0,0],[0,0,0],[1.02,0.95,0.98],bodyMat);
+  // 1. Soft Rounded Body: Core box with flush corner/edge bevels
+  var bodyCore=makeBox("XPiggie_Cube",root,[0,0,0],[0,0,0],[0.86,0.86,0.86],bodyMat);
+  var br=0.048;
+  makeBox("Face_F",root,[0,0,0.43],[0,0,0],[0.86,0.86,br*2],bodyMat);
+  makeBox("Face_B",root,[0,0,-0.43],[0,0,0],[0.86,0.86,br*2],bodyMat);
+  makeBox("Face_T",root,[0,0.43,0],[0,0,0],[0.86,br*2,0.86],bodyMat);
+  makeBox("Face_D",root,[0,-0.43,0],[0,0,0],[0.86,br*2,0.86],bodyMat);
+  makeBox("Face_L",root,[-0.43,0,0],[0,0,0],[br*2,0.86,0.86],bodyMat);
+  makeBox("Face_R",root,[0.43,0,0],[0,0,0],[br*2,0.86,0.86],bodyMat);
+  makeShape("cylinder","Edge_TL",root,[-0.43,0.43,0],[90,0,0],[br*2,0.86,br*2],bodyMat);
+  makeShape("cylinder","Edge_TR",root,[0.43,0.43,0],[90,0,0],[br*2,0.86,br*2],bodyMat);
+  makeShape("cylinder","Edge_TF",root,[0,0.43,0.43],[0,0,90],[br*2,0.86,br*2],bodyMat);
+  makeShape("cylinder","Edge_TB",root,[0,0.43,-0.43],[0,0,90],[br*2,0.86,br*2],bodyMat);
+  makeShape("cylinder","Edge_FL",root,[-0.43,0,0.43],[0,0,0],[br*2,0.86,br*2],bodyMat);
+  makeShape("cylinder","Edge_FR",root,[0.43,0,0.43],[0,0,0],[br*2,0.86,br*2],bodyMat);
+  makeShape("cylinder","Edge_BL",root,[-0.43,0,-0.43],[0,0,0],[br*2,0.86,br*2],bodyMat);
+  makeShape("cylinder","Edge_BR",root,[0.43,0,-0.43],[0,0,0],[br*2,0.86,br*2],bodyMat);
+  makeShape("cylinder","Edge_DL",root,[-0.43,-0.43,0],[90,0,0],[br*2,0.86,br*2],bodyMat);
+  makeShape("cylinder","Edge_DR",root,[0.43,-0.43,0],[90,0,0],[br*2,0.86,br*2],bodyMat);
+  makeShape("cylinder","Edge_DF",root,[0,-0.43,0.43],[0,0,90],[br*2,0.86,br*2],bodyMat);
+  makeShape("cylinder","Edge_DB",root,[0,-0.43,-0.43],[0,0,90],[br*2,0.86,br*2],bodyMat);
+  makeShape("sphere","Corner_TFL",root,[-0.43,0.43,0.43],[0,0,0],[br*2,br*2,br*2],bodyMat);
+  makeShape("sphere","Corner_TFR",root,[0.43,0.43,0.43],[0,0,0],[br*2,br*2,br*2],bodyMat);
+  makeShape("sphere","Corner_TBL",root,[-0.43,0.43,-0.43],[0,0,0],[br*2,br*2,br*2],bodyMat);
+  makeShape("sphere","Corner_TBR",root,[0.43,0.43,-0.43],[0,0,0],[br*2,br*2,br*2],bodyMat);
+  makeShape("sphere","Corner_DFL",root,[-0.43,-0.43,0.43],[0,0,0],[br*2,br*2,br*2],bodyMat);
+  makeShape("sphere","Corner_DFR",root,[0.43,-0.43,0.43],[0,0,0],[br*2,br*2,br*2],bodyMat);
+  makeShape("sphere","Corner_DBL",root,[-0.43,-0.43,-0.43],[0,0,0],[br*2,br*2,br*2],bodyMat);
+  makeShape("sphere","Corner_DBR",root,[0.43,-0.43,-0.43],[0,0,0],[br*2,br*2,br*2],bodyMat);
 
-  // 2. Snout, nostrils, smiling mouth
-  var snout=makeShape("box","XPiggie_Snout",root,[0,-0.10,0.51],[0,0,0],[0.40,0.22,0.14],snoutMat);
-  makeShape("sphere","Nostril_L",snout,[-0.09,0.02,0.07],[0,0,0],[0.065,0.06,0.04],nostrilMat);
-  makeShape("sphere","Nostril_R",snout,[0.09,0.02,0.07],[0,0,0],[0.065,0.06,0.04],nostrilMat);
-  makeShape("box","XPiggie_Mouth",root,[0,-0.24,0.51],[0,0,0],[0.26,0.05,0.04],mouthMat);
+  // 2. Snout: smooth rounded horizontal pill capsule
+  var snout=makeShape("capsule","XPiggie_Snout",root,[0,-0.06,0.49],[0,0,90],[0.18,0.36,0.13],snoutMat);
+  makeShape("capsule","Nostril_L",root,[-0.065,-0.05,0.55],[0,0,12],[0.042,0.065,0.02],nostrilMat);
+  makeShape("capsule","Nostril_R",root,[0.065,-0.05,0.55],[0,0,-12],[0.042,0.065,0.02],nostrilMat);
 
-  // 3. Stylized 3D protruding eyes (pill/capsule-like cyan iris + specular highlights)
-  makeShape("capsule","Eye_Socket_L",root,[-0.26,0.16,0.50],[0,0,0],[0.20,0.28,0.12],eyeSocketMat);
-  makeShape("capsule","Eye_Iris_L",root,[-0.26,0.16,0.54],[0,0,0],[0.14,0.22,0.08],eyeIrisMat);
-  makeShape("sphere","Eye_Pupil_L",root,[-0.24,0.19,0.58],[0,0,0],[0.07,0.07,0.04],eyePupilMat);
+  // 3. Smiling Mouth
+  makeShape("box","Mouth_Center",root,[0,-0.19,0.485],[0,0,0],[0.14,0.028,0.015],lipMat);
+  makeShape("box","Mouth_Left",root,[-0.085,-0.18,0.485],[0,0,24],[0.07,0.028,0.015],lipMat);
+  makeShape("box","Mouth_Right",root,[0.085,-0.18,0.485],[0,0,-24],[0.07,0.028,0.015],lipMat);
+  makeShape("box","Mouth_Inner",root,[0,-0.195,0.48],[0,0,0],[0.18,0.022,0.01],mouthInnerMat);
 
-  makeShape("capsule","Eye_Socket_R",root,[0.26,0.16,0.50],[0,0,0],[0.20,0.28,0.12],eyeSocketMat);
-  makeShape("capsule","Eye_Iris_R",root,[0.26,0.16,0.54],[0,0,0],[0.14,0.22,0.08],eyeIrisMat);
-  makeShape("sphere","Eye_Pupil_R",root,[0.24,0.19,0.58],[0,0,0],[0.07,0.07,0.04],eyePupilMat);
+  // 4. Stylized Protruding Cartoon Eyes
+  makeShape("cylinder","Eye_Socket_L",root,[-0.24,0.15,0.49],[90,-8,0],[0.20,0.09,0.24],eyeSocketMat);
+  makeShape("cylinder","Eye_Iris_L",root,[-0.24,0.15,0.53],[90,-8,0],[0.15,0.045,0.19],eyeIrisMat);
+  makeShape("sphere","Eye_Pupil_L",root,[-0.22,0.185,0.55],[0,0,0],[0.06,0.06,0.025],eyePupilMat);
 
-  // 4. Ears
-  // Right ear (viewer right): intact pointed ear
-  var earR=makeShape("cone","Ear_R_Base",root,[0.46,0.56,-0.05],[12,10,-28],[0.28,0.42,0.14],bodyMat);
-  makeShape("cone","Ear_R_Inner",earR,[0,-0.05,0.04],[0,0,0],[0.18,0.30,0.06],earInnerMat);
+  makeShape("cylinder","Eye_Socket_R",root,[0.24,0.15,0.49],[90,8,0],[0.20,0.09,0.24],eyeSocketMat);
+  makeShape("cylinder","Eye_Iris_R",root,[0.24,0.15,0.53],[90,8,0],[0.15,0.045,0.19],eyeIrisMat);
+  makeShape("sphere","Eye_Pupil_R",root,[0.22,0.185,0.55],[0,0,0],[0.06,0.06,0.025],eyePupilMat);
 
-  // Left ear (viewer left): fractured ear split by purple lightning crevice!
-  var earL=makeShape("box","Ear_L_Base",root,[-0.40,0.46,-0.05],[12,-8,25],[0.24,0.22,0.10],bodyMat);
-  makeShape("box","Ear_L_Inner",earL,[0,0,0.04],[0,0,0],[0.15,0.16,0.03],earInnerMat);
-  var earTip=makeShape("cone","Ear_L_Tip",root,[-0.52,0.67,-0.05],[14,-10,38],[0.22,0.26,0.12],bodyMat);
-  makeShape("cone","Ear_L_Tip_Inner",earTip,[0,-0.03,0.04],[0,0,0],[0.14,0.18,0.05],earInnerMat);
-  makeShape("box","Ear_L_Fissure",root,[-0.45,0.54,-0.04],[12,-8,48],[0.28,0.07,0.12],crackGlowMat);
+  // 5. Expressive Large Ears flared outward matching reference
+  var earR=makeShape("cone","Ear_R_Base",root,[0.38,0.56,0.08],[-10,-12,-32],[0.36,0.65,0.16],bodyMat);
+  makeShape("cone","Ear_R_Inner",earR,[0,-0.03,0.035],[0,0,0],[0.22,0.44,0.05],earInnerMat);
 
-  // 5. 4 Stubby 3D Legs angled outward at 35 degrees (smooth capsules)
-  makeShape("capsule","Leg_FL",root,[-0.38,-0.42,0.28],[25,0,35],[0.22,0.38,0.22],bodyMat);
-  makeShape("capsule","Leg_FR",root,[0.38,-0.42,0.28],[25,0,-35],[0.22,0.38,0.22],bodyMat);
-  makeShape("capsule","Leg_BL",root,[-0.38,-0.42,-0.28],[-25,0,35],[0.22,0.38,0.22],bodyMat);
-  makeShape("capsule","Leg_BR",root,[0.38,-0.42,-0.28],[-25,0,-35],[0.22,0.38,0.22],bodyMat);
+  var earL=makeShape("cone","Ear_L_Base",root,[-0.38,0.56,0.08],[-10,12,32],[0.36,0.65,0.16],bodyMat);
+  makeShape("cone","Ear_L_Inner",earL,[0,-0.03,0.035],[0,0,0],[0.22,0.44,0.05],earInnerMat);
+  // Fissure slicing through left ear
+  makeShape("box","Ear_L_Fissure",earL,[0,0,0.06],[0,0,22],[0.05,0.42,0.03],fissureCoreMat);
 
-  // 6. Geometric Glowing Neon Purple Fissure Crevices
-  makeBox("Fissure_1",root,[0.08,0.45,0.51],[0,0,-35],[0.05,0.22,0.06],crackGlowMat);
-  makeBox("Fissure_2",root,[0.17,0.29,0.51],[0,0,42],[0.05,0.18,0.06],crackGlowMat);
-  makeBox("Fissure_3",root,[0.19,0.12,0.515],[0,0,-25],[0.05,0.20,0.06],crackGlowMat);
-  makeBox("Fissure_4",root,[0.12,-0.14,0.535],[0,0,75],[0.05,0.26,0.07],crackGlowMat);
-  makeBox("Fissure_5",root,[0.28,-0.25,0.515],[0,0,-35],[0.05,0.22,0.06],crackGlowMat);
-  makeBox("Fissure_6",root,[0.44,-0.32,0.42],[0,-45,15],[0.05,0.18,0.06],crackGlowMat);
-  makeBox("Fissure_7",root,[-0.38,0.40,0.48],[0,0,25],[0.05,0.20,0.06],crackGlowMat);
-  makeBox("Fissure_8",root,[-0.45,0.22,0.44],[0,-30,-30],[0.05,0.22,0.06],crackGlowMat);
-  makeBox("Fissure_9",root,[-0.44,-0.05,0.44],[0,-30,40],[0.05,0.18,0.06],crackGlowMat);
-  makeBox("Fissure_10",root,[-0.32,-0.32,0.505],[0,0,-30],[0.05,0.18,0.06],crackGlowMat);
+  // 6. 4 Chubby Stubby Legs splayed outward
+  makeShape("capsule","Leg_FL",root,[-0.40,-0.42,0.26],[26,0,45],[0.18,0.32,0.18],bodyMat);
+  makeShape("capsule","Leg_FR",root,[0.40,-0.42,0.26],[26,0,-45],[0.18,0.32,0.18],bodyMat);
+  makeShape("capsule","Leg_BL",root,[-0.40,-0.42,-0.26],[-26,0,45],[0.18,0.32,0.18],bodyMat);
+  makeShape("capsule","Leg_BR",root,[0.40,-0.42,-0.26],[-26,0,-45],[0.18,0.32,0.18],bodyMat);
 
-  // 7. Dual Trails (Gold + Purple)
+  // 7. Chiseled Lightning Fissures
+  function makeChasmSegment(name,parent,p1,p2){
+    var mx=(p1[0]+p2[0])*0.5;
+    var my=(p1[1]+p2[1])*0.5;
+    var mz=(p1[2]+p2[2])*0.5;
+    var dx=p2[0]-p1[0];
+    var dy=p2[1]-p1[1];
+    var len=Math.sqrt(dx*dx+dy*dy);
+    var ang=Math.atan2(dx,dy)*(180/Math.PI);
+    var base=new pc.Entity(name+"_base");
+    parent.addChild(base);
+    base.setLocalPosition(mx,my,mz);
+    base.setLocalEulerAngles(0,0,-ang);
+    base.setLocalScale(0.046,len,0.016);
+    base.addComponent("render",{type:"box",material:fissureBaseMat});
+    var core=new pc.Entity(name+"_core");
+    parent.addChild(core);
+    core.setLocalPosition(mx,my,mz+0.005);
+    core.setLocalEulerAngles(0,0,-ang);
+    core.setLocalScale(0.024,len,0.018);
+    core.addComponent("render",{type:"box",material:fissureCoreMat});
+  }
+
+  // Path 1: Forehead through chin / lower right
+  var ptsF=[
+    [0.02,0.47,0.485],
+    [0.08,0.36,0.485],
+    [-0.01,0.26,0.485],
+    [0.10,0.14,0.485],
+    [0.17,0.02,0.485],
+    [0.08,-0.09,0.485],
+    [0.14,-0.21,0.485],
+    [0.26,-0.32,0.485],
+    [0.38,-0.42,0.485]
+  ];
+  for(var fi=0;fi<ptsF.length-1;fi++){
+    makeChasmSegment("Fissure_F_"+(fi+1),root,ptsF[fi],ptsF[fi+1]);
+  }
+
+  // Path 2: Left corner and cheek fissure, connected up to base of ear
+  var ptsL=[
+    [-0.36,0.50,0.47],
+    [-0.34,0.44,0.485],
+    [-0.41,0.30,0.485],
+    [-0.33,0.16,0.485],
+    [-0.43,0.02,0.485],
+    [-0.36,-0.18,0.485],
+    [-0.30,-0.36,0.485]
+  ];
+  for(var li=0;li<ptsL.length-1;li++){
+    makeChasmSegment("Fissure_L_"+(li+1),root,ptsL[li],ptsL[li+1]);
+  }
+
+  // 8. Dual Trails (Gold + Purple)
   if(!rent.findByName("Trail_Gold")){
     var tg=new pc.Entity("Trail_Gold");
     rent.addChild(tg);
@@ -153,10 +231,9 @@ var NetworkManager=pc.createScript("networkManager");function getCamResult(){ret
     rent.addChild(tp);
     tp.setLocalPosition(0,46,-10);
     tp.addComponent("script");
-    tp.script.create("trail",{attributes:{color:[0.85,0.2,1],radius:0.35,lifetime:1.2,trailfadeness:2,opacityFactor:0.8,sampleRate:30,minDistance:0.03,cullDistance:80}});
+    tp.script.create("trail",{attributes:{color:[0.78,0.2,1],radius:0.5,lifetime:1.2,trailfadeness:2,opacityFactor:0.8,sampleRate:30,minDistance:0.03,cullDistance:80}});
   }
 
-  // 8. Gentle sinusoidal idle breathing bobbing
   if(!rent._xpiggieBobBound){
     rent._xpiggieBobBound=true;
     var _initY=46;
@@ -203,8 +280,7 @@ function swordPriceToSeconds(e){const t=1e13;let o=((e=Math.max(100,Math.min(t,e
 "    vec2 glintUv = gl_FragCoord.xy * 0.01;",
 "#endif",
 "    float f = fract((glintUv.x + glintUv.y) * glintScale + time * glintSpeed);",
-"    float band = 1.0 - abs(f * 2.0 - 1.0);",
-"    band = smoothstep(0.0, 1.0, band);",
+"    float band = smoothstep(0.80, 0.98, 1.0 - abs(f * 2.0 - 1.0));",
 "    dEmission += glintColor * band * glintStrength;",
 "}"
 ].join("\n");
@@ -240,15 +316,14 @@ var ENCHANT_UI_GLSL = [
 "    vec2 glintUv = gl_FragCoord.xy * 0.01;",
 "#endif",
 "    float f = fract((glintUv.x + glintUv.y) * glintScale + time * glintSpeed);",
-"    float band = 1.0 - abs(f * 2.0 - 1.0);",
-"    band = smoothstep(0.0, 1.0, band);",
+"    float band = smoothstep(0.78, 0.98, 1.0 - abs(f * 2.0 - 1.0));",
 "    dEmission += glintColor * band * glintStrength;",
 "}"
 ].join("\n");
 
 var Enchant=pc.createScript("enchant");
 Enchant.attributes.add("glintColor",{type:"rgb",default:[.6,.2,1]});
-Enchant.attributes.add("glintStrength",{type:"number",default:.6});
+Enchant.attributes.add("glintStrength",{type:"number",default:.32});
 Enchant.attributes.add("glintSpeed",{type:"number",default:.3});
 Enchant.attributes.add("glintScale",{type:"number",default:.8});
 Enchant.attributes.add("autoStart",{type:"boolean",default:!1});
@@ -318,7 +393,7 @@ Enchant.prototype.init=function(t=0,e=10){
         var eMat=mi.material.clone();
         eMat.chunks.emissivePS=shaderMeshRes;
         eMat.setParameter("glintColor",[r,g,b]);
-        eMat.setParameter("glintStrength",self.glintStrength||.75);
+        eMat.setParameter("glintStrength",self.glintStrength||.32);
         eMat.setParameter("glintSpeed",self.glintSpeed||.3);
         eMat.setParameter("glintScale",self.glintScale||2.0);
         eMat.setParameter("time",0);

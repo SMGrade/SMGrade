@@ -2410,24 +2410,29 @@
               entity.children.forEach(findR);
             }
 
-            let glintColor = [0.65, 0.25, 1.0];
+            let glintColor = [0.62, 0.22, 1.0];
             let maxLvl = 1;
             if (hasEnchants) {
               enchantsList.forEach(x => {
                 const lvl = parseInt(x.level, 10) || 1;
                 if (lvl > maxLvl) maxLvl = lvl;
               });
-              if (enchantsList.some(x => x.type === 3 || x.type === 'Freeze' || x.name === 'Freeze')) {
-                glintColor = [0.25, 0.75, 1.0]; // Freeze cyan
+              if (enchantsList.length > 1) {
+                glintColor = [0.62, 0.22, 1.0]; // Multiple enchantments = authentic mystic purple sheen
               } else if (enchantsList.some(x => x.type === 0 || x.type === 'Flame' || x.name === 'Flame')) {
-                glintColor = [1.0, 0.35, 0.1]; // Flame orange
+                glintColor = [1.0, 0.35, 0.05]; // Flame warm ember orange-red
+              } else if (enchantsList.some(x => x.type === 3 || x.type === 'Freeze' || x.name === 'Freeze')) {
+                glintColor = [0.15, 0.75, 1.0]; // Freeze crystalline frost cyan
               } else if (enchantsList.some(x => x.type === 1 || x.type === 'Thorns' || x.name === 'Thorns')) {
-                glintColor = [0.2, 0.9, 0.3]; // Thorns green
-              } else if (enchantsList.some(x => x.type === 4 || x.type === 2 || x.type === 'Fortune' || x.type === 'Looting' || x.name === 'Fortune' || x.name === 'Looting')) {
-                glintColor = [1.0, 0.85, 0.2]; // Fortune / Looting gold
+                glintColor = [0.15, 0.85, 0.25]; // Thorns emerald radiant green
+              } else if (enchantsList.some(x => x.type === 2 || x.type === 'Looting' || x.name === 'Looting')) {
+                glintColor = [1.0, 0.82, 0.12]; // Looting vibrant treasure gold
+              } else if (enchantsList.some(x => x.type === 4 || x.type === 'Fortune' || x.name === 'Fortune')) {
+                glintColor = [1.0, 0.70, 0.08]; // Fortune rich golden amber
               }
             }
-            const glintStrength = Math.min(1.0, 0.45 + 0.15 * maxLvl);
+            // Authentic controlled glint strength (0.28 - 0.38) preserving 100% of weapon specular & metallic texture readability
+            const glintStrength = Math.min(0.38, 0.28 + 0.025 * maxLvl);
 
             renderEntities.forEach(rent => {
               if (hasEnchants) {
@@ -2437,8 +2442,8 @@
                     attributes: {
                       glintColor: glintColor,
                       glintStrength: glintStrength,
-                      glintSpeed: 0.3,
-                      glintScale: 2.5
+                      glintSpeed: 0.25,
+                      glintScale: 4.5
                     }
                   });
                   if (rent.script.enchant && typeof rent.script.enchant.init === 'function') {
@@ -2447,6 +2452,8 @@
                 } else {
                   rent.script.enchant.glintColor = glintColor;
                   rent.script.enchant.glintStrength = glintStrength;
+                  rent.script.enchant.glintSpeed = 0.25;
+                  rent.script.enchant.glintScale = 4.5;
                   rent.script.enchant.enabled = true;
                   if (typeof rent.script.enchant.applyParams === 'function') {
                     rent.script.enchant.applyParams();
